@@ -11,6 +11,9 @@ const WalletTwo = require("../models/wallettwo.js");
 const { firebase } = require("../firebase/index.js");
 const Notification = require("../models/Notification.js");
 const { userInfo } = require("os");
+const DepositPayment = require("../models/depositmodel.js");
+const Transaction = require("../models/Transaction.js");
+const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 
 // const login = asyncError(async (req, res, next) => {
 //   const { email, password } = req.body;
@@ -30,7 +33,6 @@ const { userInfo } = require("os");
 
 //   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
 // });
-
 
 // const register = asyncError(async (req, res, next) => {
 //   const { name, email, password, devicetoken, role } = req.body;
@@ -150,7 +152,7 @@ const { userInfo } = require("os");
 //     }
 
 //     console.log("User profile retrieved successfully:", user);
-    
+
 //     // Return the user profile
 //     res.status(200).json({ success: true, user });
 //   } catch (error) {
@@ -158,7 +160,6 @@ const { userInfo } = require("os");
 //     res.status(500).json({ success: false, message: "Internal server error" });
 //   }
 // });
-
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -168,8 +169,8 @@ const login = asyncError(async (req, res, next) => {
 
   const user = await User.findOne({ email }).select("+password");
 
-  if (!user) return next(new ErrorHandler("Not Registered, create an account", 400));
-
+  if (!user)
+    return next(new ErrorHandler("Not Registered, create an account", 400));
 
   const isMatched = await user.comparePassword(password);
 
@@ -178,10 +179,7 @@ const login = asyncError(async (req, res, next) => {
   }
 
   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
-
-
 });
-
 
 const register = asyncError(async (req, res, next) => {
   const { name, email, password, devicetoken, role } = req.body;
@@ -214,18 +212,16 @@ const register = asyncError(async (req, res, next) => {
     userId, // Add userId to the user object
     contact,
     devicetoken,
-    role
+    role,
   });
 
   // sendToken(user, res, `Registered Successfully`, 201);
 
   res.status(201).json({
     success: true,
-    message: 'Registered Successfully',
+    message: "Registered Successfully",
+  });
 });
-
-});
-
 
 const getMyProfile = asyncError(async (req, res, next) => {
   const user = await User.findById(req.user._id)
@@ -463,7 +459,6 @@ const resetPassword = asyncError(async (req, res, next) => {
   });
 });
 
-
 const deleteNotification = asyncError(async (req, res, next) => {
   const { id } = req.params;
   // Find the promotion by ID and delete it
@@ -482,8 +477,6 @@ const deleteNotification = asyncError(async (req, res, next) => {
     deletedNotification,
   });
 });
-
-
 
 const updateProfilePic = asyncError(async (req, res, next) => {
   const user = await User.findById(req.user._id);
@@ -554,7 +547,7 @@ const updateProfilePic = asyncError(async (req, res, next) => {
 //     try {
 //       // Delete the previous image from the server
 //       fs.unlinkSync(pathModule.join(__dirname, "..", "public", "uploads", user.avatar.url));
-    
+
 //     } catch (err) {
 //       console.error("Error deleting previous image:", err);
 //     }
@@ -606,10 +599,9 @@ const createProfilePic = asyncError(async (req, res, next) => {
   res.status(201).json({
     success: true,
     message: "Profile Pic Created Successfully",
-    avatar: user.avatar // Send updated avatar information in response
+    avatar: user.avatar, // Send updated avatar information in response
   });
 });
-
 
 // const updateProfilePic = asyncError(async (req, res, next) => {
 //   // Check if a file is provided in the request
@@ -633,7 +625,7 @@ const createProfilePic = asyncError(async (req, res, next) => {
 //     try {
 //       // Delete the previous image from the server
 //       fs.unlinkSync(pathModule.join(__dirname, "..", "public", "uploads", user.avatar.url));
-    
+
 //     } catch (err) {
 //       console.error("Error deleting previous image:", err);
 //     }
@@ -654,14 +646,6 @@ const createProfilePic = asyncError(async (req, res, next) => {
 //     avatar: user.avatar // Send updated avatar information in response
 //   });
 // });
-
-
-
-
-
-
-
-
 
 // For uploading profile pic
 const getProfilePic = asyncError(async (req, res, next) => {
@@ -895,8 +879,6 @@ async function removeUnregisteredToken(token) {
 //     }
 //   }
 
-  
-
 //   console.log("tokens.length :: " + tokens.length);
 //   console.log("tokens :: " + JSON.stringify(tokens));
 
@@ -913,13 +895,11 @@ async function removeUnregisteredToken(token) {
 //       });
 //     }
 
-
 //     const notification = new Notification({
 //       title: title,
 //       description: description,
 //     });
 //     await notification.save();
-
 
 //     console.log("Notifications sent to all users");
 //     res.status(200).json({
@@ -955,14 +935,18 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
     console.log("Noti Description :: " + description);
 
     if (!title) return next(new ErrorHandler("Enter Notification title", 400));
-    if (!description) return next(new ErrorHandler("Enter Notification Description", 400));
+    if (!description)
+      return next(new ErrorHandler("Enter Notification Description", 400));
 
-    const tokens = users.map(user => user.devicetoken).filter(Boolean);
+    const tokens = users.map((user) => user.devicetoken).filter(Boolean);
 
     console.log("tokens.length :: " + tokens.length);
     console.log("tokens :: " + JSON.stringify(tokens));
 
-    if (tokens.length === 0) return next(new ErrorHandler("No user found with valid device token", 400));
+    if (tokens.length === 0)
+      return next(
+        new ErrorHandler("No user found with valid device token", 400)
+      );
 
     const failedTokens = [];
 
@@ -993,7 +977,9 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
 
     if (failedTokens.length === tokens.length) {
       // If all tokens failed to receive notification
-      return next(new ErrorHandler("Failed to send notification to all users", 500));
+      return next(
+        new ErrorHandler("Failed to send notification to all users", 500)
+      );
     }
 
     // Save notification to database
@@ -1013,10 +999,6 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
     next(new ErrorHandler("Internal server error", 500));
   }
 });
-
-
-
-
 
 const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
   const users = await User.find({})
@@ -1055,8 +1037,7 @@ const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
     // });
     // await notification.save();
 
-
-     // Update notifications array for each user
+    // Update notifications array for each user
     //  const notificationData = {
     //   title: title,
     //   description: description
@@ -1067,7 +1048,6 @@ const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
     // }));
 
     console.log("Notification sent and saved");
-
   } catch (error) {
     console.log(error);
     next(new ErrorHandler(error, 400));
@@ -1217,6 +1197,333 @@ const updateAllWalletNameTwo = asyncError(async (req, res, next) => {
   });
 });
 
+// ##########################################
+// DEPOSIT
+// ##########################################
+
+// Add Deposit
+// const addDeposit = asyncError(async (req, res, next) => {
+//   const {
+//     amount,
+//     transactionid,
+//     remark,
+//     paymenttype,
+//     paymenttypeid,
+//     username,
+//     userid,
+//     paymentstatus,
+//   } = req.body;
+
+//   // Validate user existence
+//   const user = await User.findOne({ contact: userid });
+//   if (!user) {
+//     return next(new ErrorHandler("User not found", 404));
+//   }
+
+//   // Validate required fields
+//   if (!amount) return next(new ErrorHandler("Amount missing", 400));
+//   if (!transactionid) return next(new ErrorHandler("Transaction ID missing", 400));
+//   if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
+//   if (!paymenttypeid) return next(new ErrorHandler("Payment type ID missing", 400));
+//   if (!username) return next(new ErrorHandler("Username missing", 400));
+
+//   // Check if a file is provided in the request
+//   if (!req.file) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Please upload receipt screenshot",
+//     });
+//   }
+
+//   const { filename } = req.file;
+//   const receipt = filename;
+
+//   // Create a new transaction
+//   const transaction = await Transaction.create({
+//     amount,
+//     transactionId: transactionid,
+//     receipt,
+//     remark,
+//     paymentType: paymenttype,
+//     paymentTypeId: paymenttypeid,
+//     username,
+//     userId: userid,
+//     transactionType: "Deposit",
+//     paymentStatus: paymentstatus || "Pending",
+//   });
+
+//   // Update user's transaction history
+//   user.transactionHistory.push(transaction._id);
+//   await user.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Deposit request sent successfully",
+//     transaction,
+//   });
+// });
+
+// const addDeposit = asyncError(async (req, res, next) => {
+//   const {
+//     amount,
+//     remark,
+//     paymenttype,
+//     username,
+//     userid,
+//     paymentstatus,
+//     transactionid,
+//     paymenttypeid,
+//     transactionType
+//   } = req.body;
+
+//   // Validate user existence
+//   const user = await User.findOne({ contact: userid });
+//   if (!user) {
+//     return next(new ErrorHandler("User not found", 404));
+//   }
+
+//   // Validate required fields
+//   if (!amount) return next(new ErrorHandler("Amount missing", 400));
+//   if (!transactionid) return next(new ErrorHandler("Transaction ID missing", 400));
+//   if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
+//   if (!paymenttypeid) return next(new ErrorHandler("Payment type ID missing", 400));
+//   if (!username) return next(new ErrorHandler("Username missing", 400));
+//   if (!transactionType) return next(new ErrorHandler("Transaction Type missing", 400));
+
+//   // Check if a file is provided in the request
+//   if (!req.file) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Please upload receipt screenshot",
+//     });
+//   }
+
+//   const { filename } = req.file;
+//   const receipt = filename;
+
+//   // Create a new transaction
+//   const transaction = await Transaction.create({
+//     amount,
+//     transactionId: transactionid,
+//     receipt,
+//     remark,
+//     paymentType: paymenttype,
+//     paymentTypeId: paymenttypeid,
+//     username,
+//     userId: userid,
+//     transactionType: transactionType,
+//     paymentStatus: paymentstatus || "Pending",
+//   });
+
+//   // Update user's transaction history
+//   user.transactionHistory.push(transaction._id);
+//   await user.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Deposit request sent successfully",
+//     transaction,
+//   });
+// });
+
+const addDeposit = asyncError(async (req, res, next) => {
+  const {
+    amount,
+    remark,
+    paymenttype,
+    username,
+    userid,
+    paymentstatus,
+    transactionid,
+    paymenttypeid
+  } = req.body;
+
+  const user = await User.findOne({ contact: userid });
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+
+  if (!amount) return next(new ErrorHandler("Amount missing", 400));
+  if (!transactionid) return next(new ErrorHandler("Transaction ID missing", 400));
+  if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
+  if (!paymenttypeid) return next(new ErrorHandler("Payment type ID missing", 400));
+  if (!username) return next(new ErrorHandler("Username missing", 400));
+
+  const transaction = await Transaction.create({
+    amount,
+    transactionId: transactionid,
+    remark,
+    paymentType: paymenttype,
+    paymentTypeId: paymenttypeid,
+    username,
+    userId: userid,
+    transactionType: "Deposit",
+    paymentStatus: paymentstatus || "Pending",
+    receipt: req.file ? req.file.filename : undefined,
+  });
+
+  user.transactionHistory.push(transaction._id);
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Deposit request sent successfully",
+    transaction,
+  });
+});
+
+// Get All Deposits and Withdrawals of a Single User
+const getUserTransactions = asyncError(async (req, res, next) => {
+  const { userid } = req.query;
+
+  const transactions = await Transaction.find({ userId: userid });
+
+  if (!transactions || transactions.length === 0) {
+    return next(new ErrorHandler("No transactions found for this user", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    transactions,
+  });
+});
+
+const getAllTransaction = asyncError(async (req, res, next) => {
+  const transactions = await Transaction.find().sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    transactions,
+  });
+});
+
+// Get all Deposit transactions
+const getAllDeposit = asyncError(async (req, res, next) => {
+  const deposits = await Transaction.find({ transactionType: "Deposit" }).sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    deposits,
+  });
+});
+
+
+// UPDATE PAYMENT STATUS
+const updateDepositStatus = asyncError(async (req, res, next) => {
+  const { transactionId, paymentStatus } = req.body;
+
+  // Validate required fields
+  if (!transactionId) {
+    return next(new ErrorHandler("Transaction ID missing", 400));
+  }
+  if (!paymentStatus) {
+    return next(new ErrorHandler("Payment status missing", 400));
+  }
+
+  // Validate payment status value
+  const validStatuses = ["Pending", "Completed", "Cancelled"];
+  if (!validStatuses.includes(paymentStatus)) {
+    return next(new ErrorHandler("Invalid payment status", 400));
+  }
+
+ 
+  const transaction = await Transaction.findById(transactionId);
+
+  if (!transaction) {
+    return next(new ErrorHandler("Transaction not found", 404));
+  }
+ 
+  if (paymentStatus) transaction.paymentStatus = paymentStatus;
+
+  await transaction.save();
+
+  
+
+  res.status(200).json({
+    success: true,
+    message: "Payment status updated successfully",
+    transaction,
+  });
+});
+
+
+// ##########################################
+// WITHDRAW
+// ##########################################
+
+const addWithdraw = asyncError(async (req, res, next) => {
+  const {
+    amount,
+    remark,
+    paymenttype,
+    username,
+    userid,
+    paymentstatus,
+    upiHolderName,
+    upiId,
+    bankName,
+    accountHolderName,
+    bankIFSC,
+    bankAccountNumber,
+    paypalEmail,
+    cryptoWalletAddress,
+    networkType,
+    skrillContact,
+  } = req.body;
+
+  const user = await User.findOne({ contact: userid });
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+
+  if (!amount) return next(new ErrorHandler("Amount missing", 400));
+  if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
+  if (!username) return next(new ErrorHandler("Username missing", 400));
+
+  const transaction = await Transaction.create({
+    amount,
+    remark,
+    paymentType: paymenttype,
+    username,
+    userId: userid,
+    transactionType: "Withdraw",
+    paymentStatus: paymentstatus || "Pending",
+    upiHolderName,
+    upiId,
+    bankName,
+    accountHolderName,
+    bankIFSC,
+    bankAccountNumber,
+    paypalEmail,
+    cryptoWalletAddress,
+    networkType,
+    skrillContact,
+  });
+
+  user.transactionHistory.push(transaction._id);
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Withdrawal request sent successfully",
+    transaction,
+  });
+});
+
+// Get all withdraw transactions
+const getAllWithdrawals = asyncError(async (req, res, next) => {
+  const withdrawals = await Transaction.find({ transactionType: "Withdraw" }).sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    withdrawals,
+  });
+});
+
+
+
+
+
 module.exports = {
   login,
   register,
@@ -1252,9 +1559,15 @@ module.exports = {
   singleUserNotification,
   getAllNotification,
   createProfilePic,
-  deleteNotification
+  deleteNotification,
+  getAllTransaction,
+  getUserTransactions,
+  addDeposit,
+  updateDepositStatus,
+  addWithdraw,
+  getAllDeposit,
+  getAllWithdrawals
 };
-
 
 // const { asyncError } = require("../middlewares/error.js");
 // const LotAppAbout = require("../models/lotappabout.js");
@@ -1288,7 +1601,6 @@ module.exports = {
 
 // //   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
 // // });
-
 
 // // const register = asyncError(async (req, res, next) => {
 // //   const { name, email, password, devicetoken, role } = req.body;
@@ -1408,7 +1720,7 @@ module.exports = {
 // //     }
 
 // //     console.log("User profile retrieved successfully:", user);
-    
+
 // //     // Return the user profile
 // //     res.status(200).json({ success: true, user });
 // //   } catch (error) {
@@ -1416,7 +1728,6 @@ module.exports = {
 // //     res.status(500).json({ success: false, message: "Internal server error" });
 // //   }
 // // });
-
 
 // const login = asyncError(async (req, res, next) => {
 //   const { email, password } = req.body;
@@ -1428,7 +1739,6 @@ module.exports = {
 
 //   if (!user) return next(new ErrorHandler("Not Registered, create an account", 400));
 
-
 //   const isMatched = await user.comparePassword(password);
 
 //   if (!isMatched) {
@@ -1437,9 +1747,7 @@ module.exports = {
 
 //   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
 
-
 // });
-
 
 // const register = asyncError(async (req, res, next) => {
 //   const { name, email, password, devicetoken, role } = req.body;
@@ -1483,7 +1791,6 @@ module.exports = {
 // });
 
 // });
-
 
 // const getMyProfile = asyncError(async (req, res, next) => {
 //   const user = await User.findById(req.user._id)
@@ -1969,7 +2276,6 @@ module.exports = {
 //   });
 // });
 
-
 // const deleteNotification = asyncError(async (req, res, next) => {
 //   const { id } = req.params;
 //   // Find the promotion by ID and delete it
@@ -2067,8 +2373,6 @@ module.exports = {
 // //     }
 // //   }
 
-  
-
 // //   console.log("tokens.length :: " + tokens.length);
 // //   console.log("tokens :: " + JSON.stringify(tokens));
 
@@ -2085,13 +2389,11 @@ module.exports = {
 // //       });
 // //     }
 
-
 // //     const notification = new Notification({
 // //       title: title,
 // //       description: description,
 // //     });
 // //     await notification.save();
-
 
 // //     console.log("Notifications sent to all users");
 // //     res.status(200).json({
@@ -2186,10 +2488,6 @@ module.exports = {
 //   }
 // });
 
-
-
-
-
 // const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
 //   const users = await User.find({})
 //     .populate("walletOne")
@@ -2226,7 +2524,6 @@ module.exports = {
 //     //   description: description,
 //     // });
 //     // await notification.save();
-
 
 //      // Update notifications array for each user
 //     //  const notificationData = {
@@ -2278,8 +2575,6 @@ module.exports = {
 // // #############################
 // //  About us Section
 // // #############################
-
-
 
 // // About us update
 

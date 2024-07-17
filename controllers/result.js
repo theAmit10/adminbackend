@@ -4,8 +4,16 @@ const ErrorHandler = require("../utils/error.js");
 const  LotDate  = require("../models/lotdate.js");
 const  LotTime  = require("../models/lottime.js");
 const  LotLocation  = require("../models/lotlocation.js");
+const PaymentType = require("../models/paymenttype.js");
 const mongoose = require('mongoose');
 const moment = require("moment");
+const paymenttype = require("../models/paymenttype.js");
+const UpiPaymentType = require("../models/upipayment.js")
+const BankPaymentType = require("../models/bankpayment.js")
+const PaypalPaymentType = require("../models/paypalpayment.js")
+const CryptoPaymentType = require("../models/cryptopayment.js")
+const SkrillPaymentType = require("../models/skrillpayment.js")
+
 // ####################
 // RESULTS
 // ####################
@@ -518,6 +526,265 @@ const updateLocation = asyncError(async (req, res, next) => {
 
 
 
+// ##############################
+// PAYMENT 
+// ##############################
+
+const addPayment = asyncError(async (req, res, next) => {
+  const { paymentName } = req.body;
+
+  if (!paymentName) return next(new ErrorHandler("Payment name is missing", 404));
+
+  await PaymentType.create(req.body);
+
+  res.status(201).json({
+    success: true,
+    message: "Payment Added Successfully",
+  });
+});
+
+const getAllPayments = asyncError(async (req, res, next) => {
+  const payments = await PaymentType.find();
+
+  res.status(200).json({
+    success: true,
+    payments,
+  });
+});
+
+const deletePayment = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  const payment = await PaymentType.findByIdAndDelete(id);
+
+  if (!payment) {
+    return next(new ErrorHandler("Payment not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Payment Deleted Successfully",
+  });
+});
+
+// ##############################
+// UPI PAYMENT 
+// ##############################
+
+const addUpiPayment = asyncError(async (req, res, next) => {
+  const { upiholdername,upiid } = req.body;
+
+  if (!upiholdername) return next(new ErrorHandler("UPI holder name is missing", 404));
+  if (!upiid) return next(new ErrorHandler("UPI ID is missing", 404));
+
+  await UpiPaymentType.create(req.body);
+
+  res.status(201).json({
+    success: true,
+    message: "UPI Added Successfully",
+  });
+});
+
+const getAllUPIPayments = asyncError(async (req, res, next) => {
+  const payments = await UpiPaymentType.find();
+
+  res.status(200).json({
+    success: true,
+    payments,
+  });
+});
+
+const deleteUPIPayment = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  const payment = await UpiPaymentType.findByIdAndDelete(id);
+
+  if (!payment) {
+    return next(new ErrorHandler("UPI Payment not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "UPI Payment Deleted Successfully",
+  });
+});
+
+
+// ##############################
+// Bank PAYMENT 
+// ##############################
+
+const addBankPayment = asyncError(async (req, res, next) => {
+  const { bankname,accountholdername,ifsccode,accountnumber } = req.body;
+
+  if (!bankname) return next(new ErrorHandler("Bank name is missing", 404));
+  if (!accountholdername) return next(new ErrorHandler("Account holder name is missing", 404));
+  if (!ifsccode) return next(new ErrorHandler("IFSC code is missing", 404));
+  if (!accountnumber) return next(new ErrorHandler("Account number is missing", 404));
+
+  await BankPaymentType.create(req.body);
+
+  res.status(201).json({
+    success: true,
+    message: "Bank Added Successfully",
+  });
+});
+
+const getAllBankPayments = asyncError(async (req, res, next) => {
+  const payments = await BankPaymentType.find();
+
+  res.status(200).json({
+    success: true,
+    payments,
+  });
+});
+
+const deleteBankPayment = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  const payment = await BankPaymentType.findByIdAndDelete(id);
+
+  if (!payment) {
+    return next(new ErrorHandler("Bank Payment not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Bank Payment Deleted Successfully",
+  });
+});
+
+
+// ##############################
+// PAYPAL PAYMENT 
+// ##############################
+
+const addPaypalPayment = asyncError(async (req, res, next) => {
+  const { emailaddress } = req.body;
+
+  if (!emailaddress) return next(new ErrorHandler("Email address is missing", 404));
+ 
+
+  await PaypalPaymentType.create(req.body);
+
+  res.status(201).json({
+    success: true,
+    message: "Paypal Added Successfully",
+  });
+});
+
+const getAllPaypalPayments = asyncError(async (req, res, next) => {
+  const payments = await PaypalPaymentType.find();
+
+  res.status(200).json({
+    success: true,
+    payments,
+  });
+});
+
+const deletePaypalPayment = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  const payment = await PaypalPaymentType.findByIdAndDelete(id);
+
+  if (!payment) {
+    return next(new ErrorHandler("Paypal Payment not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Paypal Payment Deleted Successfully",
+  });
+});
+
+// ##############################
+// Crypto PAYMENT 
+// ##############################
+
+const addCryptoPayment = asyncError(async (req, res, next) => {
+  const { walletaddress,networktype } = req.body;
+
+  if (!walletaddress) return next(new ErrorHandler("Wallet address is missing", 404));
+  if (!networktype) return next(new ErrorHandler("Network type is missing", 404));
+
+  await CryptoPaymentType.create(req.body);
+
+  res.status(201).json({
+    success: true,
+    message: "Crypto Added Successfully",
+  });
+});
+
+const getAllCryptoPayments = asyncError(async (req, res, next) => {
+  const payments = await CryptoPaymentType.find();
+
+  res.status(200).json({
+    success: true,
+    payments,
+  });
+});
+
+const deleteCryptoPayment = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  const payment = await CryptoPaymentType.findByIdAndDelete(id);
+
+  if (!payment) {
+    return next(new ErrorHandler("Crypto Payment not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Crypto Payment Deleted Successfully",
+  });
+});
+
+
+// ##############################
+// SKRILL PAYMENT 
+// ##############################
+
+const addSkrillPayment = asyncError(async (req, res, next) => {
+  const { address } = req.body;
+
+  if (!address) return next(new ErrorHandler("Email address or phone number is missing", 404));
+
+
+  await SkrillPaymentType.create(req.body);
+
+  res.status(201).json({
+    success: true,
+    message: "Skrill Added Successfully",
+  });
+});
+
+const getAllSkrillPayments = asyncError(async (req, res, next) => {
+  const payments = await SkrillPaymentType.find();
+
+  res.status(200).json({
+    success: true,
+    payments,
+  });
+});
+
+const deleteSkrillPayment = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  const payment = await SkrillPaymentType.findByIdAndDelete(id);
+
+  if (!payment) {
+    return next(new ErrorHandler("Skrill Payment not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Skrill Payment Deleted Successfully",
+  });
+});
+
+
+
+
 
 module.exports = {
   getAllResult,
@@ -541,7 +808,25 @@ module.exports = {
   addLotLocatin,
   getAllLotLocation,
   deleteLotLocation,
-  updateLocation
+  updateLocation,
+  addPayment,
+  getAllPayments,
+  deletePayment,
+  addUpiPayment,
+  getAllUPIPayments,
+  deleteUPIPayment,
+  addBankPayment,
+  getAllBankPayments,
+  deleteBankPayment,
+  addPaypalPayment,
+  getAllPaypalPayments,
+  deletePaypalPayment,
+  addCryptoPayment,
+  getAllCryptoPayments,
+  deleteCryptoPayment,
+  addSkrillPayment,
+  getAllSkrillPayments,
+  deleteSkrillPayment
 };
 
 

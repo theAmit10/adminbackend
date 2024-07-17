@@ -47,6 +47,12 @@ const schema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  transactionHistory: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Transaction'
+    }
+  ],
   createdAt:{
     type: Date,
     default: Date.now(),

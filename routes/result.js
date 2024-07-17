@@ -25,7 +25,25 @@ const {
   updateDate,
   updateLocation,
   updateResult,
-  updateTime
+  updateTime,
+  addPayment,
+  getAllPayments,
+  deletePayment,
+  addUpiPayment,
+  getAllUPIPayments,
+  deleteUPIPayment,
+  addBankPayment,
+  getAllBankPayments,
+  deleteBankPayment,
+  addPaypalPayment,
+  getAllPaypalPayments,
+  deletePaypalPayment,
+  addCryptoPayment,
+  getAllCryptoPayments,
+  deleteCryptoPayment,
+  addSkrillPayment,
+  getAllSkrillPayments,
+  deleteSkrillPayment
 } = require("../controllers/result.js");
 
 const router = express.Router();
@@ -59,7 +77,42 @@ router.get("/alllotlocation", isAuthenticated, getAllLotLocation);
 router.delete("/removelotlocation/:id", isAuthenticated, deleteLotLocation);
 router.put("/updatelotlocation/:id", isAuthenticated, updateLocation);
 
+
+// FOR PAYMENT
+router.post("/addpayment", isAuthenticated, addPayment);
+router.get("/allpaymets", isAuthenticated, getAllPayments);
+router.delete("/removepayment/:id", isAuthenticated, deletePayment);
+
+// FOR  UPI PAYMENT
+router.post("/addupipayment", isAuthenticated, addUpiPayment);
+router.get("/allupipaymets", isAuthenticated, getAllUPIPayments);
+router.delete("/removeupipayment/:id", isAuthenticated, deleteUPIPayment);
+
+// FOR  BANK PAYMENT
+router.post("/addbankpayment", isAuthenticated, addBankPayment);
+router.get("/allbankpaymets", isAuthenticated, getAllBankPayments);
+router.delete("/removebankpayment/:id", isAuthenticated, deleteBankPayment);
+
+// FOR  PAYPAL PAYMENT
+router.post("/addpaypalpayment", isAuthenticated, addPaypalPayment);
+router.get("/allpaypalpaymets", isAuthenticated, getAllPaypalPayments);
+router.delete("/removepaypalpayment/:id", isAuthenticated, deletePaypalPayment);
+
+// FOR  CRYPTO PAYMENT
+router.post("/addcryptopayment", isAuthenticated, addCryptoPayment);
+router.get("/allcryptopaymets", isAuthenticated, getAllCryptoPayments);
+router.delete("/removecryptopayment/:id", isAuthenticated, deleteCryptoPayment);
+
+
+// FOR  SKRILL PAYMENT
+router.post("/addskrillpayment", isAuthenticated, addSkrillPayment);
+router.get("/allskrillpaymets", isAuthenticated, getAllSkrillPayments);
+router.delete("/removeskrillpayment/:id", isAuthenticated, deleteSkrillPayment);
+
+
 module.exports = router;
+
+
 
 
 // const express = require("express");
