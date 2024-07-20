@@ -43,7 +43,15 @@ const {
   deleteCryptoPayment,
   addSkrillPayment,
   getAllSkrillPayments,
-  deleteSkrillPayment
+  deleteSkrillPayment,
+  addPlayzone,
+  getAllPlay,
+  getUserPlayHistory,
+  updatePlaynumber,
+  addUserToPlaynumber,
+  addPlaybet,
+  getSinglePlayzone,
+  getUserPlaybets
 } = require("../controllers/result.js");
 
 const router = express.Router();
@@ -108,6 +116,23 @@ router.delete("/removecryptopayment/:id", isAuthenticated, deleteCryptoPayment);
 router.post("/addskrillpayment", isAuthenticated, addSkrillPayment);
 router.get("/allskrillpaymets", isAuthenticated, getAllSkrillPayments);
 router.delete("/removeskrillpayment/:id", isAuthenticated, deleteSkrillPayment);
+
+// FOR PLAYZONE
+router.post("/addplay", isAuthenticated, addPlayzone);
+router.get("/allplay", isAuthenticated, getAllPlay);
+// TO GET A SINGLE PLAY 
+router.get('/playzone/singleplay',isAuthenticated, getSinglePlayzone);
+router.get("/allplaysingleuser", isAuthenticated, getUserPlayHistory);
+
+router.put("/playzone/:id/playnumber/:playnumber",isAuthenticated, updatePlaynumber);
+router.post("/playzone/:id/playnumber/:playnumber/users",isAuthenticated, addUserToPlaynumber);
+
+
+// ADDING GAME BETTING
+router.post('/playbet/addplybet',isAuthenticated, addPlaybet);
+router.get('/singleuser/playbets', isAuthenticated, getUserPlaybets);
+
+
 
 
 module.exports = router;

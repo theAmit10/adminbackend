@@ -53,6 +53,10 @@ const schema = new mongoose.Schema({
       ref: 'Transaction'
     }
   ],
+  playbetHistory: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Playbet'
+  }],
   createdAt:{
     type: Date,
     default: Date.now(),
@@ -80,6 +84,8 @@ schema.pre("save", async function (next) {
       });
       this.walletOne = walletOne._id;
       this.walletTwo = walletTwo._id;
+      this.transactionHistory = [];
+      this.playbetHistory = [];
       next();
     } catch (error) {
       next(error);
@@ -97,9 +103,7 @@ schema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// schema.methods.generateToken = function () {
-//   return jwt.sign({ _id: this._id }, process.env.JWT_SECRET);
-// };
+
 
 schema.methods.generateToken = function () {
   // Set expiration time to a very large value (e.g., 10 years from now)
@@ -109,14 +113,17 @@ schema.methods.generateToken = function () {
   return jwt.sign({ _id: this._id, exp: expirationTime }, process.env.JWT_SECRET);
 };
 
+
+module.exports = mongoose.model("User", schema);
+
+// schema.methods.generateToken = function () {
+//   return jwt.sign({ _id: this._id }, process.env.JWT_SECRET);
+// };
+
 // schema.methods.generateToken = function () {
 //   return jwt.sign({ _id: this.userId }, process.env.JWT_SECRET);
 // };
 
-
-
-
-module.exports = mongoose.model("User", schema);
 
 
 // const mongoose = require("mongoose");
