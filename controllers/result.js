@@ -16,6 +16,9 @@ const SkrillPaymentType = require("../models/skrillpayment.js");
 const Playzone = require("../models/playapp.js");
 const Playbet = require("../models/playbet.js");
 const User = require("../models/user.js");
+const Currency = require("../models/currency");
+const fs = require('fs');
+const path = require('path');
 
 // ####################
 // RESULTS
@@ -853,25 +856,25 @@ const getSinglePlayzone = asyncError(async (req, res, next) => {
     const playzone = await Playzone.findOne({
       lotlocation,
       lottime,
-      lotdate
+      lotdate,
     });
 
     if (!playzone) {
       return res.status(404).json({
         success: false,
-        message: "Playzone entry not found"
+        message: "Playzone entry not found",
       });
     }
 
     res.status(200).json({
       success: true,
-      playzone
+      playzone,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Failed to retrieve Playzone entry",
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -1130,14 +1133,13 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
   }
 });
 
-
 const addPlaybet = asyncError(async (req, res, next) => {
   const { playnumbers, lotdate, lottime, lotlocation } = req.body;
   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
   // const userId = req.user.userId; // Assuming user is authenticated and user ID is available in req.user
 
-  console.log('Username :: '+req.user.name)
-  console.log('Username :: '+userId)
+  console.log("Username :: " + req.user.name);
+  console.log("Username :: " + userId);
 
   // Create a new Playbet document
   const newPlaybet = new Playbet({
@@ -1146,47 +1148,46 @@ const addPlaybet = asyncError(async (req, res, next) => {
     userid: req.user.userId,
     lotdate,
     lottime,
-    lotlocation
+    lotlocation,
   });
 
-  console.log("New Bet :: "+JSON.stringify(newPlaybet))
+  console.log("New Bet :: " + JSON.stringify(newPlaybet));
 
   // Save the Playbet document
   await newPlaybet.save();
 
-  console.log('New Bet Created Success')
-
+  console.log("New Bet Created Success");
 
   // Update user's playbetHistory
   await User.findByIdAndUpdate(userId, {
     $push: {
-      playbetHistory: newPlaybet._id
-    }
+      playbetHistory: newPlaybet._id,
+    },
   });
 
-  console.log('New Bet Added to the User Betting History Success')
+  console.log("New Bet Added to the User Betting History Success");
 
-  console.log("Now Searcing for the Playzone of the Admin to Add user")
+  console.log("Now Searcing for the Playzone of the Admin to Add user");
 
   // Find the Playzone entry by lotdate, lottime, and lotlocation
   const playzone = await Playzone.findOne({
     lotdate,
     lottime,
-    lotlocation
+    lotlocation,
   });
 
   if (!playzone) {
     return res.status(404).json({
       success: false,
-      message: "Playzone entry not found"
+      message: "Playzone entry not found",
     });
   }
 
-  console.log("New going to update the playzone")
+  console.log("New going to update the playzone");
 
-  console.log('Playzone found :: '+JSON.stringify(playzone))
+  console.log("Playzone found :: " + JSON.stringify(playzone));
 
-  console.log('Playnumber Array Users :: '+JSON.stringify(playnumbers))
+  console.log("Playnumber Array Users :: " + JSON.stringify(playnumbers));
 
   // // Update the playnumbers in Playzone
   // playnumbers.forEach(playbet => {
@@ -1212,46 +1213,59 @@ const addPlaybet = asyncError(async (req, res, next) => {
   //   }
   // });
 
-    // Update the playnumbers in Playzone
-    playnumbers.forEach(playbet => {
-      console.log('Element Playment :: ',JSON.stringify(playbet))
-     console.log('Searching for the index')
-      const playnumberIndex = playzone.playnumbers.findIndex(pn => pn.playnumber === playbet.playnumber);
-      console.log('Playnumber index :: '+playnumberIndex)
-      if (playnumberIndex !== -1) {
-        const userIndex = playzone.playnumbers[playnumberIndex].users.findIndex(user => user.userId == req.user.userId);
-        console.log('User index index :: '+userIndex)
-        if (userIndex !== -1) {
-          // User exists, update amount and winningamount
-          playzone.playnumbers[playnumberIndex].users[userIndex].amount += playbet.amount;
-          playzone.playnumbers[playnumberIndex].users[userIndex].winningamount += playbet.winningamount;
-        } else {
-          // User does not exist, add new user
-          playzone.playnumbers[playnumberIndex].users.push({
-            userId: req.user.userId,
-            username: req.user.name,
-            amount: playbet.amount,
-            usernumber: playbet.playnumber,
-            winningamount: playbet.winningamount
-          });
-        }
-  
-        // Update numbercount and amount
-        playzone.playnumbers[playnumberIndex].numbercount = playzone.playnumbers[playnumberIndex].users.length;
-        playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[playnumberIndex].users.reduce((total, user) => total + user.amount, 0);
-        playzone.playnumbers[playnumberIndex].distributiveamount = playzone.playnumbers[playnumberIndex].users.reduce((total, user) => total + user.winningamount, 0);
+  // Update the playnumbers in Playzone
+  playnumbers.forEach((playbet) => {
+    console.log("Element Playment :: ", JSON.stringify(playbet));
+    console.log("Searching for the index");
+    const playnumberIndex = playzone.playnumbers.findIndex(
+      (pn) => pn.playnumber === playbet.playnumber
+    );
+    console.log("Playnumber index :: " + playnumberIndex);
+    if (playnumberIndex !== -1) {
+      const userIndex = playzone.playnumbers[playnumberIndex].users.findIndex(
+        (user) => user.userId == req.user.userId
+      );
+      console.log("User index index :: " + userIndex);
+      if (userIndex !== -1) {
+        // User exists, update amount and winningamount
+        playzone.playnumbers[playnumberIndex].users[userIndex].amount +=
+          playbet.amount;
+        playzone.playnumbers[playnumberIndex].users[userIndex].winningamount +=
+          playbet.winningamount;
+      } else {
+        // User does not exist, add new user
+        playzone.playnumbers[playnumberIndex].users.push({
+          userId: req.user.userId,
+          username: req.user.name,
+          amount: playbet.amount,
+          usernumber: playbet.playnumber,
+          winningamount: playbet.winningamount,
+        });
       }
-    });
+
+      // Update numbercount and amount
+      playzone.playnumbers[playnumberIndex].numbercount =
+        playzone.playnumbers[playnumberIndex].users.length;
+      playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[
+        playnumberIndex
+      ].users.reduce((total, user) => total + user.amount, 0);
+      playzone.playnumbers[playnumberIndex].distributiveamount =
+        playzone.playnumbers[playnumberIndex].users.reduce(
+          (total, user) => total + user.winningamount,
+          0
+        );
+    }
+  });
 
   // Save the updated Playzone entry
   await playzone.save();
 
-  console.log("Playzone Update Success")
+  console.log("Playzone Update Success");
 
   res.status(201).json({
     success: true,
     message: "Playbet entry added successfully",
-    playbet: newPlaybet
+    playbet: newPlaybet,
   });
 });
 
@@ -1263,18 +1277,18 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
   try {
     // Find the user by ID to get the playbetHistory
     const user = await User.findById(userId).populate({
-      path: 'playbetHistory',
+      path: "playbetHistory",
       populate: [
-        { path: 'lotdate', model: 'LotDate' },
-        { path: 'lottime', model: 'LotTime' },
-        { path: 'lotlocation', model: 'LotLocation' }
-      ]
+        { path: "lotdate", model: "LotDate" },
+        { path: "lottime", model: "LotTime" },
+        { path: "lotlocation", model: "LotLocation" },
+      ],
     });
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
@@ -1283,26 +1297,157 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      playbets
+      playbets,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: "Failed to retrieve playbets",
-      error: error.message
+      error: error.message,
     });
   }
+});
+
+//#####################################
+// CURRENCY MODULE
+//#####################################
+
+// Create a new currency
+const createCurrency = asyncError(async (req, res, next) => {
+  const {
+    countryname,
+    countryicon,
+    countrycurrencysymbol,
+    countrycurrencyvaluecomparedtoinr,
+  } = req.body;
+
+  if (!countryname)
+    return next(new ErrorHandler("country name is missing", 404));
+
+  if (!countrycurrencysymbol)
+    return next(new ErrorHandler("country currency symbol is missing", 404));
+
+  if (!countrycurrencyvaluecomparedtoinr)
+    return next(new ErrorHandler("country currency value compared to inr is missing", 404));
+  
+  if (!req.file)
+    return next(new ErrorHandler("country icon is missing", 404));
+    
+
+  const newCurrency = await Currency.create({
+    countryname,
+    countryicon : req.file ? req.file.filename : undefined,
+    countrycurrencysymbol,
+    countrycurrencyvaluecomparedtoinr,
+  });
+
+  res.status(201).json({
+    success: true,
+    currency: newCurrency,
+  });
+});
+
+// Get all currencies
+const getAllCurrencies = asyncError(async (req, res, next) => {
+  const currencies = await Currency.find();
+
+  res.status(200).json({
+    success: true,
+    currencies,
+  });
+});
+
+// Update a currency
+const updateCurrency = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+  const {
+    countryname,
+    countryicon,
+    countrycurrencysymbol,
+    countrycurrencyvaluecomparedtoinr,
+  } = req.body;
+
+  const updatedCurrency = await Currency.findByIdAndUpdate(
+    id,
+    {
+      countryname,
+      countryicon,
+      countrycurrencysymbol,
+      countrycurrencyvaluecomparedtoinr,
+    },
+    { new: true }
+  );
+
+  if (!updatedCurrency) {
+    return res.status(404).json({
+      success: false,
+      message: "Currency not found",
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    currency: updatedCurrency,
+  });
+});
+
+// // Delete a currency
+// const deleteCurrency = asyncError(async (req, res, next) => {
+//   const { id } = req.params;
+
+//   const deletedCurrency = await Currency.findByIdAndDelete(id);
+
+//   if (!deletedCurrency) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "Currency not found",
+//     });
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Currency deleted successfully",
+//   });
+// });
+
+
+
+
+// Delete a currency
+const deleteCurrency = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  const currency = await Currency.findById(id);
+
+  if (!currency) {
+    return next(new ErrorHandler('Currency not found', 404));
+  }
+
+  // Delete the associated image file
+  const imagePath = path.join(__dirname, '../public/uploads/currency', currency.countryicon);
+
+  fs.unlink(imagePath, async (err) => {
+    if (err) {
+      return next(new ErrorHandler('Failed to delete associated image file', 500));
+    }
+
+    await currency.deleteOne();
+
+    res.status(200).json({
+      success: true,
+      message: 'Currency deleted successfully',
+    });
+  });
 });
 
 
 
 
-
-
-
-
-
 module.exports = {
+  createCurrency,
+  getAllCurrencies,
+  updateCurrency,
+  deleteCurrency,
   getAllResult,
   getAllResultAccordingToLocation,
   getNextResult,
@@ -1350,7 +1495,7 @@ module.exports = {
   addUserToPlaynumber,
   addPlaybet,
   getSinglePlayzone,
-  getUserPlaybets
+  getUserPlaybets,
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;

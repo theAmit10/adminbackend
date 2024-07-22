@@ -1349,6 +1349,9 @@ const addDeposit = asyncError(async (req, res, next) => {
   if (!paymenttypeid) return next(new ErrorHandler("Payment type ID missing", 400));
   if (!username) return next(new ErrorHandler("Username missing", 400));
 
+  // I have just add the below line just to check
+  if (!req.file) return next(new ErrorHandler("Please add screenshot", 400));
+
   const transaction = await Transaction.create({
     amount,
     transactionId: transactionid,

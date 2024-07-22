@@ -51,8 +51,15 @@ const {
   addUserToPlaynumber,
   addPlaybet,
   getSinglePlayzone,
-  getUserPlaybets
+  getUserPlaybets,
+  createCurrency,
+  getAllCurrencies,
+  updateCurrency,
+  deleteCurrency
 } = require("../controllers/result.js");
+const { singleUpload } = require("../middlewares/multer.js");
+const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
+
 
 const router = express.Router();
 
@@ -131,6 +138,16 @@ router.post("/playzone/:id/playnumber/:playnumber/users",isAuthenticated, addUse
 // ADDING GAME BETTING
 router.post('/playbet/addplybet',isAuthenticated, addPlaybet);
 router.get('/singleuser/playbets', isAuthenticated, getUserPlaybets);
+
+// FOR CURRECY
+// Create a new currency
+router.post('/addcurrency', isAuthenticated,singleUploadForCurrency, createCurrency);
+// Get all currencies
+router.get('/allcurrencies', isAuthenticated, getAllCurrencies);
+// Update a currency
+router.put('/updatecurrency/:id', isAuthenticated, updateCurrency);
+// Delete a currency
+router.delete('/removecurrency/:id', isAuthenticated, deleteCurrency);
 
 
 
