@@ -55,7 +55,8 @@ const {
   createCurrency,
   getAllCurrencies,
   updateCurrency,
-  deleteCurrency
+  deleteCurrency,
+  getAllLotLocationWithTimes
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -89,6 +90,7 @@ router.get("/searchtime", isAuthenticated, getAllLotTimeAccordindLocation);
 // for LotLocation
 router.post("/addlotlocation", isAuthenticated, addLotLocatin);
 router.get("/alllotlocation", isAuthenticated, getAllLotLocation);
+router.get("/alllotlocationwithtime", isAuthenticated, getAllLotLocationWithTimes);
 router.delete("/removelotlocation/:id", isAuthenticated, deleteLotLocation);
 router.put("/updatelotlocation/:id", isAuthenticated, updateLocation);
 

@@ -462,11 +462,13 @@ const updateTime = asyncError(async (req, res, next) => {
 // ####################
 
 const addLotLocatin = asyncError(async (req, res, next) => {
-  const { lotlocation, maximumRange } = req.body;
+  const { lotlocation, maximumRange, maximumNumber,maximumReturn } = req.body;
 
   if (!lotlocation)
     return next(new ErrorHandler("enter lotlocation missing", 404));
   if (!maximumRange) return next(new ErrorHandler("enter maximum range", 404));
+  if (!maximumNumber) return next(new ErrorHandler("enter maximum number", 404));
+  if (!maximumReturn) return next(new ErrorHandler("enter maximum return", 404));
 
   await LotLocation.create(req.body);
 
@@ -526,9 +528,77 @@ const updateLocation = asyncError(async (req, res, next) => {
   });
 });
 
-// ##############################
-// PAYMENT
-// ##############################
+
+// const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
+//   // Fetch all lot locations
+//   const lotlocations = await LotLocation.find({});
+
+//   // Fetch all lot times and populate the related lotlocation field
+//   const lottimes = await LotTime.find({}).populate('lotlocation');
+
+//   // Combine data
+//   const locationData = lotlocations.map(location => {
+//     const timesForLocation = lottimes
+//       .filter(time => time.lotlocation._id.toString() === location._id.toString())
+//       .map(time => ({
+//         _id: time._id,
+//         time: time.lottime, // Include any other fields you need from LotTime
+//         createdAt: time.createdAt
+//       }));
+
+//     return {
+//       _id: location._id,
+//       name: location.lotlocation,
+//       limit: location.maximumRange,
+//       maximumNumber:location.maximumNumber,
+//       maximumReturn:location.maximumNumber,
+//       times: timesForLocation,
+//       createdAt: location.createdAt
+//     };
+//   });
+
+//   // Send response
+//   res.status(200).json({
+//     success: true,
+//     locationData,
+//   });
+// });
+
+const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
+  // Fetch all lot locations sorted by createdAt in descending order
+  const lotlocations = await LotLocation.find({}).sort({ createdAt: -1 });
+
+  // Fetch all lot times, populate the related lotlocation field, and sort by createdAt in descending order
+  const lottimes = await LotTime.find({}).populate('lotlocation').sort({ createdAt: -1 });
+
+  // Combine data
+  const locationData = lotlocations.map(location => {
+    const timesForLocation = lottimes
+      .filter(time => time.lotlocation._id.toString() === location._id.toString())
+      .map(time => ({
+        _id: time._id,
+        time: time.lottime, // Include any other fields you need from LotTime
+        createdAt: time.createdAt
+      }));
+
+    return {
+      _id: location._id,
+      name: location.lotlocation,
+      limit: location.maximumRange,
+      maximumNumber: location.maximumNumber,
+      maximumReturn: location.maximumNumber,
+      times: timesForLocation,
+      createdAt: location.createdAt
+    };
+  });
+
+  // Send response
+  res.status(200).json({
+    success: true,
+    locationData,
+  });
+});
+
 
 const addPayment = asyncError(async (req, res, next) => {
   const { paymentName } = req.body;
@@ -1496,6 +1566,7 @@ module.exports = {
   addPlaybet,
   getSinglePlayzone,
   getUserPlaybets,
+  getAllLotLocationWithTimes
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;
