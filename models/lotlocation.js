@@ -19,11 +19,11 @@ const schema = new mongoose.Schema({
     },
     maximumNumber: {
         type: String,
-        required: [true, "Please enter maximum range"]
+        required: [true, "Please enter maximum number range"]
     },
     maximumReturn: {
         type: String,
-        required: [true, "Please enter maximum range"]
+        required: [true, "Please enter maximum return range"]
     },
     createdAt: {
         type: Date,
