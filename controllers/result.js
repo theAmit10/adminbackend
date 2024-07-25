@@ -1518,6 +1518,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
 
 // TO GET ALL THE PLAY BET HISTORY OF A USER
 
+
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
 
@@ -1540,7 +1541,10 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
     }
 
     // Get the playbetHistory array from the user document
-    const playbets = user.playbetHistory;
+    let playbets = user.playbetHistory;
+
+    // Sort playbets by createdAt in descending order
+    playbets = playbets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     res.status(200).json({
       success: true,
@@ -1554,6 +1558,43 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
     });
   }
 });
+
+// const getUserPlaybets = asyncError(async (req, res, next) => {
+//   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
+
+//   try {
+//     // Find the user by ID to get the playbetHistory
+//     const user = await User.findById(userId).populate({
+//       path: "playbetHistory",
+//       populate: [
+//         { path: "lotdate", model: "LotDate" },
+//         { path: "lottime", model: "LotTime" },
+//         { path: "lotlocation", model: "LotLocation" },
+//       ],
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     // Get the playbetHistory array from the user document
+//     const playbets = user.playbetHistory;
+
+//     res.status(200).json({
+//       success: true,
+//       playbets,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to retrieve playbets",
+//       error: error.message,
+//     });
+//   }
+// });
 
 //#####################################
 // CURRENCY MODULE
