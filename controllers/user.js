@@ -1350,7 +1350,7 @@ const addDeposit = asyncError(async (req, res, next) => {
   if (!username) return next(new ErrorHandler("Username missing", 400));
 
   // I have just add the below line just to check
-  // if (!req.file) return next(new ErrorHandler("Please add screenshot", 400));
+  if (!req.file) return next(new ErrorHandler("Please add screenshot", 400));
 
   const transaction = await Transaction.create({
     amount,
