@@ -1375,21 +1375,38 @@ const addDeposit = asyncError(async (req, res, next) => {
   });
 });
 
-// Get All Deposits and Withdrawals of a Single User
+
+// const getUserTransactions = asyncError(async (req, res, next) => {
+//   const { userid } = req.query;
+
+//   const transactions = await Transaction.find({ userId: userid });
+
+//   // if (!transactions || transactions.length === 0) {
+//   //   return next(new ErrorHandler("No transactions found for this user", 404));
+//   // }
+
+//   res.status(200).json({
+//     success: true,
+//     transactions,
+//   });
+// });
+
+// // Get All Deposits and Withdrawals of a Single User
 const getUserTransactions = asyncError(async (req, res, next) => {
   const { userid } = req.query;
 
-  const transactions = await Transaction.find({ userId: userid });
+  const transactions = await Transaction.find({ userId: userid }).sort({ createdAt: -1 });
 
-  if (!transactions || transactions.length === 0) {
-    return next(new ErrorHandler("No transactions found for this user", 404));
-  }
+  // if (!transactions || transactions.length === 0) {
+  //   return next(new ErrorHandler("No transactions found for this user", 404));
+  // }
 
   res.status(200).json({
     success: true,
     transactions,
   });
 });
+
 
 const getAllTransaction = asyncError(async (req, res, next) => {
   const transactions = await Transaction.find().sort({ createdAt: -1 });
