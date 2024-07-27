@@ -1155,6 +1155,57 @@ const updateAllWalletNameTwo = asyncError(async (req, res, next) => {
   });
 });
 
+// TRANSFER AMOUNT FROM WALLET ONE TO WALLET TWO
+// Update Wallet Two
+
+
+const transferAmountFromWalletOneToWalletTwo = asyncError(async (req, res, next) => {
+  try {
+    const { userid, amount } = req.body;
+
+    // Validate input
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ success: false, message: "Invalid amount value" });
+    }
+
+    // Find the user
+    const user = await User.findById(userid).populate('walletOne').populate('walletTwo');
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const walletOne = user.walletOne;
+    const walletTwo = user.walletTwo;
+
+    // Check if walletOne has sufficient balance
+    if (walletOne.balance < amount) {
+      return res.status(400).json({ success: false, message: "Insufficient balance in walletOne" });
+    }
+
+    // Perform the transfer
+    walletOne.balance -= amount;
+    walletTwo.balance += amount;
+
+    // Save the updated wallets
+    await walletOne.save();
+    await walletTwo.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Transfer successful",
+      walletOne: { balance: walletOne.balance },
+      walletTwo: { balance: walletTwo.balance },
+    });
+  } catch (error) {
+    console.error("Error transferring amount:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+
+
+
+
 // ##########################################
 // DEPOSIT
 // ##########################################
@@ -1542,6 +1593,7 @@ module.exports = {
   addWithdraw,
   getAllDeposit,
   getAllWithdrawals,
+  transferAmountFromWalletOneToWalletTwo
 };
 
 // const { asyncError } = require("../middlewares/error.js");

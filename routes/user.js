@@ -41,7 +41,8 @@ const {
   updateDepositStatus,
   addWithdraw,
   getAllDeposit,
-  getAllWithdrawals
+  getAllWithdrawals,
+  transferAmountFromWalletOneToWalletTwo
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -117,6 +118,9 @@ router.get("/getalldeposit",isAuthenticated, getAllDeposit);
 //FOR WITHDRAW
 router.post("/createwithdraw",isAuthenticated, addWithdraw);
 router.get("/getallwithdraw",isAuthenticated, getAllWithdrawals);
+
+// TO TRANSFER BALANCE FROM WALLET ONE TO WALLET TWO
+router.put('/balancetransfer',isAuthenticated, transferAmountFromWalletOneToWalletTwo);
 
 
 module.exports = router;
