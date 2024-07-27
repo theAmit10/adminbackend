@@ -15,6 +15,7 @@ const DepositPayment = require("../models/depositmodel.js");
 const Transaction = require("../models/Transaction.js");
 const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 
+
 // const login = asyncError(async (req, res, next) => {
 //   const { email, password } = req.body;
 
@@ -23,7 +24,34 @@ const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 
 //   const user = await User.findOne({ email }).select("+password");
 
-//   if (!user) return next(new ErrorHandler("Not Registered", 400));
+//   if (!user)
+//     return next(new ErrorHandler("Not Registered, create an account", 400));
+
+//   const isMatched = await user.comparePassword(password);
+
+//   if (!isMatched) {
+//     return next(new ErrorHandler("Incorrect Email or Password", 400));
+//   }
+
+//   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
+// });
+// const login = asyncError(async (req, res, next) => {
+//   const { email, password } = req.body;
+
+//   // Trim email to remove any leading/trailing whitespace
+//   const trimmedEmail = email.trim();
+
+//   if (!password) return next(new ErrorHandler("Please enter password", 400));
+//   if (!trimmedEmail) return next(new ErrorHandler("Please enter email", 400));
+
+//   console.log("Login attempt with email:", trimmedEmail); // Debugging line
+
+//   const user = await User.findOne({ email: trimmedEmail }).select("+password");
+
+//   if (!user) {
+//     console.log("User not found with email:", trimmedEmail); // Debugging line
+//     return next(new ErrorHandler("Not Registered, create an account", 400));
+//   }
 
 //   const isMatched = await user.comparePassword(password);
 
@@ -34,8 +62,38 @@ const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 //   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
 // });
 
+const login = asyncError(async (req, res, next) => {
+  const { email, password } = req.body;
+
+  const normalizedEmail = email.toLowerCase();
+  console.log("Login attempt with email:", normalizedEmail); // Debugging line
+
+  if (!password) return next(new ErrorHandler("Please enter password", 400));
+  if (!normalizedEmail) return next(new ErrorHandler("Please enter email", 400));
+
+  const user = await User.findOne({ email: normalizedEmail }).select("+password");
+  console.log("User found:", user); // Debugging line
+
+  if (!user) {
+    console.log("User not found with email:", normalizedEmail); // Debugging line
+    return next(new ErrorHandler("Not Registered, create an account", 400));
+  }
+
+  const isMatched = await user.comparePassword(password);
+  console.log("Password matched:", isMatched); // Debugging line
+
+  if (!isMatched) {
+    return next(new ErrorHandler("Incorrect Email or Password", 400));
+  }
+
+  sendToken(user, res, `Welcome Back, ${user.name}`, 200);
+});
+
+
+
+
 // const register = asyncError(async (req, res, next) => {
-//   const { name, email, password, devicetoken, role } = req.body;
+//   const { name, email, password, devicetoken, role, country } = req.body;
 
 //   let userCount = await User.countDocuments();
 
@@ -65,124 +123,22 @@ const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 //     userId, // Add userId to the user object
 //     contact,
 //     devicetoken,
-//     role
+//     role,
+//     country 
 //   });
 
 //   // sendToken(user, res, `Registered Successfully`, 201);
 
 //   res.status(201).json({
 //     success: true,
-//     message: 'Registered Successfully',
+//     message: "Registered Successfully",
+//   });
 // });
-
-// });
-
-// // this one is the first one which was already commented
-// // const register = asyncError(async (req, res, next) => {
-// //   const { name, email, password, devicetoken } = req.body;
-
-// //   // Count existing users whose role is not admin
-// //   let userCount = await User.countDocuments({ role: { $ne: "admin" } });
-
-// //   // Generate userId starting from 1000
-// //   const userId = 1000 + userCount;
-
-// //   let user = await User.findOne({ email });
-
-// //   if (user) return next(new ErrorHandler("User Already exist", 400));
-
-// //   const contact = userId;
-
-// //   // const devicetoken = devicetoken;
-
-// //   // add cloudinary here
-
-// //   user = await User.create({
-// //     name,
-// //     email,
-// //     password,
-// //     userId, // Add userId to the user object
-// //     contact,
-// //     devicetoken,
-// //   });
-
-// //   sendToken(user, res, `Registered Successfully`, 201);
-// // });
-
-// // const getMyProfile = asyncError(async (req, res, next) => {
-
-// //   console.log("Mine Request")
-
-// //   const op = req.user;
-
-// //   console.log("Request :: "+JSON.stringify(op))
-
-// //   const user = await User.findById(req.user._id)
-// //     .populate("walletOne")
-// //     .populate("walletTwo");
-
-// //   res.status(200).json({
-// //     success: true,
-// //     user,
-// //   });
-// // });
-
-// const getMyProfile = asyncError(async (req, res, next) => {
-//   console.log("Request received for fetching user profile.");
-
-//   // Check if req.user is populated correctly
-//   console.log("information :", req.token);
-//   console.log("User information from token:", req.user);
-
-//   // Ensure req.user is available and has _id
-//   if (!req.user || !req.user._id) {
-//     console.error("User information is missing or incomplete.");
-//     return res.status(401).json({ success: false, message: "Unauthorized" });
-//   }
-
-//   try {
-//     // Fetch user profile from the database using user id
-//     const user = await User.findById(req.user._id)
-//       .populate("walletOne")
-//       .populate("walletTwo");
-
-//     if (!user) {
-//       console.error("User not found in the database.");
-//       return res.status(404).json({ success: false, message: "User not found" });
-//     }
-
-//     console.log("User profile retrieved successfully:", user);
-
-//     // Return the user profile
-//     res.status(200).json({ success: true, user });
-//   } catch (error) {
-//     console.error("Error fetching user profile:", error);
-//     res.status(500).json({ success: false, message: "Internal server error" });
-//   }
-// });
-
-const login = asyncError(async (req, res, next) => {
-  const { email, password } = req.body;
-
-  if (!password) return next(new ErrorHandler("Please enter password", 400));
-  if (!email) return next(new ErrorHandler("Please enter email", 400));
-
-  const user = await User.findOne({ email }).select("+password");
-
-  if (!user)
-    return next(new ErrorHandler("Not Registered, create an account", 400));
-
-  const isMatched = await user.comparePassword(password);
-
-  if (!isMatched) {
-    return next(new ErrorHandler("Incorrect Email or Password", 400));
-  }
-
-  sendToken(user, res, `Welcome Back, ${user.name}`, 200);
-});
 
 const register = asyncError(async (req, res, next) => {
-  const { name, email, password, devicetoken, role } = req.body;
+  const { name, email, password, devicetoken, role, country } = req.body;
+
+  const normalizedEmail = email.toLowerCase();
 
   let userCount = await User.countDocuments();
 
@@ -199,7 +155,7 @@ const register = asyncError(async (req, res, next) => {
     }
   }
 
-  let user = await User.findOne({ email });
+  let user = await User.findOne({ email: normalizedEmail });
 
   if (user) return next(new ErrorHandler("User Already exist", 400));
 
@@ -207,15 +163,14 @@ const register = asyncError(async (req, res, next) => {
 
   user = await User.create({
     name,
-    email,
+    email: normalizedEmail,
     password,
     userId, // Add userId to the user object
     contact,
     devicetoken,
     role,
+    country // Add country to the user object
   });
-
-  // sendToken(user, res, `Registered Successfully`, 201);
 
   res.status(201).json({
     success: true,
@@ -223,10 +178,12 @@ const register = asyncError(async (req, res, next) => {
   });
 });
 
+
 const getMyProfile = asyncError(async (req, res, next) => {
   const user = await User.findById(req.user._id)
     .populate("walletOne")
-    .populate("walletTwo");
+    .populate("walletTwo")
+    .populate("country");
 
   res.status(200).json({
     success: true,
@@ -237,7 +194,8 @@ const getMyProfile = asyncError(async (req, res, next) => {
 const getUserDetails = asyncError(async (req, res, next) => {
   const user = await User.findById(req.params.id)
     .populate("walletOne")
-    .populate("walletTwo");
+    .populate("walletTwo")
+    .populate("Currency");
 
   if (!user) return next(new ErrorHandler("User not found", 404));
 
@@ -1335,7 +1293,7 @@ const addDeposit = asyncError(async (req, res, next) => {
     userid,
     paymentstatus,
     transactionid,
-    paymenttypeid
+    paymenttypeid,
   } = req.body;
 
   const user = await User.findOne({ contact: userid });
@@ -1344,9 +1302,11 @@ const addDeposit = asyncError(async (req, res, next) => {
   }
 
   if (!amount) return next(new ErrorHandler("Amount missing", 400));
-  if (!transactionid) return next(new ErrorHandler("Transaction ID missing", 400));
+  if (!transactionid)
+    return next(new ErrorHandler("Transaction ID missing", 400));
   if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
-  if (!paymenttypeid) return next(new ErrorHandler("Payment type ID missing", 400));
+  if (!paymenttypeid)
+    return next(new ErrorHandler("Payment type ID missing", 400));
   if (!username) return next(new ErrorHandler("Username missing", 400));
 
   // I have just add the below line just to check
@@ -1375,7 +1335,6 @@ const addDeposit = asyncError(async (req, res, next) => {
   });
 });
 
-
 // const getUserTransactions = asyncError(async (req, res, next) => {
 //   const { userid } = req.query;
 
@@ -1395,7 +1354,9 @@ const addDeposit = asyncError(async (req, res, next) => {
 const getUserTransactions = asyncError(async (req, res, next) => {
   const { userid } = req.query;
 
-  const transactions = await Transaction.find({ userId: userid }).sort({ createdAt: -1 });
+  const transactions = await Transaction.find({ userId: userid }).sort({
+    createdAt: -1,
+  });
 
   // if (!transactions || transactions.length === 0) {
   //   return next(new ErrorHandler("No transactions found for this user", 404));
@@ -1406,7 +1367,6 @@ const getUserTransactions = asyncError(async (req, res, next) => {
     transactions,
   });
 });
-
 
 const getAllTransaction = asyncError(async (req, res, next) => {
   const transactions = await Transaction.find().sort({ createdAt: -1 });
@@ -1419,14 +1379,15 @@ const getAllTransaction = asyncError(async (req, res, next) => {
 
 // Get all Deposit transactions
 const getAllDeposit = asyncError(async (req, res, next) => {
-  const deposits = await Transaction.find({ transactionType: "Deposit" }).sort({ createdAt: -1 });
+  const deposits = await Transaction.find({ transactionType: "Deposit" }).sort({
+    createdAt: -1,
+  });
 
   res.status(200).json({
     success: true,
     deposits,
   });
 });
-
 
 // UPDATE PAYMENT STATUS
 const updateDepositStatus = asyncError(async (req, res, next) => {
@@ -1446,18 +1407,15 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Invalid payment status", 400));
   }
 
- 
   const transaction = await Transaction.findById(transactionId);
 
   if (!transaction) {
     return next(new ErrorHandler("Transaction not found", 404));
   }
- 
+
   if (paymentStatus) transaction.paymentStatus = paymentStatus;
 
   await transaction.save();
-
-  
 
   res.status(200).json({
     success: true,
@@ -1465,7 +1423,6 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     transaction,
   });
 });
-
 
 // ##########################################
 // WITHDRAW
@@ -1532,17 +1489,15 @@ const addWithdraw = asyncError(async (req, res, next) => {
 
 // Get all withdraw transactions
 const getAllWithdrawals = asyncError(async (req, res, next) => {
-  const withdrawals = await Transaction.find({ transactionType: "Withdraw" }).sort({ createdAt: -1 });
+  const withdrawals = await Transaction.find({
+    transactionType: "Withdraw",
+  }).sort({ createdAt: -1 });
 
   res.status(200).json({
     success: true,
     withdrawals,
   });
 });
-
-
-
-
 
 module.exports = {
   login,
@@ -1586,7 +1541,7 @@ module.exports = {
   updateDepositStatus,
   addWithdraw,
   getAllDeposit,
-  getAllWithdrawals
+  getAllWithdrawals,
 };
 
 // const { asyncError } = require("../middlewares/error.js");

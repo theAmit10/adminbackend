@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require("jsonwebtoken");
 const WalletOne  = require("./walletone.js");
 const WalletTwo  = require("./wallettwo.js");
+const Currency  = require("./currency.js");
 
 const schema = new mongoose.Schema({
   name: {
@@ -40,6 +41,10 @@ const schema = new mongoose.Schema({
   avatar: {
     public_id: String,
     url: String,
+  },
+  country: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Currency'
   },
   otp: Number,
   otp_expire: Date,
