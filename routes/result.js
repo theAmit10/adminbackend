@@ -145,7 +145,7 @@ router.get('/singleuser/playbets', isAuthenticated, getUserPlaybets);
 // Create a new currency
 router.post('/addcurrency', isAuthenticated,singleUploadForCurrency, createCurrency);
 // Get all currencies
-router.get('/allcurrencies', isAuthenticated, getAllCurrencies);
+router.get('/allcurrencies',  getAllCurrencies);
 // Update a currency
 router.put('/updatecurrency/:id', isAuthenticated, updateCurrency);
 // Delete a currency
