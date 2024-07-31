@@ -667,13 +667,24 @@ const addUpiPayment = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("UPI holder name is missing", 404));
   if (!upiid) return next(new ErrorHandler("UPI ID is missing", 404));
 
-  await UpiPaymentType.create(req.body);
+  if (!req.file) return next(new ErrorHandler("UPI QR Code is missing", 404));
+
+  await UpiPaymentType.create(
+    {
+      upiholdername,
+      upiid,
+      qrcode: req.file ? req.file.filename : undefined,
+    }
+  );
 
   res.status(201).json({
     success: true,
     message: "UPI Added Successfully",
+
   });
 });
+
+
 
 const getAllUPIPayments = asyncError(async (req, res, next) => {
   const payments = await UpiPaymentType.find();
@@ -799,7 +810,14 @@ const addCryptoPayment = asyncError(async (req, res, next) => {
   if (!networktype)
     return next(new ErrorHandler("Network type is missing", 404));
 
-  await CryptoPaymentType.create(req.body);
+    if (!req.file) return next(new ErrorHandler("UPI QR Code is missing", 404));
+
+
+  await CryptoPaymentType.create({
+    walletaddress,
+    networktype,
+    qrcode: req.file ? req.file.filename : undefined,
+  });
 
   res.status(201).json({
     success: true,

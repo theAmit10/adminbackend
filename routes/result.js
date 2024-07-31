@@ -60,6 +60,8 @@ const {
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
+const { singleUploadForUPIQrCode } = require("../middlewares/upiqrcodemiddleware.js");
+const { singleUploadForCryptoQrCode } = require("../middlewares/cryptoqrcodemiddleware.js");
 
 
 const router = express.Router();
@@ -101,7 +103,7 @@ router.get("/allpaymets", isAuthenticated, getAllPayments);
 router.delete("/removepayment/:id", isAuthenticated, deletePayment);
 
 // FOR  UPI PAYMENT
-router.post("/addupipayment", isAuthenticated, addUpiPayment);
+router.post("/addupipayment", isAuthenticated, singleUploadForUPIQrCode, addUpiPayment);
 router.get("/allupipaymets", isAuthenticated, getAllUPIPayments);
 router.delete("/removeupipayment/:id", isAuthenticated, deleteUPIPayment);
 
@@ -116,7 +118,7 @@ router.get("/allpaypalpaymets", isAuthenticated, getAllPaypalPayments);
 router.delete("/removepaypalpayment/:id", isAuthenticated, deletePaypalPayment);
 
 // FOR  CRYPTO PAYMENT
-router.post("/addcryptopayment", isAuthenticated, addCryptoPayment);
+router.post("/addcryptopayment", isAuthenticated,singleUploadForCryptoQrCode, addCryptoPayment);
 router.get("/allcryptopaymets", isAuthenticated, getAllCryptoPayments);
 router.delete("/removecryptopayment/:id", isAuthenticated, deleteCryptoPayment);
 

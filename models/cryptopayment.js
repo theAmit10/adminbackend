@@ -10,6 +10,10 @@ const schema = new mongoose.Schema({
         required: [true, "Please enter network type address"]
     },
     paymentId: Number,
+    qrcode: {
+        type: String,
+        required: [true, "Please add QR code"]
+    },
     createdAt: {
         type: Date,
         default: Date.now,
