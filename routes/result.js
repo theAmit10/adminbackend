@@ -56,7 +56,8 @@ const {
   getAllCurrencies,
   updateCurrency,
   deleteCurrency,
-  getAllLotLocationWithTimes
+  getAllLotLocationWithTimes,
+  deletePlayzone
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -131,6 +132,8 @@ router.delete("/removeskrillpayment/:id", isAuthenticated, deleteSkrillPayment);
 // FOR PLAYZONE
 router.post("/addplay", isAuthenticated, addPlayzone);
 router.get("/allplay", isAuthenticated, getAllPlay);
+router.delete("/removeplayzone/:id", isAuthenticated, deletePlayzone);
+
 // TO GET A SINGLE PLAY 
 router.get('/playzone/singleplay',isAuthenticated, getSinglePlayzone);
 router.get("/allplaysingleuser", isAuthenticated, getUserPlayHistory);

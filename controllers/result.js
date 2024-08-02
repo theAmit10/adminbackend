@@ -1069,6 +1069,20 @@ const addPlayzone = asyncError(async (req, res) => {
   });
 });
 
+// DELETE PLAYZONE
+const deletePlayzone = asyncError(async (req, res, next) => {
+  const playzone = await Playzone.findById(req.params.id);
+
+  if (!playzone) return next(new ErrorHandler("Playzone not found", 404));
+
+  await playzone.deleteOne();
+
+  res.status(200).json({
+    success: true,
+    message: "Playzone Deleted Successfully",
+  });
+});
+
 // FOR UPDATE PLAYZONE EACH OBJECT
 const updatePlaynumber = asyncError(async (req, res, next) => {
   const playzoneId = req.params.id; // Assuming you pass the Playzone ID as a route parameter
@@ -1804,6 +1818,7 @@ module.exports = {
   getSinglePlayzone,
   getUserPlaybets,
   getAllLotLocationWithTimes,
+  deletePlayzone
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;
