@@ -287,11 +287,12 @@ const deleteResult = asyncError(async (req, res, next) => {
 // ####################
 
 const addLotDate = asyncError(async (req, res, next) => {
-  await LotDate.create(req.body);
+  const lotdate =  await LotDate.create(req.body);
 
   res.status(201).json({
     success: true,
     message: "Date Added Successfully",
+    lotdate
   });
 });
 
