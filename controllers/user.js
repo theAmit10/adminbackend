@@ -1513,8 +1513,8 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Transaction not found", 404));
   }
 
-  // FOR PAYMENT COMPLETED
-  if (paymentStatus === "Completed") {
+  // FOR PAYMENT COMPLETED FOR DEPOSIT
+  if (paymentStatus === "Completed" && transaction.transactionType === "Deposit" ) {
     const userId = transaction.userId;
     const amount = parseInt(transaction.amount);
 
@@ -1541,6 +1541,53 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     console.log("Float User Wallet One balance :: " + totalBalanceAmount);
 
     const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
+    console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
+
+    // Update wallet
+    const updatedWallet = await WalletOne.findByIdAndUpdate(
+      walletId,
+      { balance: remainingWalletBalance },
+      { new: true }
+    );
+
+    console.log("User's walletOne updated successfully :: " + updatedWallet);
+  }
+
+  // FOR PAYMENT COMPLETED FOR WITHDRAW
+  if (paymentStatus === "Completed" && transaction.transactionType === "Withdraw" ) {
+    const userId = transaction.userId;
+    const amount = parseInt(transaction.amount);
+
+    const user = await User.findOne({ userId });
+
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+
+    // FOR DEPOSITING MONEY IN USER WALLET ONE
+    console.log("Deposit request of user :: " + user);
+
+    const walletId = user.walletOne._id;
+    console.log("wallet one id :: " + walletId);
+
+    const wallet = await WalletOne.findById(walletId);
+
+    console.log("Wallet one ::  " + wallet);
+    console.log("Before User Wallet Two balance :: " + wallet.balance);
+    console.log("Amount to Add :: " + amount);
+
+    if (wallet.balance < amount) {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance",
+      });
+    }
+
+    const totalBalanceAmount = parseFloat(wallet.balance);
+
+    console.log("Float User Wallet One balance :: " + totalBalanceAmount);
+
+    const remainingWalletBalance = totalBalanceAmount - parseFloat(amount);
     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
 
     // Update wallet
