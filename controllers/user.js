@@ -15,7 +15,6 @@ const DepositPayment = require("../models/depositmodel.js");
 const Transaction = require("../models/Transaction.js");
 const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 
-
 // const login = asyncError(async (req, res, next) => {
 //   const { email, password } = req.body;
 
@@ -69,9 +68,12 @@ const login = asyncError(async (req, res, next) => {
   console.log("Login attempt with email:", normalizedEmail); // Debugging line
 
   if (!password) return next(new ErrorHandler("Please enter password", 400));
-  if (!normalizedEmail) return next(new ErrorHandler("Please enter email", 400));
+  if (!normalizedEmail)
+    return next(new ErrorHandler("Please enter email", 400));
 
-  const user = await User.findOne({ email: normalizedEmail }).select("+password");
+  const user = await User.findOne({ email: normalizedEmail }).select(
+    "+password"
+  );
   console.log("User found:", user); // Debugging line
 
   if (!user) {
@@ -88,9 +90,6 @@ const login = asyncError(async (req, res, next) => {
 
   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
 });
-
-
-
 
 // const register = asyncError(async (req, res, next) => {
 //   const { name, email, password, devicetoken, role, country } = req.body;
@@ -124,7 +123,7 @@ const login = asyncError(async (req, res, next) => {
 //     contact,
 //     devicetoken,
 //     role,
-//     country 
+//     country
 //   });
 
 //   // sendToken(user, res, `Registered Successfully`, 201);
@@ -169,7 +168,7 @@ const register = asyncError(async (req, res, next) => {
     contact,
     devicetoken,
     role,
-    country // Add country to the user object
+    country, // Add country to the user object
   });
 
   res.status(201).json({
@@ -177,7 +176,6 @@ const register = asyncError(async (req, res, next) => {
     message: "Registered Successfully",
   });
 });
-
 
 const getMyProfile = asyncError(async (req, res, next) => {
   const user = await User.findById(req.user._id)
@@ -1158,7 +1156,6 @@ const updateAllWalletNameTwo = asyncError(async (req, res, next) => {
 // TRANSFER AMOUNT FROM WALLET ONE TO WALLET TWO
 // Update Wallet Two
 
-
 // const transferAmountFromWalletOneToWalletTwo = asyncError(async (req, res, next) => {
 //   try {
 //     const { userid, amount } = req.body;
@@ -1202,53 +1199,61 @@ const updateAllWalletNameTwo = asyncError(async (req, res, next) => {
 //   }
 // });
 
-const transferAmountFromWalletOneToWalletTwo = asyncError(async (req, res, next) => {
-  try {
-    const { userid, amount } = req.body;
+const transferAmountFromWalletOneToWalletTwo = asyncError(
+  async (req, res, next) => {
+    try {
+      const { userid, amount } = req.body;
 
-    // Validate input
-    if (!amount || isNaN(amount) || amount <= 0) {
-      return res.status(400).json({ success: false, message: "Invalid amount value" });
+      // Validate input
+      if (!amount || isNaN(amount) || amount <= 0) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid amount value" });
+      }
+
+      // Find the user
+      const user = await User.findById(userid)
+        .populate("walletOne")
+        .populate("walletTwo");
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      const walletOne = user.walletOne;
+      const walletTwo = user.walletTwo;
+
+      // Check if walletOne has sufficient balance
+      if (walletOne.balance < amount) {
+        return res.status(400).json({
+          success: false,
+          message: "Insufficient balance in walletOne",
+        });
+      }
+
+      // Perform the transfer, ensuring balance is treated as a number
+      walletOne.balance = Number(walletOne.balance) - amount;
+      walletTwo.balance = Number(walletTwo.balance) + amount;
+
+      // Save the updated wallets
+      await walletOne.save();
+      await walletTwo.save();
+
+      res.status(200).json({
+        success: true,
+        message: "Transfer successful",
+        walletOne: { balance: walletOne.balance },
+        walletTwo: { balance: walletTwo.balance },
+      });
+    } catch (error) {
+      console.error("Error transferring amount:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error" });
     }
-
-    // Find the user
-    const user = await User.findById(userid).populate('walletOne').populate('walletTwo');
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-
-    const walletOne = user.walletOne;
-    const walletTwo = user.walletTwo;
-
-    // Check if walletOne has sufficient balance
-    if (walletOne.balance < amount) {
-      return res.status(400).json({ success: false, message: "Insufficient balance in walletOne" });
-    }
-
-    // Perform the transfer, ensuring balance is treated as a number
-    walletOne.balance = Number(walletOne.balance) - amount;
-    walletTwo.balance = Number(walletTwo.balance) + amount;
-
-    // Save the updated wallets
-    await walletOne.save();
-    await walletTwo.save();
-
-    res.status(200).json({
-      success: true,
-      message: "Transfer successful",
-      walletOne: { balance: walletOne.balance },
-      walletTwo: { balance: walletTwo.balance },
-    });
-  } catch (error) {
-    console.error("Error transferring amount:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
   }
-});
-
-
-
-
-
+);
 
 // ##########################################
 // DEPOSIT
@@ -1508,6 +1513,46 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Transaction not found", 404));
   }
 
+  // FOR PAYMENT COMPLETED
+  if (paymentStatus === "Completed") {
+    const userId = transaction.userId;
+    const amount = parseInt(transaction.amount);
+
+    const user = await User.findOne({ userId });
+
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+
+    // FOR DEPOSITING MONEY IN USER WALLET ONE
+    console.log("Deposit request of user :: " + user);
+
+    const walletId = user.walletOne._id;
+    console.log("wallet one id :: " + walletId);
+
+    const wallet = await WalletOne.findById(walletId);
+
+    console.log("Wallet one ::  " + wallet);
+    console.log("Before User Wallet Two balance :: " + wallet.balance);
+    console.log("Amount to Add :: " + amount);
+
+    const totalBalanceAmount = parseFloat(wallet.balance);
+
+    console.log("Float User Wallet One balance :: " + totalBalanceAmount);
+
+    const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
+    console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
+
+    // Update wallet
+    const updatedWallet = await WalletOne.findByIdAndUpdate(
+      walletId,
+      { balance: remainingWalletBalance },
+      { new: true }
+    );
+
+    console.log("User's walletOne updated successfully :: " + updatedWallet);
+  }
+
   if (paymentStatus) transaction.paymentStatus = paymentStatus;
 
   await transaction.save();
@@ -1637,7 +1682,7 @@ module.exports = {
   addWithdraw,
   getAllDeposit,
   getAllWithdrawals,
-  transferAmountFromWalletOneToWalletTwo
+  transferAmountFromWalletOneToWalletTwo,
 };
 
 // const { asyncError } = require("../middlewares/error.js");
