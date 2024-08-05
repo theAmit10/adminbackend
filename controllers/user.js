@@ -14,6 +14,7 @@ const { userInfo } = require("os");
 const DepositPayment = require("../models/depositmodel.js");
 const Transaction = require("../models/Transaction.js");
 const Transactionwithdraw = require("../models/Transactionwithdraw.js");
+const AppBalanceSheet = require("../models/AppBalanceSheet.js");
 
 // const login = asyncError(async (req, res, next) => {
 //   const { email, password } = req.body;
@@ -1236,6 +1237,47 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
       walletOne.balance = Number(walletOne.balance) - amount;
       walletTwo.balance = Number(walletTwo.balance) + amount;
 
+      // // Save the updated wallets
+      // await walletOne.save();
+      // await walletTwo.save();
+
+      // FOR BALANCE SHEET
+
+      // Create AppBalanceSheet entry
+      // Calculate gameBalance as the total sum of all walletTwo balances  + totalAmount
+
+      const walletTwoBalances = await WalletTwo.find({});
+      const gameBalance =
+        walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
+        amount;
+
+      // Calculate walletOneBalances as the total sum of all walletOne balances - totalAmount
+      const walletOneBalances = await WalletOne.find({});
+      const withdrawalBalance =
+        walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
+        amount;
+
+      // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+      const totalBalance = withdrawalBalance + gameBalance;
+
+      // Create a new AppBalanceSheet document
+      const appBalanceSheet = new AppBalanceSheet({
+        amount: amount,
+        withdrawalbalance: withdrawalBalance,
+        gamebalance: gameBalance,
+        totalbalance: totalBalance,
+        usercurrency: "INR",
+        activityType: "Transfer",
+        userId: user.userId,
+        paymentProcessType: "Exchange",
+      });
+
+      // Save the AppBalanceSheet document
+      await appBalanceSheet.save();
+      console.log("AppBalanceSheet Created Successfully");
+
+      // END BALANCE SHEET
+
       // Save the updated wallets
       await walletOne.save();
       await walletTwo.save();
@@ -1514,7 +1556,10 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
   }
 
   // FOR PAYMENT COMPLETED FOR DEPOSIT
-  if (paymentStatus === "Completed" && transaction.transactionType === "Deposit" ) {
+  if (
+    paymentStatus === "Completed" &&
+    transaction.transactionType === "Deposit"
+  ) {
     const userId = transaction.userId;
     const amount = parseInt(transaction.amount);
 
@@ -1551,10 +1596,52 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     );
 
     console.log("User's walletOne updated successfully :: " + updatedWallet);
+
+    // FOR BALANCE SHEET
+
+    // Create AppBalanceSheet entry
+    // Calculate gameBalance as the total sum of all walletTwo balances
+
+    const walletTwoBalances = await WalletTwo.find({});
+    const gameBalance = walletTwoBalances.reduce(
+      (sum, wallet) => sum + wallet.balance,
+      0
+    );
+
+    // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
+    const walletOneBalances = await WalletOne.find({});
+    const withdrawalBalance =
+      walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
+      parseFloat(amount);
+
+    // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+    const totalBalance = withdrawalBalance + gameBalance;
+
+    // Create a new AppBalanceSheet document
+    const appBalanceSheet = new AppBalanceSheet({
+      amount: amount,
+      withdrawalbalance: withdrawalBalance,
+      gamebalance: gameBalance,
+      totalbalance: totalBalance,
+      usercurrency: "INR",
+      activityType: "Deposit",
+      userId: userId,
+      transactionId: transaction._id,
+      paymentProcessType: "Credit",
+    });
+
+    // Save the AppBalanceSheet document
+    await appBalanceSheet.save();
+    console.log("AppBalanceSheet Created Successfully");
+
+    // END BALANCE SHEET
   }
 
   // FOR PAYMENT COMPLETED FOR WITHDRAW
-  if (paymentStatus === "Completed" && transaction.transactionType === "Withdraw" ) {
+  if (
+    paymentStatus === "Completed" &&
+    transaction.transactionType === "Withdraw"
+  ) {
     const userId = transaction.userId;
     const amount = parseInt(transaction.amount);
 
@@ -1598,6 +1685,45 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     );
 
     console.log("User's walletOne updated successfully :: " + updatedWallet);
+
+    // FOR BALANCE SHEET
+
+    // Create AppBalanceSheet entry
+    // Calculate gameBalance as the total sum of all walletTwo balances
+
+    const walletTwoBalances = await WalletTwo.find({});
+    const gameBalance = walletTwoBalances.reduce(
+      (sum, wallet) => sum + wallet.balance,
+      0
+    );
+
+    // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
+    const walletOneBalances = await WalletOne.find({});
+    const withdrawalBalance =
+      walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
+      parseFloat(amount);
+
+    // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+    const totalBalance = withdrawalBalance + gameBalance;
+
+    // Create a new AppBalanceSheet document
+    const appBalanceSheet = new AppBalanceSheet({
+      amount: amount,
+      withdrawalbalance: withdrawalBalance,
+      gamebalance: gameBalance,
+      totalbalance: totalBalance,
+      usercurrency: "INR",
+      activityType: "Withdraw",
+      userId: userId,
+      transactionId: transaction._id,
+      paymentProcessType: "Debit",
+    });
+
+    // Save the AppBalanceSheet document
+    await appBalanceSheet.save();
+    console.log("AppBalanceSheet Created Successfully");
+
+    // END BALANCE SHEET
   }
 
   if (paymentStatus) transaction.paymentStatus = paymentStatus;

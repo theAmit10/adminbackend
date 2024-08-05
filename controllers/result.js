@@ -23,6 +23,7 @@ const { json } = require("express");
 const WalletTwo = require("../models/wallettwo.js");
 const walletone = require("../models/walletone.js");
 const WalletOne = require("../models/walletone.js");
+const AppBalanceSheet = require("../models/AppBalanceSheet.js");
 
 // ####################
 // RESULTS
@@ -348,6 +349,45 @@ const createResult = asyncError(async (req, res, next) => {
       { new: true }
     );
   }
+
+  // FOR BALANCE SHEET
+
+  // Create AppBalanceSheet entry
+  // Calculate gameBalance as the total sum of all walletTwo balances
+
+  const walletTwoBalances = await WalletTwo.find({});
+  const gameBalance = walletTwoBalances.reduce(
+    (sum, wallet) => sum + wallet.balance,
+    0
+  );
+
+  // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
+  const walletOneBalances = await WalletOne.find({});
+  const withdrawalBalance =
+    walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
+    playnumberEntry.amount;
+
+  // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+  const totalBalance = withdrawalBalance + gameBalance;
+
+  // Create a new AppBalanceSheet document
+  const appBalanceSheet = new AppBalanceSheet({
+    amount: playnumberEntry.amount,
+    withdrawalbalance: withdrawalBalance,
+    gamebalance: gameBalance,
+    totalbalance: totalBalance,
+    usercurrency: "INR",
+    activityType: "Winning",
+    userId: req.user.userId,
+    paybetId: playzone._id,
+    paymentProcessType: "Credit",
+  });
+
+  // Save the AppBalanceSheet document
+  await appBalanceSheet.save();
+  console.log("AppBalanceSheet Created Successfully");
+
+  // END BALANCE SHEET
 
   // Create a result entry
   await Result.create({
@@ -1364,6 +1404,165 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
   }
 });
 
+// const addPlaybet = asyncError(async (req, res, next) => {
+//   const { playnumbers, lotdate, lottime, lotlocation } = req.body;
+//   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
+
+//   console.log("Username :: " + req.user.name);
+//   console.log("Username :: " + userId);
+
+//   // Calculate the total amount from the playnumbers array
+//   const totalAmount = playnumbers.reduce(
+//     (sum, playbet) => sum + playbet.amount,
+//     0
+//   );
+//   console.log("Total Amount :: " + totalAmount);
+
+//   // Find the user and update their walletTwo balance
+//   const user = await User.findById(userId)
+//     .populate("walletOne")
+//     .populate("walletTwo");
+//   if (!user) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "User not found",
+//     });
+//   }
+
+//   if (user.walletTwo.balance < totalAmount) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "Insufficient balance in walletTwo",
+//     });
+//   }
+
+//   console.log("user details :: " + JSON.stringify(user));
+
+//   const walletId = user.walletTwo._id;
+
+//   console.log("Before User Wallet Two balance :: " + user.walletTwo.balance);
+//   console.log("Amount deducted :: " + totalAmount);
+
+//   const totalBalanceAmount = parseFloat(user.walletTwo.balance);
+
+//   console.log("Float User Wallet Two balance :: " + totalBalanceAmount);
+
+//   const remainingWalletBalance = totalBalanceAmount - parseFloat(totalAmount);
+//   console.log("REMAINING AMOUNT AFTER DEDUCTION :: " + remainingWalletBalance);
+
+//   // Update wallet
+//   const updatedWallet = await WalletTwo.findByIdAndUpdate(
+//     walletId,
+//     { balance: remainingWalletBalance },
+//     { new: true }
+//   );
+
+//   // user.walletTwo.balance = remainingWalletBalance;
+//   // await user.save();
+//   console.log("User's walletTwo updated successfully :: " + updatedWallet);
+
+//   // Create a new Playbet document
+//   const newPlaybet = new Playbet({
+//     playnumbers,
+//     username: req.user.name,
+//     userid: req.user.userId,
+//     lotdate,
+//     lottime,
+//     lotlocation,
+//   });
+
+//   console.log("New Bet :: " + JSON.stringify(newPlaybet));
+
+//   // Save the Playbet document
+//   await newPlaybet.save();
+//   console.log("New Bet Created Success");
+
+//   // Update user's playbetHistory
+//   await User.findByIdAndUpdate(userId, {
+//     $push: {
+//       playbetHistory: newPlaybet._id,
+//     },
+//   });
+
+//   console.log("New Bet Added to the User Betting History Success");
+
+//   console.log("Now Searcing for the Playzone of the Admin to Add user");
+
+//   // Find the Playzone entry by lotdate, lottime, and lotlocation
+//   const playzone = await Playzone.findOne({
+//     lotdate,
+//     lottime,
+//     lotlocation,
+//   });
+
+//   if (!playzone) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "Playzone entry not found",
+//     });
+//   }
+
+//   console.log("New going to update the playzone");
+//   console.log("Playzone found :: " + JSON.stringify(playzone));
+//   console.log("Playnumber Array Users :: " + JSON.stringify(playnumbers));
+
+//   // Update the playnumbers in Playzone
+//   playnumbers.forEach((playbet) => {
+//     console.log("Element Playment :: ", JSON.stringify(playbet));
+//     console.log("Searching for the index");
+//     const playnumberIndex = playzone.playnumbers.findIndex(
+//       (pn) => pn.playnumber === playbet.playnumber
+//     );
+//     console.log("Playnumber index :: " + playnumberIndex);
+
+//     if (playnumberIndex !== -1) {
+//       const userIndex = playzone.playnumbers[playnumberIndex].users.findIndex(
+//         (user) => user.userId == req.user.userId
+//       );
+//       console.log("User index :: " + userIndex);
+
+//       if (userIndex !== -1) {
+//         // User exists, update amount and winningamount
+//         playzone.playnumbers[playnumberIndex].users[userIndex].amount +=
+//           playbet.amount;
+//         playzone.playnumbers[playnumberIndex].users[userIndex].winningamount +=
+//           playbet.winningamount;
+//       } else {
+//         // User does not exist, add new user
+//         playzone.playnumbers[playnumberIndex].users.push({
+//           userId: req.user.userId,
+//           username: req.user.name,
+//           amount: playbet.amount,
+//           usernumber: playbet.playnumber,
+//           winningamount: playbet.winningamount,
+//         });
+//       }
+
+//       // Update numbercount and amount
+//       playzone.playnumbers[playnumberIndex].numbercount =
+//         playzone.playnumbers[playnumberIndex].users.length;
+//       playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[
+//         playnumberIndex
+//       ].users.reduce((total, user) => total + user.amount, 0);
+//       playzone.playnumbers[playnumberIndex].distributiveamount =
+//         playzone.playnumbers[playnumberIndex].users.reduce(
+//           (total, user) => total + user.winningamount,
+//           0
+//         );
+//     }
+//   });
+
+//   // Save the updated Playzone entry
+//   await playzone.save();
+//   console.log("Playzone Update Success");
+
+//   res.status(201).json({
+//     success: true,
+//     message: "Playbet entry added successfully",
+//     playbet: newPlaybet,
+//   });
+// });
+
 const addPlaybet = asyncError(async (req, res, next) => {
   const { playnumbers, lotdate, lottime, lotlocation } = req.body;
   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
@@ -1446,7 +1645,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
 
   console.log("New Bet Added to the User Betting History Success");
 
-  console.log("Now Searcing for the Playzone of the Admin to Add user");
+  console.log("Now Searching for the Playzone of the Admin to Add user");
 
   // Find the Playzone entry by lotdate, lottime, and lotlocation
   const playzone = await Playzone.findOne({
@@ -1516,150 +1715,47 @@ const addPlaybet = asyncError(async (req, res, next) => {
   await playzone.save();
   console.log("Playzone Update Success");
 
+  // Create AppBalanceSheet entry
+  // Calculate withdrawalbalance as the total sum of all walletOne balances
+  const walletOneBalances = await WalletOne.find({});
+  const withdrawalBalance = walletOneBalances.reduce(
+    (sum, wallet) => sum + wallet.balance,
+    0
+  );
+
+  // Calculate gamebalance as the total sum of all walletTwo balances minus totalAmount
+  const walletTwoBalances = await WalletTwo.find({});
+  const gameBalance =
+    walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
+    totalAmount;
+
+  // Calculate totalbalance as the total sum of walletOne and walletTwo balances minus totalAmount
+  const totalBalance = withdrawalBalance + gameBalance;
+
+  // Create a new AppBalanceSheet document
+  const appBalanceSheet = new AppBalanceSheet({
+    amount: totalAmount,
+    withdrawalbalance: withdrawalBalance,
+    gamebalance: gameBalance,
+    totalbalance: totalBalance,
+    usercurrency: "INR",
+    activityType: "Bet",
+    userId: req.user.userId,
+    paybetId: newPlaybet._id,
+    paymentProcessType: "Debit",
+  });
+
+  // Save the AppBalanceSheet document
+  await appBalanceSheet.save();
+  console.log("AppBalanceSheet Created Successfully");
+
   res.status(201).json({
     success: true,
     message: "Playbet entry added successfully",
     playbet: newPlaybet,
+    appBalanceSheet,
   });
 });
-
-// const addPlaybet = asyncError(async (req, res, next) => {
-//   const { playnumbers, lotdate, lottime, lotlocation } = req.body;
-//   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
-//   // const userId = req.user.userId; // Assuming user is authenticated and user ID is available in req.user
-
-//   console.log("Username :: " + req.user.name);
-//   console.log("Username :: " + userId);
-
-//   // Create a new Playbet document
-//   const newPlaybet = new Playbet({
-//     playnumbers,
-//     username: req.user.name,
-//     userid: req.user.userId,
-//     lotdate,
-//     lottime,
-//     lotlocation,
-//   });
-
-//   console.log("New Bet :: " + JSON.stringify(newPlaybet));
-
-//   // Save the Playbet document
-//   await newPlaybet.save();
-
-//   console.log("New Bet Created Success");
-
-//   // Update user's playbetHistory
-//   await User.findByIdAndUpdate(userId, {
-//     $push: {
-//       playbetHistory: newPlaybet._id,
-//     },
-//   });
-
-//   console.log("New Bet Added to the User Betting History Success");
-
-//   console.log("Now Searcing for the Playzone of the Admin to Add user");
-
-//   // Find the Playzone entry by lotdate, lottime, and lotlocation
-//   const playzone = await Playzone.findOne({
-//     lotdate,
-//     lottime,
-//     lotlocation,
-//   });
-
-//   if (!playzone) {
-//     return res.status(404).json({
-//       success: false,
-//       message: "Playzone entry not found",
-//     });
-//   }
-
-//   console.log("New going to update the playzone");
-
-//   console.log("Playzone found :: " + JSON.stringify(playzone));
-
-//   console.log("Playnumber Array Users :: " + JSON.stringify(playnumbers));
-
-//   // // Update the playnumbers in Playzone
-//   // playnumbers.forEach(playbet => {
-//   //   console.log('Element Playment :: ',JSON.stringify(playbet))
-//   //   console.log('Searching for the index')
-//   //   const playnumberIndex = playzone.playnumbers.findIndex(pn => pn.playnumber === playbet.playnumber);
-//   //   console.log('Playnumber index :: '+playnumberIndex)
-
-//   //   if (playnumberIndex !== -1) {
-//   //     // Add the user to the users array of the found playnumber
-//   //     playzone.playnumbers[playnumberIndex].users.push({
-//   //       userId:req.user.userId,
-//   //       username: req.user.name,
-//   //       amount: playbet.amount,
-//   //       usernumber: playbet.playnumber,// Assuming this is the PlayNumber's ID
-//   //       winningamount: playbet.winningamount
-//   //     });
-
-//   //     // Update numbercount and amount
-//   //     playzone.playnumbers[playnumberIndex].numbercount += 1;
-//   //     playzone.playnumbers[playnumberIndex].amount += playbet.amount;
-//   //     playzone.playnumbers[playnumberIndex].distributiveamount += playbet.winningamount;
-//   //   }
-//   // });
-
-//   // Update the playnumbers in Playzone
-//   playnumbers.forEach((playbet) => {
-//     console.log("Element Playment :: ", JSON.stringify(playbet));
-//     console.log("Searching for the index");
-//     const playnumberIndex = playzone.playnumbers.findIndex(
-//       (pn) => pn.playnumber === playbet.playnumber
-//     );
-//     console.log("Playnumber index :: " + playnumberIndex);
-//     if (playnumberIndex !== -1) {
-//       const userIndex = playzone.playnumbers[playnumberIndex].users.findIndex(
-//         (user) => user.userId == req.user.userId
-//       );
-//       console.log("User index index :: " + userIndex);
-//       if (userIndex !== -1) {
-//         // User exists, update amount and winningamount
-//         playzone.playnumbers[playnumberIndex].users[userIndex].amount +=
-//           playbet.amount;
-//         playzone.playnumbers[playnumberIndex].users[userIndex].winningamount +=
-//           playbet.winningamount;
-//       } else {
-//         // User does not exist, add new user
-//         playzone.playnumbers[playnumberIndex].users.push({
-//           userId: req.user.userId,
-//           username: req.user.name,
-//           amount: playbet.amount,
-//           usernumber: playbet.playnumber,
-//           winningamount: playbet.winningamount,
-//         });
-//       }
-
-//       // Update numbercount and amount
-//       playzone.playnumbers[playnumberIndex].numbercount =
-//         playzone.playnumbers[playnumberIndex].users.length;
-//       playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[
-//         playnumberIndex
-//       ].users.reduce((total, user) => total + user.amount, 0);
-//       playzone.playnumbers[playnumberIndex].distributiveamount =
-//         playzone.playnumbers[playnumberIndex].users.reduce(
-//           (total, user) => total + user.winningamount,
-//           0
-//         );
-//     }
-//   });
-
-//   // Save the updated Playzone entry
-//   await playzone.save();
-
-//   console.log("Playzone Update Success");
-
-//   res.status(201).json({
-//     success: true,
-//     message: "Playbet entry added successfully",
-//     playbet: newPlaybet,
-//   });
-// });
-
-// TO GET ALL THE PLAY BET HISTORY OF A USER
 
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
@@ -1875,6 +1971,20 @@ const deleteCurrency = asyncError(async (req, res, next) => {
   });
 });
 
+// GET ALL THE BALANCE SHEET
+const getAppBalanceSheet = asyncError(async (req, res, next) => {
+  const balancesheet = await AppBalanceSheet.find()
+    .populate("paybetId")
+    .populate("payzoneId")
+    .populate("transactionId")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    balancesheet,
+  });
+});
+
 module.exports = {
   createCurrency,
   getAllCurrencies,
@@ -1930,6 +2040,7 @@ module.exports = {
   getUserPlaybets,
   getAllLotLocationWithTimes,
   deletePlayzone,
+  getAppBalanceSheet,
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;

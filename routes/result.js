@@ -57,7 +57,8 @@ const {
   updateCurrency,
   deleteCurrency,
   getAllLotLocationWithTimes,
-  deletePlayzone
+  deletePlayzone,
+  getAppBalanceSheet
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -155,6 +156,9 @@ router.get('/allcurrencies',  getAllCurrencies);
 router.put('/updatecurrency/:id', isAuthenticated, updateCurrency);
 // Delete a currency
 router.delete('/removecurrency/:id', isAuthenticated, deleteCurrency);
+
+// GET APP BALANCE SHEET
+router.get("/balancesheet", isAuthenticated, getAppBalanceSheet);
 
 
 
