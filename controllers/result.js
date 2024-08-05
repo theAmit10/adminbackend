@@ -21,6 +21,8 @@ const fs = require("fs");
 const path = require("path");
 const { json } = require("express");
 const WalletTwo = require("../models/wallettwo.js");
+const walletone = require("../models/walletone.js");
+const WalletOne = require("../models/walletone.js");
 
 // ####################
 // RESULTS
@@ -230,10 +232,124 @@ const getResultDetails = asyncError(async (req, res, next) => {
   });
 });
 
+// FUNCTION TO CHECK NUMBER EXIST OR NOT IN PLAYNUMBERS LIST
+const checkPlaynumberExists = (data, playnumberToCheck) => {
+  return data.playnumbers.some(
+    (playnumber) => playnumber.playnumber === parseInt(playnumberToCheck, 10)
+  );
+};
+
+// const createResult = asyncError(async (req, res, next) => {
+//   const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } =
+//     req.body;
+
+//     if (!resultNumber) return next(new ErrorHandler("Result number not found", 404));
+//     if (!lotdate) return next(new ErrorHandler("Date not found", 404));
+//     if (!lottime) return next(new ErrorHandler("Time not found", 404));
+//     if (!lotlocation) return next(new ErrorHandler("Location not found", 404));
+//     // if (!nextresulttime) return next(new ErrorHandler("Next Result not found", 404));
+
+//     // Find the Playzone entry by lotlocation, lottime, and lotdate
+//     const playzone = await Playzone.findOne({
+//       lotlocation,
+//       lottime,
+//       lotdate,
+//     });
+
+//     if (!playzone) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Playzone entry not found",
+//       });
+//     }
+
+//     console.log("Playzone :: "+playzone)
+//     if (!checkPlaynumberExists(playzone, resultNumber)) return next(new ErrorHandler("Result number not in range", 404));
+
+//     res.status(200).json({
+//       success: true,
+//       playzone,
+//     });
+
+//   // await Result.create({
+//   //   resultNumber,
+//   //   lotdate,
+//   //   lottime,
+//   //   lotlocation,
+//   //   nextresulttime,
+//   // });
+
+//   // res.status(200).json({
+//   //   success: true,
+//   //   message: "Result Created Successfully",
+//   // });
+// });
+
 const createResult = asyncError(async (req, res, next) => {
   const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } =
     req.body;
-  // if (!result) return next(new ErrorHandler("Result not found", 404))
+
+  if (!resultNumber)
+    return next(new ErrorHandler("Result number not found", 404));
+  if (!lotdate) return next(new ErrorHandler("Date not found", 404));
+  if (!lottime) return next(new ErrorHandler("Time not found", 404));
+  if (!lotlocation) return next(new ErrorHandler("Location not found", 404));
+
+  // Find the Playzone entry by lotlocation, lottime, and lotdate
+  const playzone = await Playzone.findOne({
+    lotlocation,
+    lottime,
+    lotdate,
+  });
+
+  if (!playzone) {
+    return res.status(404).json({
+      success: false,
+      message: "Playzone entry not found",
+    });
+  }
+
+  if (!checkPlaynumberExists(playzone, resultNumber)) {
+    return next(new ErrorHandler("Result number not in range", 404));
+  }
+
+  // Find the playnumber in the playzone
+  const playnumberEntry = playzone.playnumbers.find(
+    (pn) => pn.playnumber === parseInt(resultNumber, 10)
+  );
+
+  if (!playnumberEntry) {
+    return next(new ErrorHandler("Playnumber entry not found", 404));
+  }
+
+  console.log("now getting users");
+  // Update walletOne for each user in the playnumber's users list
+  for (const userz of playnumberEntry.users) {
+    const userId = userz.userId;
+    const amount = parseInt(userz.amount);
+
+    const user = await User.findOne({ userId });
+
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+
+    // FOR DEPOSITING MONEY IN USER WALLET ONE
+
+    const walletId = user.walletOne._id;
+    const wallet = await WalletOne.findById(walletId);
+    const totalBalanceAmount = parseFloat(wallet.balance);
+    const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
+
+    // Update wallet
+    await WalletOne.findByIdAndUpdate(
+      walletId,
+      { balance: remainingWalletBalance },
+      { new: true }
+    );
+  }
+
+  // Create a result entry
   await Result.create({
     resultNumber,
     lotdate,
@@ -244,7 +360,7 @@ const createResult = asyncError(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: "Result Created Successfully",
+    message: "Result Created and Wallets Updated Successfully",
   });
 });
 
@@ -287,12 +403,12 @@ const deleteResult = asyncError(async (req, res, next) => {
 // ####################
 
 const addLotDate = asyncError(async (req, res, next) => {
-  const lotdate =  await LotDate.create(req.body);
+  const lotdate = await LotDate.create(req.body);
 
   res.status(201).json({
     success: true,
     message: "Date Added Successfully",
-    lotdate
+    lotdate,
   });
 });
 
@@ -670,22 +786,17 @@ const addUpiPayment = asyncError(async (req, res, next) => {
 
   if (!req.file) return next(new ErrorHandler("UPI QR Code is missing", 404));
 
-  await UpiPaymentType.create(
-    {
-      upiholdername,
-      upiid,
-      qrcode: req.file ? req.file.filename : undefined,
-    }
-  );
+  await UpiPaymentType.create({
+    upiholdername,
+    upiid,
+    qrcode: req.file ? req.file.filename : undefined,
+  });
 
   res.status(201).json({
     success: true,
     message: "UPI Added Successfully",
-
   });
 });
-
-
 
 const getAllUPIPayments = asyncError(async (req, res, next) => {
   const payments = await UpiPaymentType.find();
@@ -811,8 +922,7 @@ const addCryptoPayment = asyncError(async (req, res, next) => {
   if (!networktype)
     return next(new ErrorHandler("Network type is missing", 404));
 
-    if (!req.file) return next(new ErrorHandler("UPI QR Code is missing", 404));
-
+  if (!req.file) return next(new ErrorHandler("UPI QR Code is missing", 404));
 
   await CryptoPaymentType.create({
     walletaddress,
@@ -1551,7 +1661,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
 
 // TO GET ALL THE PLAY BET HISTORY OF A USER
 
-
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
 
@@ -1577,7 +1686,9 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
     let playbets = user.playbetHistory;
 
     // Sort playbets by createdAt in descending order
-    playbets = playbets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    playbets = playbets.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
 
     res.status(200).json({
       success: true,
@@ -1818,7 +1929,7 @@ module.exports = {
   getSinglePlayzone,
   getUserPlaybets,
   getAllLotLocationWithTimes,
-  deletePlayzone
+  deletePlayzone,
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;
