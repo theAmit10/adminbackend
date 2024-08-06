@@ -735,7 +735,6 @@ const updateLocation = asyncError(async (req, res, next) => {
 //     locationData,
 //   });
 // });
-
 const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
   // Fetch all lot locations sorted by createdAt in descending order
   const lotlocations = await LotLocation.find({}).sort({ createdAt: -1 });
@@ -774,6 +773,7 @@ const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
     locationData,
   });
 });
+
 
 const addPayment = asyncError(async (req, res, next) => {
   const { paymentName } = req.body;

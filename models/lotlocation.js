@@ -25,6 +25,11 @@ const schema = new mongoose.Schema({
         type: String,
         required: [true, "Please enter maximum return range"]
     },
+    automation: {
+        type: String,
+        enum: ["automatic", "manual"],
+        default: "manual",
+    },
     createdAt: {
         type: Date,
         default: Date.now(),
