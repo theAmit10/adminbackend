@@ -1464,6 +1464,7 @@ const addDeposit = asyncError(async (req, res, next) => {
     userId: userid,
     transactionType: "Deposit",
     paymentStatus: paymentstatus || "Pending",
+    currency: user.country._id.toString(),
     receipt: req.file ? req.file.filename : undefined,
   });
 
