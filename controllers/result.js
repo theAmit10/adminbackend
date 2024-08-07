@@ -679,6 +679,7 @@ const updateLocation = asyncError(async (req, res, next) => {
     maximumNumber,
     maximumRange,
     maximumReturn,
+    automation,
   } = req.body;
 
   console.log("Request body:", req.body); // Log the request body to check incoming data
@@ -693,6 +694,7 @@ const updateLocation = asyncError(async (req, res, next) => {
     llocation.locationDescription = locationDescription;
   if (maximumRange !== undefined) llocation.maximumRange = maximumRange;
   if (maximumNumber !== undefined) llocation.maximumNumber = maximumNumber;
+  if (automation !== undefined) llocation.automation = automation;
 
   await llocation.save();
 
