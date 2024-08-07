@@ -1806,7 +1806,7 @@ const addWithdraw = asyncError(async (req, res, next) => {
 const getAllWithdrawals = asyncError(async (req, res, next) => {
   const withdrawals = await Transaction.find({
     transactionType: "Withdraw",
-  }).sort({ createdAt: -1 });
+  }).populate("currency").sort({ createdAt: -1 });
 
   res.status(200).json({
     success: true,

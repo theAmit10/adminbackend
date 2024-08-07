@@ -2131,6 +2131,7 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
         { path: "lotdate", model: "LotDate" },
         { path: "lottime", model: "LotTime" },
         { path: "lotlocation", model: "LotLocation" },
+        { path: "currency", model: "Currency" },
       ],
     });
 
