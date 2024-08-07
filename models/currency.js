@@ -14,7 +14,7 @@ const schema = new mongoose.Schema({
         required: [true, "Please enter country currency symbol"]
     },
     countrycurrencyvaluecomparedtoinr: {
-        type: String,
+        type: Number,
         required: [true, "Please enter country currency value compared to INR"]
     },
     createdAt: {

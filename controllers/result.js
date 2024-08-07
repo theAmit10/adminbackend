@@ -1435,6 +1435,7 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
   }
 });
 
+
 // const addPlaybet = asyncError(async (req, res, next) => {
 //   const { playnumbers, lotdate, lottime, lotlocation } = req.body;
 //   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
@@ -1500,6 +1501,7 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 //     lotdate,
 //     lottime,
 //     lotlocation,
+//     currency: user.country._id.toString(),
 //   });
 
 //   console.log("New Bet :: " + JSON.stringify(newPlaybet));
@@ -1517,7 +1519,7 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 
 //   console.log("New Bet Added to the User Betting History Success");
 
-//   console.log("Now Searcing for the Playzone of the Admin to Add user");
+//   console.log("Now Searching for the Playzone of the Admin to Add user");
 
 //   // Find the Playzone entry by lotdate, lottime, and lotlocation
 //   const playzone = await Playzone.findOne({
@@ -1566,20 +1568,55 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 //           amount: playbet.amount,
 //           usernumber: playbet.playnumber,
 //           winningamount: playbet.winningamount,
+//           currency: user.country._id.toString(),
 //         });
 //       }
 
 //       // Update numbercount and amount
 //       playzone.playnumbers[playnumberIndex].numbercount =
 //         playzone.playnumbers[playnumberIndex].users.length;
+
+//       // for calculated  amount
+//       // playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[
+//       //   playnumberIndex
+//       // ].users.reduce((total, user) => total + user.amount, 0);
+
+//       // Calculate amount with currency value
 //       playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[
 //         playnumberIndex
-//       ].users.reduce((total, user) => total + user.amount, 0);
-//       playzone.playnumbers[playnumberIndex].distributiveamount =
-//         playzone.playnumbers[playnumberIndex].users.reduce(
-//           (total, user) => total + user.winningamount,
-//           0
-//         );
+//       ].users.reduce(
+//         (total, user) =>
+//           total +
+//           user.amount *
+//             parseFloat(
+//               user.currency.countrycurrencyvaluecomparedtoinr
+//             ),
+//         0
+//       );
+
+
+//       // for calculated winning amount
+//       // playzone.playnumbers[playnumberIndex].distributiveamount =
+//       //   playzone.playnumbers[playnumberIndex].users.reduce(
+//       //     (total, user) => total + user.winningamount,
+//       //     0
+//       //   );
+
+
+//       // Calculate distributiveamount with currency value
+//       playzone.playnumbers[playnumberIndex].distributiveamount = playzone.playnumbers[
+//         playnumberIndex
+//       ].users.reduce(
+//         (total, user) =>
+//           total +
+//           user.winningamount *
+//             parseFloat(
+//               user.currency.countrycurrencyvaluecomparedtoinr
+//             ),
+//         0
+//       );
+
+
 //     }
 //   });
 
@@ -1587,10 +1624,43 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 //   await playzone.save();
 //   console.log("Playzone Update Success");
 
+//   // Create AppBalanceSheet entry
+//   // Calculate withdrawalbalance as the total sum of all walletOne balances
+//   const walletOneBalances = await WalletOne.find({});
+//   const withdrawalBalance = walletOneBalances.reduce(
+//     (sum, wallet) => sum + wallet.balance,
+//     0
+//   );
+
+//   // Calculate gamebalance as the total sum of all walletTwo balances minus totalAmount
+//   const walletTwoBalances = await WalletTwo.find({});
+//   const gameBalance =
+//     walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
+//     totalAmount;
+
+//   // Calculate totalbalance as the total sum of walletOne and walletTwo balances minus totalAmount
+//   const totalBalance = withdrawalBalance + gameBalance;
+
+//   // Create a new AppBalanceSheet document
+//   const appBalanceSheet = new AppBalanceSheet({
+//     amount: totalAmount,
+//     withdrawalbalance: withdrawalBalance,
+//     gamebalance: gameBalance,
+//     totalbalance: totalBalance,
+//     usercurrency: user.country._id.toString(),
+//     activityType: "Bet",
+//     userId: req.user.userId,
+//     paybetId: newPlaybet._id,
+//     paymentProcessType: "Debit",
+//   });
+
+//   // Save the AppBalanceSheet document
+//   await appBalanceSheet.save();
+//   console.log("AppBalanceSheet Created Successfully");
+
 //   res.status(201).json({
 //     success: true,
 //     message: "Playbet entry added successfully",
-//     playbet: newPlaybet,
 //   });
 // });
 
@@ -1684,6 +1754,9 @@ const addPlaybet = asyncError(async (req, res, next) => {
     lotdate,
     lottime,
     lotlocation,
+  }).populate({
+    path: 'playnumbers.users.currency',
+    model: 'Currency'
   });
 
   if (!playzone) {
@@ -1734,11 +1807,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
       playzone.playnumbers[playnumberIndex].numbercount =
         playzone.playnumbers[playnumberIndex].users.length;
 
-      // for calculated  amount
-      // playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[
-      //   playnumberIndex
-      // ].users.reduce((total, user) => total + user.amount, 0);
-
       // Calculate amount with currency value
       playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[
         playnumberIndex
@@ -1747,19 +1815,10 @@ const addPlaybet = asyncError(async (req, res, next) => {
           total +
           user.amount *
             parseFloat(
-              user.currency.countrycurrencyvaluecomparedtoinr || 1
+              user.currency.countrycurrencyvaluecomparedtoinr
             ),
         0
       );
-
-
-      // for calculated winning amount
-      // playzone.playnumbers[playnumberIndex].distributiveamount =
-      //   playzone.playnumbers[playnumberIndex].users.reduce(
-      //     (total, user) => total + user.winningamount,
-      //     0
-      //   );
-
 
       // Calculate distributiveamount with currency value
       playzone.playnumbers[playnumberIndex].distributiveamount = playzone.playnumbers[
@@ -1769,12 +1828,10 @@ const addPlaybet = asyncError(async (req, res, next) => {
           total +
           user.winningamount *
             parseFloat(
-              user.currency.countrycurrencyvaluecomparedtoinr || 1
+              user.currency.countrycurrencyvaluecomparedtoinr
             ),
         0
       );
-
-
     }
   });
 
@@ -1821,6 +1878,8 @@ const addPlaybet = asyncError(async (req, res, next) => {
     message: "Playbet entry added successfully",
   });
 });
+
+
 
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
