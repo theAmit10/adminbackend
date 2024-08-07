@@ -762,6 +762,7 @@ const getAllUser = asyncError(async (req, res, next) => {
   const users = await User.find({})
     .populate("walletOne")
     .populate("walletTwo")
+    .populate("country")
     .sort({ createdAt: -1 });
 
   res.status(200).json({
@@ -1032,6 +1033,22 @@ const getAllUserRegisterInLastOneDay = asyncError(async (req, res, next) => {
   const users = await User.find({ createdAt: { $gte: twentyFourHoursAgo } })
     .populate("walletOne")
     .populate("walletTwo")
+    .populate("country")
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    users,
+  });
+});
+
+const getAllSubadmin = asyncError(async (req, res, next) => {
+ 
+  // Find users created within the last 24 hours
+  const users = await User.find({role: 'subadmin' })
+    .populate("walletOne")
+    .populate("walletTwo")
+    .populate("country")
     .sort({ createdAt: -1 });
 
   res.status(200).json({
@@ -1858,6 +1875,7 @@ module.exports = {
   getAllDeposit,
   getAllWithdrawals,
   transferAmountFromWalletOneToWalletTwo,
+  getAllSubadmin
 };
 
 // const { asyncError } = require("../middlewares/error.js");
