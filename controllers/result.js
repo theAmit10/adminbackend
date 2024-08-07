@@ -1733,14 +1733,48 @@ const addPlaybet = asyncError(async (req, res, next) => {
       // Update numbercount and amount
       playzone.playnumbers[playnumberIndex].numbercount =
         playzone.playnumbers[playnumberIndex].users.length;
+
+      // for calculated  amount
+      // playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[
+      //   playnumberIndex
+      // ].users.reduce((total, user) => total + user.amount, 0);
+
+      // Calculate amount with currency value
       playzone.playnumbers[playnumberIndex].amount = playzone.playnumbers[
         playnumberIndex
-      ].users.reduce((total, user) => total + user.amount, 0);
-      playzone.playnumbers[playnumberIndex].distributiveamount =
-        playzone.playnumbers[playnumberIndex].users.reduce(
-          (total, user) => total + user.winningamount,
-          0
-        );
+      ].users.reduce(
+        (total, user) =>
+          total +
+          user.amount *
+            parseFloat(
+              user.currency.countrycurrencyvaluecomparedtoinr || 1
+            ),
+        0
+      );
+
+
+      // for calculated winning amount
+      // playzone.playnumbers[playnumberIndex].distributiveamount =
+      //   playzone.playnumbers[playnumberIndex].users.reduce(
+      //     (total, user) => total + user.winningamount,
+      //     0
+      //   );
+
+
+      // Calculate distributiveamount with currency value
+      playzone.playnumbers[playnumberIndex].distributiveamount = playzone.playnumbers[
+        playnumberIndex
+      ].users.reduce(
+        (total, user) =>
+          total +
+          user.winningamount *
+            parseFloat(
+              user.currency.countrycurrencyvaluecomparedtoinr || 1
+            ),
+        0
+      );
+
+
     }
   });
 
