@@ -39,6 +39,11 @@ const playNumberSchema = new mongoose.Schema({
         type: Number,
         default: 0,
       },
+      currency: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Currency",
+        required: [true, "Please provide currency id"],
+      },
     }
   ]
 });

@@ -1266,7 +1266,7 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
         withdrawalbalance: withdrawalBalance,
         gamebalance: gameBalance,
         totalbalance: totalBalance,
-        usercurrency: "INR",
+        usercurrency: user.country._id.toString(),
         activityType: "Transfer",
         userId: user.userId,
         paymentProcessType: "Exchange",
@@ -1522,7 +1522,7 @@ const getAllTransaction = asyncError(async (req, res, next) => {
 
 // Get all Deposit transactions
 const getAllDeposit = asyncError(async (req, res, next) => {
-  const deposits = await Transaction.find({ transactionType: "Deposit" }).sort({
+  const deposits = await Transaction.find({ transactionType: "Deposit" }).populate("currency").sort({
     createdAt: -1,
   });
 
@@ -1789,6 +1789,7 @@ const addWithdraw = asyncError(async (req, res, next) => {
     cryptoWalletAddress,
     networkType,
     skrillContact,
+    currency: user.country._id.toString(),
   });
 
   user.transactionHistory.push(transaction._id);

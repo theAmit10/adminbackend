@@ -327,7 +327,7 @@ const createResult = asyncError(async (req, res, next) => {
   // Update walletOne for each user in the playnumber's users list
   for (const userz of playnumberEntry.users) {
     const userId = userz.userId;
-    const amount = parseInt(userz.amount);
+    const amount = parseInt(userz.winningamount);
 
     const user = await User.findOne({ userId });
 
@@ -365,14 +365,14 @@ const createResult = asyncError(async (req, res, next) => {
   const walletOneBalances = await WalletOne.find({});
   const withdrawalBalance =
     walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
-    playnumberEntry.amount;
+    playnumberEntry.distributiveamount;
 
   // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
   const totalBalance = withdrawalBalance + gameBalance;
 
   // Create a new AppBalanceSheet document
   const appBalanceSheet = new AppBalanceSheet({
-    amount: playnumberEntry.amount,
+    amount: playnumberEntry.distributiveamount,
     withdrawalbalance: withdrawalBalance,
     gamebalance: gameBalance,
     totalbalance: totalBalance,
@@ -1114,7 +1114,7 @@ const getSinglePlayzone = asyncError(async (req, res, next) => {
       lotlocation,
       lottime,
       lotdate,
-    });
+    }).populate('playnumbers.users.currency'); // Populate currency in users array within playnumbers
 
     if (!playzone) {
       return res.status(404).json({
@@ -1135,6 +1135,37 @@ const getSinglePlayzone = asyncError(async (req, res, next) => {
     });
   }
 });
+
+// const getSinglePlayzone = asyncError(async (req, res, next) => {
+//   const { lotlocation, lottime, lotdate } = req.query;
+
+//   try {
+//     // Find the Playzone entry by lotlocation, lottime, and lotdate
+//     const playzone = await Playzone.findOne({
+//       lotlocation,
+//       lottime,
+//       lotdate,
+//     });
+
+//     if (!playzone) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Playzone entry not found",
+//       });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       playzone,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to retrieve Playzone entry",
+//       error: error.message,
+//     });
+//   }
+// });
 
 // ALL PLAYZONE FOR A SINGLE USER
 const getUserPlayHistory = asyncError(async (req, res, next) => {
@@ -1628,6 +1659,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
     lotdate,
     lottime,
     lotlocation,
+    currency: user.country._id.toString(),
   });
 
   console.log("New Bet :: " + JSON.stringify(newPlaybet));
@@ -1694,6 +1726,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
           amount: playbet.amount,
           usernumber: playbet.playnumber,
           winningamount: playbet.winningamount,
+          currency: user.country._id.toString(),
         });
       }
 
@@ -1738,7 +1771,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
     withdrawalbalance: withdrawalBalance,
     gamebalance: gameBalance,
     totalbalance: totalBalance,
-    usercurrency: "INR",
+    usercurrency: user.country._id.toString(),
     activityType: "Bet",
     userId: req.user.userId,
     paybetId: newPlaybet._id,
@@ -1752,8 +1785,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
   res.status(201).json({
     success: true,
     message: "Playbet entry added successfully",
-    playbet: newPlaybet,
-    appBalanceSheet,
   });
 });
 

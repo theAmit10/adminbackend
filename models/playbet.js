@@ -25,6 +25,11 @@ const schema = new mongoose.Schema({
     type: String,
     required: [true, "Please enter userid"],
   },
+  currency: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Currency",
+    required: [true, "Please provide currency id"],
+  },
   lotdate: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "LotDate",
