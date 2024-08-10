@@ -20,7 +20,6 @@ config({
 
 const app = express();
 
-// Using Cors
 app.use(
   cors({
     credentials: true,
@@ -28,6 +27,10 @@ app.use(
     origin: [process.env.FRONTEND_URL_1, process.env.FRONTEND_URL_2],
   })
 );
+
+
+
+
 
 // Use Middleware
 app.use(express.json());
@@ -46,6 +49,9 @@ app.use("/api/v1/result", result);
 
 // Using error middleware in the last
 app.use(errorMiddleware);
+
+
+
 
 connectDb();
 

@@ -18,10 +18,15 @@ const sendToken = (user, res, message, statusCode) => {
     }); 
 };
 
+// const cookieOptions = {
+//     secure: process.env.NODE_ENV === "Development" ? false : true,
+//     httponly: process.env.NODE_ENV === "Development" ? false : true, 
+//     sameSite: process.env.NODE_ENV === "Development" ? false : "none",
+// }
 const cookieOptions = {
-    secure: process.env.NODE_ENV === "Development" ? false : true,
-    httponly: process.env.NODE_ENV === "Development" ? false : true, 
-    sameSite: process.env.NODE_ENV === "Development" ? false : "none",
+    secure: true,
+    httponly: true, 
+    sameSite:  "none",
 }
 
 // FOR MOBILE APPLICATION
