@@ -15,7 +15,6 @@ const DepositPayment = require("../models/depositmodel.js");
 const Transaction = require("../models/Transaction.js");
 const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 const AppBalanceSheet = require("../models/AppBalanceSheet.js");
-const cookieOptions = require("../utils/features.js");
 
 
 const login = asyncError(async (req, res, next) => {
@@ -187,7 +186,6 @@ const updateWalletTwo = asyncError(async (req, res, next) => {
 const logout = asyncError(async (req, res, next) => {
   res.status(200)
   .cookie("token","",{
-    ...cookieOptions,
     expires: new Date(Date.now()),
   })
   .json({

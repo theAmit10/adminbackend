@@ -8,7 +8,6 @@ const sendToken = (user, res, message, statusCode) => {
 
     res.status(statusCode)
     .cookie("token", token, {
-        ...cookieOptions,
         expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
     })
     .json({
@@ -18,11 +17,11 @@ const sendToken = (user, res, message, statusCode) => {
     }); 
 };
 
-const cookieOptions = {
-    secure: process.env.NODE_ENV === "Development" ? false : true,
-    httponly: process.env.NODE_ENV === "Development" ? false : true, 
-    sameSite: process.env.NODE_ENV === "Development" ? false : "none",
-}
+// const cookieOptions = {
+//     secure: process.env.NODE_ENV === "Development" ? false : true,
+//     httponly: process.env.NODE_ENV === "Development" ? false : true, 
+//     sameSite: process.env.NODE_ENV === "Development" ? false : "none",
+// }
 
 // FOR MOBILE APPLICATION
 // const sendToken = (user, res, message, statusCode) => {
@@ -63,5 +62,4 @@ module.exports = {
     sendToken,
     getDataUri,
     sendEmail,
-    cookieOptions,
 };
