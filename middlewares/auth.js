@@ -3,14 +3,20 @@ const ErrorHandler = require("../utils/error.js");
 const { asyncError } = require("./error.js");
 const  User  = require("../models/user.js");
 
-
 const isAuthenticated = asyncError(async (req, res, next) => {
-  const bearerHeader = req.headers["authorization"];
-  const token = bearerHeader && bearerHeader.split(" ")[1];
 
+
+  const bearerHeader = req.headers["authorization"];
+  let token = bearerHeader && bearerHeader.split(" ")[1];
   console.log("Bearer Header :: "+bearerHeader)
 
-  if (token == null) return next(new ErrorHandler("Invalid Token", 401));
+  // NOW CHECKING FOR COOKIES
+  console.log(req.cookies);
+
+  token = req.cookies.token;
+  console.log("Token from cookie :: "+token)
+  
+  if (!token) return next(new ErrorHandler("Invalid Token, Please login", 401));
 
   req.token = token;
   const decodedData = jwt.verify(token, process.env.JWT_SECRET);
@@ -19,23 +25,22 @@ const isAuthenticated = asyncError(async (req, res, next) => {
   console.log("User Data :: " + JSON.stringify(decodedData));
 
   const user = await User.findById(decodedData._id);
-
-  if(!user) return next(new ErrorHandler("Token Expired, please login Again :: "+JSON.stringify(decodedData), 401));
+  if(!user) return next(new ErrorHandler("Token Expired, please login Again :: ", 401));
 
   req.user = user;
 
   next();
 });
 
+// FOR MOBILE APPLICATION
 // const isAuthenticated = asyncError(async (req, res, next) => {
 //   const bearerHeader = req.headers["authorization"];
-
-//   if (!bearerHeader) return next(new ErrorHandler("Invalid Token", 401));
+//   const token = bearerHeader && bearerHeader.split(" ")[1];
 
 //   console.log("Bearer Header :: "+bearerHeader)
 
-//   const bearer = bearerHeader.split(" ");
-//   const token = bearer[1];
+//   if (token == null) return next(new ErrorHandler("Invalid Token", 401));
+
 //   req.token = token;
 //   const decodedData = jwt.verify(token, process.env.JWT_SECRET);
 //   // const decodedData = jwt.verify(req.token, process.env.JWT_SECRET);
@@ -43,8 +48,7 @@ const isAuthenticated = asyncError(async (req, res, next) => {
 //   console.log("User Data :: " + JSON.stringify(decodedData));
 
 //   const user = await User.findById(decodedData._id);
-
-//   if(!user) return next(new ErrorHandler("Token Expired, please login Again :: "+JSON.stringify(decodedData), 401));
+//   if(!user) return next(new ErrorHandler("Token Expired, please login Again :: ", 401));
 
 //   req.user = user;
 

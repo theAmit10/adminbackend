@@ -12,6 +12,7 @@ const LotTime = require("./models/lottime.js"); // Adjust the path to your LotTi
 const LotDate = require("./models/lotdate.js"); // Adjust the path to your LotDate model
 const Playzone = require("./models/playapp.js"); // Adjust the path to your Playzone model
 const Result = require("./models/result.js");
+const cookieParser = require("cookie-parser")
 
 config({
   path: "./data/config.env",
@@ -30,13 +31,14 @@ app.use(
 
 // Use Middleware
 app.use(express.json());
+app.use(cookieParser())
 
 // for getting image
 app.use(express.static("public"));
 
 // Handeling Routes
 app.get("/", (req, res, next) => {
-  res.send("Namaste Codethenic");
+  res.send("TheLionWorld");
 });
 
 app.use("/api/v1/user", user);

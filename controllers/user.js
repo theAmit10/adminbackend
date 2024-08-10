@@ -15,52 +15,8 @@ const DepositPayment = require("../models/depositmodel.js");
 const Transaction = require("../models/Transaction.js");
 const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 const AppBalanceSheet = require("../models/AppBalanceSheet.js");
+const cookieOptions = require("../utils/features.js");
 
-// const login = asyncError(async (req, res, next) => {
-//   const { email, password } = req.body;
-
-//   if (!password) return next(new ErrorHandler("Please enter password", 400));
-//   if (!email) return next(new ErrorHandler("Please enter email", 400));
-
-//   const user = await User.findOne({ email }).select("+password");
-
-//   if (!user)
-//     return next(new ErrorHandler("Not Registered, create an account", 400));
-
-//   const isMatched = await user.comparePassword(password);
-
-//   if (!isMatched) {
-//     return next(new ErrorHandler("Incorrect Email or Password", 400));
-//   }
-
-//   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
-// });
-// const login = asyncError(async (req, res, next) => {
-//   const { email, password } = req.body;
-
-//   // Trim email to remove any leading/trailing whitespace
-//   const trimmedEmail = email.trim();
-
-//   if (!password) return next(new ErrorHandler("Please enter password", 400));
-//   if (!trimmedEmail) return next(new ErrorHandler("Please enter email", 400));
-
-//   console.log("Login attempt with email:", trimmedEmail); // Debugging line
-
-//   const user = await User.findOne({ email: trimmedEmail }).select("+password");
-
-//   if (!user) {
-//     console.log("User not found with email:", trimmedEmail); // Debugging line
-//     return next(new ErrorHandler("Not Registered, create an account", 400));
-//   }
-
-//   const isMatched = await user.comparePassword(password);
-
-//   if (!isMatched) {
-//     return next(new ErrorHandler("Incorrect Email or Password", 400));
-//   }
-
-//   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
-// });
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -92,48 +48,6 @@ const login = asyncError(async (req, res, next) => {
   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
 });
 
-// const register = asyncError(async (req, res, next) => {
-//   const { name, email, password, devicetoken, role, country } = req.body;
-
-//   let userCount = await User.countDocuments();
-
-//   let userId = 1000 + userCount;
-//   let userExists = true;
-
-//   // Loop until a unique userId is found
-//   while (userExists) {
-//     let user = await User.findOne({ contact: userId });
-//     if (!user) {
-//       userExists = false;
-//     } else {
-//       userId++; // Increment userId
-//     }
-//   }
-
-//   let user = await User.findOne({ email });
-
-//   if (user) return next(new ErrorHandler("User Already exist", 400));
-
-//   const contact = userId;
-
-//   user = await User.create({
-//     name,
-//     email,
-//     password,
-//     userId, // Add userId to the user object
-//     contact,
-//     devicetoken,
-//     role,
-//     country
-//   });
-
-//   // sendToken(user, res, `Registered Successfully`, 201);
-
-//   res.status(201).json({
-//     success: true,
-//     message: "Registered Successfully",
-//   });
-// });
 
 const register = asyncError(async (req, res, next) => {
   const { name, email, password, devicetoken, role, country } = req.body;
@@ -194,7 +108,7 @@ const getUserDetails = asyncError(async (req, res, next) => {
   const user = await User.findById(req.params.id)
     .populate("walletOne")
     .populate("walletTwo")
-    .populate("Currency");
+    .populate("country");
 
   if (!user) return next(new ErrorHandler("User not found", 404));
 
@@ -271,7 +185,12 @@ const updateWalletTwo = asyncError(async (req, res, next) => {
 });
 
 const logout = asyncError(async (req, res, next) => {
-  res.status(200).json({
+  res.status(200)
+  .cookie("token","",{
+    ...cookieOptions,
+    expires: new Date(Date.now()),
+  })
+  .json({
     success: true,
     message: "Logout successfully",
   });
