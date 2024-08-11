@@ -111,12 +111,20 @@ schema.methods.comparePassword = async function (enteredPassword) {
 
 
 
-schema.methods.generateToken = function () {
-  // Set expiration time to a very large value (e.g., 10 years from now)
-  const expirationTime = Math.floor(Date.now() / 1000) + (10 * 365 * 24 * 60 * 60); // 10 years in seconds
+// schema.methods.generateToken = function () {
+//   // Set expiration time to a very large value (e.g., 10 years from now)
+//   const expirationTime = Math.floor(Date.now() / 1000) + (10 * 365 * 24 * 60 * 60); // 10 years in seconds
 
-  // Generate the token with no expiration
-  return jwt.sign({ _id: this._id, exp: expirationTime }, process.env.JWT_SECRET);
+//   // Generate the token with no expiration
+//   return jwt.sign({ _id: this._id, exp: expirationTime }, process.env.JWT_SECRET);
+// };
+
+schema.methods.generateToken = function () {
+  // Set expiration time to 1 hour from now
+  const expirationTime = Math.floor(Date.now() / 1000) + (60 * 60); // 1 hour in seconds
+
+  // Generate the token
+  return jwt.sign({ _id: this._id }, process.env.JWT_SECRET, { expiresIn: expirationTime });
 };
 
 

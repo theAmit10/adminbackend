@@ -3,20 +3,32 @@ const  {createTransport}  = require("nodemailer");
 
 const sendToken = (user, res, message, statusCode) => {
     const token = user.generateToken();
+    res.cookie('token', token, { httpOnly: true });
+    res.status(statusCode).json({
+      success: true,
+      message,
+      token,
+      user
+    });
+  };
+  
 
-    // console.log("TOKEN :: " + token)
+// const sendToken = (user, res, message, statusCode) => {
+//     const token = user.generateToken();
 
-    res.status(statusCode)
-    .cookie("token", token, {
-        ...cookieOptions,
-        expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-    })
-    .json({
-        success: true,
-        message: message,
-        token,
-    }); 
-};
+//     // console.log("TOKEN :: " + token)
+
+//     res.status(statusCode)
+//     .cookie("token", token, {
+//         ...cookieOptions,
+//         expires: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+//     })
+//     .json({
+//         success: true,
+//         message: message,
+//         token,
+//     }); 
+// };
 
 // const cookieOptions = {
 //     secure: process.env.NODE_ENV === "Development" ? false : true,
