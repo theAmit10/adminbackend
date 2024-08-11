@@ -20,13 +20,7 @@ config({
 
 const app = express();
 
-app.use(
-  cors({
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    origin: [process.env.FRONTEND_URL_1, process.env.FRONTEND_URL_2],
-  })
-);
+
 
 
 
@@ -35,6 +29,13 @@ app.use(
 // Use Middleware
 app.use(express.json());
 app.use(cookieParser())
+app.use(
+  cors({
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: [process.env.FRONTEND_URL_1, process.env.FRONTEND_URL_2],
+  })
+);
 
 // for getting image
 app.use(express.static("public"));
