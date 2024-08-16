@@ -59,65 +59,137 @@ const getAllResult = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllResultsByLocationWithTimes = asyncError(async (req, res, next) => {
+//   const { locationid } = req.query;
+
+//   // Fetch all results and populate relevant fields
+//   let results = await Result.find({})
+//     .populate("lotdate")
+//     .populate("lottime")
+//     .populate("lotlocation")
+//     .sort({ createdAt: -1 });
+
+//   // Filter results by location ID if provided
+//   if (locationid) {
+//     results = results.filter(
+//       (item) => item.lotlocation._id.toString() === locationid
+//     );
+//   }
+
+//   // Create an object to group results by lotdate
+//   const groupedResults = {};
+
+//   results.forEach((item) => {
+//     const lotdateId = item.lotdate._id.toString();
+
+//     // Initialize the lotdate group if it doesn't exist
+//     if (!groupedResults[lotdateId]) {
+//       groupedResults[lotdateId] = {
+//         ...item.lotdate.toObject(),
+//         times: [],
+//       };
+//     }
+
+//     // Add the lottime and the result to the times array
+//     const lottimeObj = {
+//       _id: item.lottime._id,
+//       lottime: item.lottime.lottime,
+//       results: [],
+//     };
+
+//     // Find if lottime already exists in times array
+//     const existingLottime = groupedResults[lotdateId].times.find(
+//       (t) => t._id.toString() === item.lottime._id.toString()
+//     );
+
+//     if (existingLottime) {
+//       existingLottime.results.push(item.toObject());
+//     } else {
+//       lottimeObj.results.push(item.toObject());
+//       groupedResults[lotdateId].times.push(lottimeObj);
+//     }
+//   });
+
+//   // Convert the grouped results object into an array
+//   const finalResults = Object.values(groupedResults);
+
+//   res.status(200).json({
+//     success: true,
+//     results: finalResults,
+//   });
+// });
+
 const getAllResultsByLocationWithTimes = asyncError(async (req, res, next) => {
-  const { locationid } = req.query;
+  const { locationid } = req.query; // Extract the location ID from the query parameters
 
-  // Fetch all results and populate relevant fields
+  // Fetch all results from the database and populate the related fields
   let results = await Result.find({})
-    .populate("lotdate")
-    .populate("lottime")
-    .populate("lotlocation")
-    .sort({ createdAt: -1 });
+    .populate("lotdate") // Populate the lotdate field with its full document
+    .populate("lottime") // Populate the lottime field with its full document
+    .populate("lotlocation") // Populate the lotlocation field with its full document
+    .sort({ createdAt: -1 }); // Sort results by creation date in descending order
 
-  // Filter results by location ID if provided
+  // If a location ID is provided, filter results by that location ID
   if (locationid) {
     results = results.filter(
       (item) => item.lotlocation._id.toString() === locationid
     );
   }
 
-  // Create an object to group results by lotdate
+  // Initialize an empty object to group results by lottime
   const groupedResults = {};
 
+  // Iterate through each result to group them by lottime and lotdate
   results.forEach((item) => {
-    const lotdateId = item.lotdate._id.toString();
+    const lottimeId = item.lottime._id.toString(); // Convert the lottime ID to a string for easier comparison
 
-    // Initialize the lotdate group if it doesn't exist
-    if (!groupedResults[lotdateId]) {
-      groupedResults[lotdateId] = {
-        ...item.lotdate.toObject(),
-        times: [],
+    // Check if the lottime group exists in groupedResults; if not, create it
+    if (!groupedResults[lottimeId]) {
+      groupedResults[lottimeId] = {
+        _id: lottimeId, // Store the lottime ID
+        lottime: item.lottime.toObject(), // Store the populated lottime object
+        dates: [], // Initialize an empty array to hold the lotdates for this lottime
+        createdAt: item.createdAt, // Store the creation date of the result
       };
     }
 
-    // Add the lottime and the result to the times array
-    const lottimeObj = {
-      _id: item.lottime._id,
-      lottime: item.lottime.lottime,
-      results: [],
-    };
-
-    // Find if lottime already exists in times array
-    const existingLottime = groupedResults[lotdateId].times.find(
-      (t) => t._id.toString() === item.lottime._id.toString()
+    // Check if the lotdate already exists within the current lottime group
+    let dateGroup = groupedResults[lottimeId].dates.find(
+      (date) => date.lotdate._id.toString() === item.lotdate._id.toString()
     );
 
-    if (existingLottime) {
-      existingLottime.results.push(item.toObject());
-    } else {
-      lottimeObj.results.push(item.toObject());
-      groupedResults[lotdateId].times.push(lottimeObj);
+    // If the lotdate group doesn't exist, create it
+    if (!dateGroup) {
+      dateGroup = {
+        lotdate: item.lotdate.toObject(), // Store the populated lotdate object
+        lotlocation: item.lotlocation.toObject(), // Store the populated lotlocation object
+        results: [], // Initialize an empty array to hold the results for this lotdate
+        createdAt: item.createdAt, // Store the creation date of the result
+      };
+      groupedResults[lottimeId].dates.push(dateGroup); // Add the new date group to the lottime's dates array
     }
+
+    // Add the current result to the results array within the date group
+    dateGroup.results.push({
+      resultNumber: item.resultNumber, // Store the result number
+      lotdate: item.lotdate.toObject(), // Store the populated lotdate object
+      lottime: item.lottime.toObject(), // Store the populated lottime object
+      lotlocation: item.lotlocation.toObject(), // Store the populated lotlocation object
+      nextresulttime: item.nextresulttime, // Store the next result time
+      createdAt: item.createdAt, // Store the creation date of the result
+    });
   });
 
-  // Convert the grouped results object into an array
+  // Convert the groupedResults object into an array of lottimes with nested lotdates and results
   const finalResults = Object.values(groupedResults);
 
+  // Send the grouped results as a JSON response with a success status
   res.status(200).json({
     success: true,
-    results: finalResults,
+    results: finalResults, // Send the final grouped results array
   });
 });
+
 
 
 
@@ -442,7 +514,7 @@ const createResult = asyncError(async (req, res, next) => {
     usercurrency: "INR",
     activityType: "Winning",
     userId: req.user.userId,
-    paybetId: playzone._id,
+    payzoneId: playzone._id,
     paymentProcessType: "Credit",
   });
 

@@ -58,7 +58,8 @@ const {
   deleteCurrency,
   getAllLotLocationWithTimes,
   deletePlayzone,
-  getAppBalanceSheet
+  getAppBalanceSheet,
+  getAllResultsByLocationWithTimes
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -74,7 +75,8 @@ router.route("/single/:id").get(isAuthenticated, getResultDetails).put(isAuthent
 router.post("/createresult", isAuthenticated, createResult);
 router.get("/searchresult", isAuthenticated, getAllResultAccordingToDateTimeLocation);
 router.get("/allresultlocation", isAuthenticated, getAllResultAccordingToLocation);
-router.get("/allresultwithtime", isAuthenticated, getAllResultAccordingToDateTimeLocation);
+router.get("/allresultwithtime", isAuthenticated, getAllResultsByLocationWithTimes);
+// router.get("/allresultwithtime", isAuthenticated, getAllResultAccordingToDateTimeLocation);
 router.get("/nextresult", isAuthenticated, getNextResult);
 router.delete("/removeresult/:id", isAuthenticated, deleteResult);
 
