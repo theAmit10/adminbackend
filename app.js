@@ -29,6 +29,8 @@ const app = express();
 // Use Middleware
 app.use(express.json());
 app.use(cookieParser())
+
+
 app.use(
   cors({
     credentials: true,
@@ -184,95 +186,6 @@ cron.schedule("0 0 * * *", async () => {
     }
   });
 
-// cron.schedule("0 0 * * *", async () => {
-//   console.log("Running scheduled task to add LotDates and Playzones");
-//   try {
-//     // Fetch all locations with automation set to 'automatic'
-//     const locations = await LotLocation.find({ automation: "automatic" });
-
-//     console.log("AUTOMATIC LOCATION COUNT :: " + locations.length);
-
-//     for (const location of locations) {
-//       // Fetch times for each location
-//       const times = await LotTime.find({ lotlocation: location._id });
-
-//       for (const time of times) {
-//         // Create a LotDate entry for each time
-//         const lotdate = getCurrentDate();
-
-//         // GETTING DATE
-
-//         const lottimeId = time._id;
-//         const lotlocationId = location._id;
-
-//         let lotdates = await LotDate.find({})
-//           .populate("lottime")
-//           .sort({ "lottime.lotdate": -1 }); // Sort based on lotdate in descending order
-
-//         if (lottimeId && lotlocationId) {
-//           // Filter lotdates array based on both lottimeId and lotlocationId
-//           lotdates = lotdates.filter(
-//             (item) =>
-//               item.lottime._id.toString() === lottimeId._id.toString() &&
-//               item.lottime.lotlocation.toString() ===
-//                 lotlocationId._id.toString()
-//           );
-//         } else if (lottimeId) {
-//           // Filter lotdates array based on lottimeId
-//           lotdates = lotdates.filter(
-//             (item) => item.lottime._id.toString() === lottimeId._id.toString()
-//           );
-//         } else if (lotlocationId) {
-//           // Filter lotdates array based on lotlocationId
-//           lotdates = lotdates.filter(
-//             (item) =>
-//               item.lottime.lotlocation.toString() ===
-//               lotlocationId._id.toString()
-//           );
-//         }
-
-//         // END GETTING DATE
-
-//         console.log("GETTING DATES OF THAT LOCATION");
-//         console.log("Dates :: ", lotdates);
-
-//         for (const date of lotdates) {
-//           console.log("mine date :: ", date);
-//           if (date.lotdate === lotdate) {
-//             console.log("FOUND DATE :: " + date.lotdate);
-
-//             const newLotDate = await LotDate.create({
-//               lotdate,
-//               lottime: time._id,
-//             });
-
-//             console.log(
-//               `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
-//             );
-
-//             // Create Playzone entry for each LotDate
-//             const playnumbers = createPlaynumbersArray(location.maximumNumber);
-//             const playzoneData = {
-//               lotlocation: location._id,
-//               lottime: time._id,
-//               lotdate: newLotDate._id,
-//               playnumbers,
-//             };
-//             const newPlayzone = await Playzone.create(playzoneData);
-
-//             console.log(
-//               `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
-//             );
-//           }
-//         }
-//       }
-//     }
-//   } catch (error) {
-//     console.error("Error running scheduled task:", error);
-//   }
-// });
-
-// schedule the task to run in every half an hour
 
 cron.schedule("*/30 * * * *", async () => {
   // Runs daily at midnight

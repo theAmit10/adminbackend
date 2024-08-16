@@ -59,6 +59,68 @@ const getAllResult = asyncError(async (req, res, next) => {
   });
 });
 
+const getAllResultsByLocationWithTimes = asyncError(async (req, res, next) => {
+  const { locationid } = req.query;
+
+  // Fetch all results and populate relevant fields
+  let results = await Result.find({})
+    .populate("lotdate")
+    .populate("lottime")
+    .populate("lotlocation")
+    .sort({ createdAt: -1 });
+
+  // Filter results by location ID if provided
+  if (locationid) {
+    results = results.filter(
+      (item) => item.lotlocation._id.toString() === locationid
+    );
+  }
+
+  // Create an object to group results by lotdate
+  const groupedResults = {};
+
+  results.forEach((item) => {
+    const lotdateId = item.lotdate._id.toString();
+
+    // Initialize the lotdate group if it doesn't exist
+    if (!groupedResults[lotdateId]) {
+      groupedResults[lotdateId] = {
+        ...item.lotdate.toObject(),
+        times: [],
+      };
+    }
+
+    // Add the lottime and the result to the times array
+    const lottimeObj = {
+      _id: item.lottime._id,
+      lottime: item.lottime.lottime,
+      results: [],
+    };
+
+    // Find if lottime already exists in times array
+    const existingLottime = groupedResults[lotdateId].times.find(
+      (t) => t._id.toString() === item.lottime._id.toString()
+    );
+
+    if (existingLottime) {
+      existingLottime.results.push(item.toObject());
+    } else {
+      lottimeObj.results.push(item.toObject());
+      groupedResults[lotdateId].times.push(lottimeObj);
+    }
+  });
+
+  // Convert the grouped results object into an array
+  const finalResults = Object.values(groupedResults);
+
+  res.status(200).json({
+    success: true,
+    results: finalResults,
+  });
+});
+
+
+
 const getAllResultAccordingToLocation = asyncError(async (req, res, next) => {
   const { locationid } = req.query;
 
@@ -463,12 +525,51 @@ const getAllLotDate = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllLotDateAccordindLocationAndTime = asyncError(
+//   async (req, res, next) => {
+//     const { lottimeId, lotlocationId } = req.query;
+
+//     let lotdates = await LotDate.find({})
+//       .populate("lottime")
+//       .sort({ "lottime.lotdate": -1 }); // Sort based on lotdate in descending order
+
+//     if (lottimeId && lotlocationId) {
+//       // Filter lotdates array based on both lottimeId and lotlocationId
+//       lotdates = lotdates.filter(
+//         (item) =>
+//           item.lottime._id.toString() === lottimeId &&
+//           item.lottime.lotlocation.toString() === lotlocationId
+//       );
+//     } else if (lottimeId) {
+//       // Filter lotdates array based on lottimeId
+//       lotdates = lotdates.filter(
+//         (item) => item.lottime._id.toString() === lottimeId
+//       );
+//     } else if (lotlocationId) {
+//       // Filter lotdates array based on lotlocationId
+//       lotdates = lotdates.filter(
+//         (item) => item.lottime.lotlocation.toString() === lotlocationId
+//       );
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       lotdates,
+//     });
+//   }
+// );
+
 const getAllLotDateAccordindLocationAndTime = asyncError(
   async (req, res, next) => {
     const { lottimeId, lotlocationId } = req.query;
 
     let lotdates = await LotDate.find({})
-      .populate("lottime")
+      .populate({
+        path: "lottime",
+        populate: {
+          path: "lotlocation",
+        },
+      })
       .sort({ "lottime.lotdate": -1 }); // Sort based on lotdate in descending order
 
     if (lottimeId && lotlocationId) {
@@ -476,7 +577,7 @@ const getAllLotDateAccordindLocationAndTime = asyncError(
       lotdates = lotdates.filter(
         (item) =>
           item.lottime._id.toString() === lottimeId &&
-          item.lottime.lotlocation.toString() === lotlocationId
+          item.lottime.lotlocation._id.toString() === lotlocationId
       );
     } else if (lottimeId) {
       // Filter lotdates array based on lottimeId
@@ -486,7 +587,7 @@ const getAllLotDateAccordindLocationAndTime = asyncError(
     } else if (lotlocationId) {
       // Filter lotdates array based on lotlocationId
       lotdates = lotdates.filter(
-        (item) => item.lottime.lotlocation.toString() === lotlocationId
+        (item) => item.lottime.lotlocation._id.toString() === lotlocationId
       );
     }
 
@@ -496,6 +597,7 @@ const getAllLotDateAccordindLocationAndTime = asyncError(
     });
   }
 );
+
 
 const deleteLotDate = asyncError(async (req, res, next) => {
   const lotdate = await LotDate.findById(req.params.id);
@@ -2407,6 +2509,7 @@ module.exports = {
   getAllLotLocationWithTimes,
   deletePlayzone,
   getAppBalanceSheet,
+  getAllResultsByLocationWithTimes
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;

@@ -74,6 +74,7 @@ router.route("/single/:id").get(isAuthenticated, getResultDetails).put(isAuthent
 router.post("/createresult", isAuthenticated, createResult);
 router.get("/searchresult", isAuthenticated, getAllResultAccordingToDateTimeLocation);
 router.get("/allresultlocation", isAuthenticated, getAllResultAccordingToLocation);
+router.get("/allresultwithtime", isAuthenticated, getAllResultAccordingToDateTimeLocation);
 router.get("/nextresult", isAuthenticated, getNextResult);
 router.delete("/removeresult/:id", isAuthenticated, deleteResult);
 
