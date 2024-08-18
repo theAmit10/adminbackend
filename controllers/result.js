@@ -190,6 +190,71 @@ const getAllResultsByLocationWithTimes = asyncError(async (req, res, next) => {
   });
 });
 
+const getAllResultsByLocationWithDates = asyncError(async (req, res, next) => {
+  const { locationid } = req.query; // Get the location ID from the request query parameters
+
+  // Fetch all results and populate the related fields (lotdate, lottime, lotlocation)
+  let results = await Result.find({})
+    .populate("lotdate")
+    .populate("lottime")
+    .populate("lotlocation")
+    .sort({ createdAt: -1 }); // Sort the results by creation date in descending order
+
+  // If a location ID is provided, filter results to only include those for the specified location
+  if (locationid) {
+    results = results.filter(
+      (item) => item.lotlocation._id.toString() === locationid
+    );
+  }
+
+  // Initialize an object to group results by lotdate
+  const groupedResults = {};
+
+  // Iterate over the results to group them by lotdate and then by lottime
+  results.forEach((item) => {
+    const lotdateId = item.lotdate._id.toString(); // Get the lotdate ID
+
+    // If the lotdate group doesn't exist, create it with an empty times array
+    if (!groupedResults[lotdateId]) {
+      groupedResults[lotdateId] = {
+        _id: item.lotdate._id, // Store the lotdate ID
+        lotdate: item.lotdate.lotdate, // Store the lotdate value
+        times: [], // Initialize an empty array for lottimes
+      };
+    }
+
+    // Prepare the lottime object with its corresponding results
+    const lottimeObj = {
+      _id: item.lottime._id, // Store the lottime ID
+      lottime: item.lottime.lottime, // Store the lottime value
+      results: [], // Initialize an empty array for results
+    };
+
+    // Check if the lottime already exists in the times array for this lotdate
+    const existingLottime = groupedResults[lotdateId].times.find(
+      (t) => t._id.toString() === item.lottime._id.toString()
+    );
+
+    if (existingLottime) {
+      // If the lottime exists, add the current result to the existing lottime's results array
+      existingLottime.results.push(item.toObject());
+    } else {
+      // If the lottime doesn't exist, add the result to the new lottime object and push it to the times array
+      lottimeObj.results.push(item.toObject());
+      groupedResults[lotdateId].times.push(lottimeObj);
+    }
+  });
+
+  // Convert the grouped results object into an array for easy consumption in the response
+  const finalResults = Object.values(groupedResults);
+
+  res.status(200).json({
+    success: true,
+    results: finalResults, // Send the grouped and structured results back in the response
+  });
+});
+
+
 
 
 
@@ -2581,7 +2646,8 @@ module.exports = {
   getAllLotLocationWithTimes,
   deletePlayzone,
   getAppBalanceSheet,
-  getAllResultsByLocationWithTimes
+  getAllResultsByLocationWithTimes,
+  getAllResultsByLocationWithDates
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;
