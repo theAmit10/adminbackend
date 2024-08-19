@@ -1194,7 +1194,7 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
         amount;
 
       // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
-      const totalBalance = withdrawalBalance + gameBalance;
+      const totalBalance = parseFloat(withdrawalBalance) + parseFloat(gameBalance);
 
       // Create a new AppBalanceSheet document
       const appBalanceSheet = new AppBalanceSheet({
