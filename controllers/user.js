@@ -1525,14 +1525,14 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
 
-    // Update wallet
-    const updatedWallet = await WalletOne.findByIdAndUpdate(
-      walletId,
-      { balance: remainingWalletBalance },
-      { new: true }
-    );
+    // // Update wallet
+    // const updatedWallet = await WalletOne.findByIdAndUpdate(
+    //   walletId,
+    //   { balance: remainingWalletBalance },
+    //   { new: true }
+    // );
 
-    console.log("User's walletOne updated successfully :: " + updatedWallet);
+    // console.log("User's walletOne updated successfully :: " + updatedWallet);
 
     // FOR BALANCE SHEET
 
@@ -1553,6 +1553,15 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
     const totalBalance = withdrawalBalance + gameBalance;
+
+    // Update wallet
+    const updatedWallet = await WalletOne.findByIdAndUpdate(
+      walletId,
+      { balance: remainingWalletBalance },
+      { new: true }
+    );
+
+    console.log("User's walletOne updated successfully :: " + updatedWallet);
 
     // Create a new AppBalanceSheet document
     const appBalanceSheet = new AppBalanceSheet({

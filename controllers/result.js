@@ -2582,13 +2582,42 @@ const getAppBalanceSheet = asyncError(async (req, res, next) => {
     .populate("paybetId")
     .populate("payzoneId")
     .populate("transactionId")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .lean(); // Using lean for efficient queries and manual population
+
+  // Manually populate usercurrency if it's an ObjectId
+  for (const sheet of balancesheet) {
+    if (mongoose.Types.ObjectId.isValid(sheet.usercurrency)) {
+      const currency = await Currency.findById(sheet.usercurrency);
+      sheet.usercurrency = currency; // Replace the ID with the populated object
+    }
+  }
 
   res.status(200).json({
     success: true,
     balancesheet,
   });
 });
+// const getAppBalanceSheet = asyncError(async (req, res, next) => {
+//   const balancesheet = await AppBalanceSheet.find()
+//     .populate("paybetId")
+//     .populate("payzoneId")
+//     .populate("transactionId")
+//     .sort({ createdAt: -1 });
+
+//      // Manually populate usercurrency if it's an ObjectId
+//   for (const sheet of balancesheet) {
+//     if (mongoose.Types.ObjectId.isValid(sheet.usercurrency)) {
+//       const currency = await Currency.findById(sheet.usercurrency);
+//       sheet.usercurrency = currency; // Replace the ID with the populated object
+//     }
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     balancesheet,
+//   });
+// });
 
 module.exports = {
   createCurrency,

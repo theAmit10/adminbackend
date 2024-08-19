@@ -153,7 +153,7 @@ router.get('/singleuser/playbets', isAuthenticated, getUserPlaybets);
 
 // FOR CURRECY
 // Create a new currency
-router.post('/addcurrency', isAuthenticated,singleUploadForCurrency, createCurrency);
+router.post('/addcurrency',singleUploadForCurrency, createCurrency);
 // Get all currencies
 router.get('/allcurrencies',  getAllCurrencies);
 // Update a currency
