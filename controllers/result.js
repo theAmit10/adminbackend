@@ -2258,13 +2258,13 @@ const addPlaybet = asyncError(async (req, res, next) => {
   console.log("Remaining amount after deduction :: " + remainingWalletBalance);
 
   // Update wallet
-  const updatedWallet = await WalletTwo.findByIdAndUpdate(
-    walletId,
-    { balance: remainingWalletBalance },
-    { new: true }
-  );
+  // const updatedWallet = await WalletTwo.findByIdAndUpdate(
+  //   walletId,
+  //   { balance: remainingWalletBalance },
+  //   { new: true }
+  // );
 
-  console.log("User's walletTwo updated successfully :: " + updatedWallet);
+  // console.log("User's walletTwo updated successfully :: " + updatedWallet);
 
   // Create a new Playbet document
   const newPlaybet = new Playbet({
@@ -2426,6 +2426,15 @@ const addPlaybet = asyncError(async (req, res, next) => {
   // Save the AppBalanceSheet document
   await appBalanceSheet.save();
   console.log("AppBalanceSheet Created Successfully");
+
+
+  const updatedWallet = await WalletTwo.findByIdAndUpdate(
+    walletId,
+    { balance: remainingWalletBalance },
+    { new: true }
+  );
+
+  console.log("User's walletTwo updated successfully :: " + updatedWallet);
 
   res.status(201).json({
     success: true,
