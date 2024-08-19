@@ -15,24 +15,8 @@ const schema = new mongoose.Schema({
     type: Number,
   },
   usercurrency: {
-    type: mongoose.Schema.Types.Mixed, // Use Mixed type to allow both ObjectId and String
-    required: [true, "Please provide currency"],
-    validate: {
-      validator: function(value) {
-        if (this.activityType === "Winning") {
-          return typeof value === "string";
-        } else {
-          return mongoose.Types.ObjectId.isValid(value);
-        }
-      },
-      message: function(props) {
-        if (this.activityType === "Winning") {
-          return "Please provide currency name";
-        } else {
-          return "Please provide currency ID";
-        }
-      }
-    }
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Currency",
   },
   activityType: {
     type: String,
@@ -142,3 +126,25 @@ module.exports = mongoose.model("AppBalanceSheet", schema);
 
 
 // module.exports = mongoose.model("AppBalanceSheet", schema);
+
+
+// usercurrency: {
+//   type: mongoose.Schema.Types.Mixed, // Use Mixed type to allow both ObjectId and String
+//   required: [true, "Please provide currency"],
+//   validate: {
+//     validator: function(value) {
+//       if (this.activityType === "Winning") {
+//         return typeof value === "string";
+//       } else {
+//         return mongoose.Types.ObjectId.isValid(value);
+//       }
+//     },
+//     message: function(props) {
+//       if (this.activityType === "Winning") {
+//         return "Please provide currency name";
+//       } else {
+//         return "Please provide currency ID";
+//       }
+//     }
+//   }
+// }

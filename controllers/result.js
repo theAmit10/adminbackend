@@ -440,55 +440,127 @@ const checkPlaynumberExists = (data, playnumberToCheck) => {
   );
 };
 
+
 // const createResult = asyncError(async (req, res, next) => {
 //   const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } =
 //     req.body;
 
-//     if (!resultNumber) return next(new ErrorHandler("Result number not found", 404));
-//     if (!lotdate) return next(new ErrorHandler("Date not found", 404));
-//     if (!lottime) return next(new ErrorHandler("Time not found", 404));
-//     if (!lotlocation) return next(new ErrorHandler("Location not found", 404));
-//     // if (!nextresulttime) return next(new ErrorHandler("Next Result not found", 404));
+//   if (!resultNumber)
+//     return next(new ErrorHandler("Result number not found", 404));
+//   if (!lotdate) return next(new ErrorHandler("Date not found", 404));
+//   if (!lottime) return next(new ErrorHandler("Time not found", 404));
+//   if (!lotlocation) return next(new ErrorHandler("Location not found", 404));
 
-//     // Find the Playzone entry by lotlocation, lottime, and lotdate
-//     const playzone = await Playzone.findOne({
-//       lotlocation,
-//       lottime,
-//       lotdate,
+//   // Find the Playzone entry by lotlocation, lottime, and lotdate
+//   const playzone = await Playzone.findOne({
+//     lotlocation,
+//     lottime,
+//     lotdate,
+//   });
+
+//   if (!playzone) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "Playzone entry not found",
 //     });
+//   }
 
-//     if (!playzone) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Playzone entry not found",
-//       });
+//   if (!checkPlaynumberExists(playzone, resultNumber)) {
+//     return next(new ErrorHandler("Result number not in range", 404));
+//   }
+
+//   // Find the playnumber in the playzone
+//   const playnumberEntry = playzone.playnumbers.find(
+//     (pn) => pn.playnumber === parseInt(resultNumber, 10)
+//   );
+
+//   if (!playnumberEntry) {
+//     return next(new ErrorHandler("Playnumber entry not found", 404));
+//   }
+
+//   console.log("now getting users");
+//   // Update walletOne for each user in the playnumber's users list
+//   for (const userz of playnumberEntry.users) {
+//     const userId = userz.userId;
+//     const amount = parseInt(userz.winningamount);
+
+//     const user = await User.findOne({ userId });
+
+//     if (!user) {
+//       return next(new ErrorHandler("User not found", 404));
 //     }
 
-//     console.log("Playzone :: "+playzone)
-//     if (!checkPlaynumberExists(playzone, resultNumber)) return next(new ErrorHandler("Result number not in range", 404));
+//     // FOR DEPOSITING MONEY IN USER WALLET ONE
 
-//     res.status(200).json({
-//       success: true,
-//       playzone,
-//     });
+//     const walletId = user.walletOne._id;
+//     const wallet = await WalletOne.findById(walletId);
+//     const totalBalanceAmount = parseFloat(wallet.balance);
+//     const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
 
-//   // await Result.create({
-//   //   resultNumber,
-//   //   lotdate,
-//   //   lottime,
-//   //   lotlocation,
-//   //   nextresulttime,
-//   // });
+//     // Update wallet
+//     await WalletOne.findByIdAndUpdate(
+//       walletId,
+//       { balance: remainingWalletBalance },
+//       { new: true }
+//     );
+//   }
 
-//   // res.status(200).json({
-//   //   success: true,
-//   //   message: "Result Created Successfully",
-//   // });
+//   // FOR BALANCE SHEET
+
+//   // Create AppBalanceSheet entry
+//   // Calculate gameBalance as the total sum of all walletTwo balances
+
+//   const walletTwoBalances = await WalletTwo.find({});
+//   const gameBalance = walletTwoBalances.reduce(
+//     (sum, wallet) => sum + wallet.balance,
+//     0
+//   );
+
+//   // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
+//   const walletOneBalances = await WalletOne.find({});
+//   const withdrawalBalance =
+//     walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
+//     playnumberEntry.distributiveamount;
+
+//   // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+//   const totalBalance = withdrawalBalance + gameBalance;
+
+//   // Create a new AppBalanceSheet document
+//   const appBalanceSheet = new AppBalanceSheet({
+//     amount: playnumberEntry.distributiveamount,
+//     withdrawalbalance: withdrawalBalance,
+//     gamebalance: gameBalance,
+//     totalbalance: totalBalance,
+//     usercurrency: "INR",
+//     activityType: "Winning",
+//     userId: req.user.userId,
+//     payzoneId: playzone._id,
+//     paymentProcessType: "Credit",
+//   });
+
+//   // Save the AppBalanceSheet document
+//   await appBalanceSheet.save();
+//   console.log("AppBalanceSheet Created Successfully");
+
+//   // END BALANCE SHEET
+
+//   // Create a result entry
+//   await Result.create({
+//     resultNumber,
+//     lotdate,
+//     lottime,
+//     lotlocation,
+//     nextresulttime,
+//   });
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Result Created and Wallets Updated Successfully",
+//   });
 // });
 
 const createResult = asyncError(async (req, res, next) => {
-  const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } =
-    req.body;
+  const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } = req.body;
 
   if (!resultNumber)
     return next(new ErrorHandler("Result number not found", 404));
@@ -570,13 +642,19 @@ const createResult = asyncError(async (req, res, next) => {
   // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
   const totalBalance = withdrawalBalance + gameBalance;
 
+  // Search for the "INR" countrycurrencysymbol in the Currency Collection
+  const currency = await Currency.findOne({ countrycurrencysymbol: "INR" });
+  if (!currency) {
+    return next(new ErrorHandler("Currency not found", 404));
+  }
+
   // Create a new AppBalanceSheet document
   const appBalanceSheet = new AppBalanceSheet({
     amount: playnumberEntry.distributiveamount,
     withdrawalbalance: withdrawalBalance,
     gamebalance: gameBalance,
     totalbalance: totalBalance,
-    usercurrency: "INR",
+    usercurrency: currency._id,  // Use the _id of the found currency
     activityType: "Winning",
     userId: req.user.userId,
     payzoneId: playzone._id,
@@ -603,6 +681,7 @@ const createResult = asyncError(async (req, res, next) => {
     message: "Result Created and Wallets Updated Successfully",
   });
 });
+
 
 const updateResult = asyncError(async (req, res, next) => {
   const { resultNumber, nextresulttime } = req.body;

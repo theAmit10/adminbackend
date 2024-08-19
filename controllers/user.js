@@ -1170,8 +1170,8 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
       }
 
       // Perform the transfer, ensuring balance is treated as a number
-      walletOne.balance = Number(walletOne.balance) - amount;
-      walletTwo.balance = Number(walletTwo.balance) + amount;
+      walletOne.balance = Number(walletOne.balance) - parseFloat(amount);
+      walletTwo.balance = Number(walletTwo.balance) + parseFloat(amount);
 
       // // Save the updated wallets
       // await walletOne.save();
@@ -1232,6 +1232,8 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
     }
   }
 );
+
+
 
 // ##########################################
 // DEPOSIT
