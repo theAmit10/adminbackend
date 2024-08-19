@@ -17,7 +17,6 @@ const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 const AppBalanceSheet = require("../models/AppBalanceSheet.js");
 const cookieOptions = require("../utils/features.js");
 
-
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -47,7 +46,6 @@ const login = asyncError(async (req, res, next) => {
 
   sendToken(user, res, `Welcome Back, ${user.name}`, 200);
 });
-
 
 const register = asyncError(async (req, res, next) => {
   const { name, email, password, devicetoken, role, country } = req.body;
@@ -185,15 +183,16 @@ const updateWalletTwo = asyncError(async (req, res, next) => {
 });
 
 const logout = asyncError(async (req, res, next) => {
-  res.status(200)
-  .cookie("token","",{
-    ...cookieOptions,
-    expires: new Date(Date.now()),
-  })
-  .json({
-    success: true,
-    message: "Logout successfully",
-  });
+  res
+    .status(200)
+    .cookie("token", "", {
+      ...cookieOptions,
+      expires: new Date(Date.now()),
+    })
+    .json({
+      success: true,
+      message: "Logout successfully",
+    });
 });
 
 const updateProfile = asyncError(async (req, res, next) => {
@@ -962,9 +961,8 @@ const getAllUserRegisterInLastOneDay = asyncError(async (req, res, next) => {
 });
 
 const getAllSubadmin = asyncError(async (req, res, next) => {
- 
   // Find users created within the last 24 hours
-  const users = await User.find({role: 'subadmin' })
+  const users = await User.find({ role: "subadmin" })
     .populate("walletOne")
     .populate("walletTwo")
     .populate("country")
@@ -1182,10 +1180,16 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
       // Create AppBalanceSheet entry
       // Calculate gameBalance as the total sum of all walletTwo balances  + totalAmount
 
+      // const walletTwoBalances = await WalletTwo.find({});
+      // const gameBalance =
+      //   walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
+      //   amount;
       const walletTwoBalances = await WalletTwo.find({});
       const gameBalance =
-        walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
-        amount;
+        walletTwoBalances.reduce(
+          (sum, wallet) => sum + parseFloat(wallet.balance),
+          0
+        ) + parseFloat(amount);
 
       // Calculate walletOneBalances as the total sum of all walletOne balances - totalAmount
       const walletOneBalances = await WalletOne.find({});
@@ -1194,7 +1198,8 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
         amount;
 
       // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
-      const totalBalance = parseFloat(withdrawalBalance) + parseFloat(gameBalance);
+      const totalBalance =
+        parseFloat(withdrawalBalance) + parseFloat(gameBalance);
 
       // Create a new AppBalanceSheet document
       const appBalanceSheet = new AppBalanceSheet({
@@ -1232,8 +1237,6 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
     }
   }
 );
-
-
 
 // ##########################################
 // DEPOSIT
@@ -1460,9 +1463,11 @@ const getAllTransaction = asyncError(async (req, res, next) => {
 
 // Get all Deposit transactions
 const getAllDeposit = asyncError(async (req, res, next) => {
-  const deposits = await Transaction.find({ transactionType: "Deposit" }).populate("currency").sort({
-    createdAt: -1,
-  });
+  const deposits = await Transaction.find({ transactionType: "Deposit" })
+    .populate("currency")
+    .sort({
+      createdAt: -1,
+    });
 
   res.status(200).json({
     success: true,
@@ -1753,7 +1758,9 @@ const addWithdraw = asyncError(async (req, res, next) => {
 const getAllWithdrawals = asyncError(async (req, res, next) => {
   const withdrawals = await Transaction.find({
     transactionType: "Withdraw",
-  }).populate("currency").sort({ createdAt: -1 });
+  })
+    .populate("currency")
+    .sort({ createdAt: -1 });
 
   res.status(200).json({
     success: true,
@@ -1805,7 +1812,7 @@ module.exports = {
   getAllDeposit,
   getAllWithdrawals,
   transferAmountFromWalletOneToWalletTwo,
-  getAllSubadmin
+  getAllSubadmin,
 };
 
 // const { asyncError } = require("../middlewares/error.js");
