@@ -598,6 +598,8 @@ const createResult = asyncError(async (req, res, next) => {
   console.log("now getting users");
   // Update walletOne for each user in the playnumber's users list
   for (const userz of playnumberEntry.users) {
+    console.log("GETTING EACH USER")
+    console.log(userz)
     const userId = userz.userId;
     const amount = parseInt(userz.winningamount);
 
@@ -606,6 +608,9 @@ const createResult = asyncError(async (req, res, next) => {
     if (!user) {
       return next(new ErrorHandler("User not found", 404));
     }
+
+    console.log("SEARCHING FOR USER")
+    console.log(user)
 
     // FOR DEPOSITING MONEY IN USER WALLET ONE
 
@@ -2270,7 +2275,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
   const newPlaybet = new Playbet({
     playnumbers,
     username: req.user.name,
-    userid: userId,
+    userid: req.user.userId,
     lotdate,
     lottime,
     lotlocation,
@@ -2323,7 +2328,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
 
     if (playnumberIndex !== -1) {
       let userIndex = playzone.playnumbers[playnumberIndex].users.findIndex(
-        (user) => user.userId == userId
+        (user) => user.userId == req.user.userId
       );
       console.log("User index :: " + userIndex);
 
@@ -2336,7 +2341,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
       } else {
         // User does not exist, add new user
         playzone.playnumbers[playnumberIndex].users.push({
-          userId: userId,
+          userId: req.user.userId,
           username: req.user.name,
           amount: playbet.amount,
           usernumber: playbet.playnumber,
