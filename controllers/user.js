@@ -16,6 +16,7 @@ const Transaction = require("../models/Transaction.js");
 const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 const AppBalanceSheet = require("../models/AppBalanceSheet.js");
 const cookieOptions = require("../utils/features.js");
+const Currency = require("../models/currency.js");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -1541,6 +1542,14 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     // console.log("User's walletOne updated successfully :: " + updatedWallet);
 
+    // Search for the "INR" countrycurrencysymbol in the Currency Collection
+    const currency = await Currency.findById(user.country._id);
+    if (!currency) {
+      return next(new ErrorHandler("Currency not found", 404));
+    }
+
+    const currencyconverter = parseFloat(currency.countrycurrencyvaluecomparedtoinr);
+
     // FOR BALANCE SHEET
 
     // Create AppBalanceSheet entry
@@ -1556,7 +1565,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     const walletOneBalances = await WalletOne.find({});
     const withdrawalBalance =
       walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
-      parseFloat(amount);
+      parseFloat(amount * currencyconverter);
 
     // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
     const totalBalance = withdrawalBalance + gameBalance;
@@ -1572,7 +1581,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     // Create a new AppBalanceSheet document
     const appBalanceSheet = new AppBalanceSheet({
-      amount: amount,
+      amount: parseFloat(amount * currencyconverter),
       withdrawalbalance: withdrawalBalance,
       gamebalance: gameBalance,
       totalbalance: totalBalance,
@@ -1631,15 +1640,22 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
 
     // Update wallet
-    const updatedWallet = await WalletOne.findByIdAndUpdate(
-      walletId,
-      { balance: remainingWalletBalance },
-      { new: true }
-    );
+    // const updatedWallet = await WalletOne.findByIdAndUpdate(
+    //   walletId,
+    //   { balance: remainingWalletBalance },
+    //   { new: true }
+    // );
 
-    console.log("User's walletOne updated successfully :: " + updatedWallet);
+    // console.log("User's walletOne updated successfully :: " + updatedWallet);
 
     // FOR BALANCE SHEET
+
+    const currency = await Currency.findById(user.country._id);
+    if (!currency) {
+      return next(new ErrorHandler("Currency not found", 404));
+    }
+
+    const currencyconverter = parseFloat(currency.countrycurrencyvaluecomparedtoinr);
 
     // Create AppBalanceSheet entry
     // Calculate gameBalance as the total sum of all walletTwo balances
@@ -1654,14 +1670,22 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     const walletOneBalances = await WalletOne.find({});
     const withdrawalBalance =
       walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
-      parseFloat(amount);
+      parseFloat(amount * currencyconverter);
 
     // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
     const totalBalance = withdrawalBalance + gameBalance;
 
+    const updatedWallet = await WalletOne.findByIdAndUpdate(
+      walletId,
+      { balance: remainingWalletBalance },
+      { new: true }
+    );
+
+    console.log("User's walletOne updated successfully :: " + updatedWallet);
+
     // Create a new AppBalanceSheet document
     const appBalanceSheet = new AppBalanceSheet({
-      amount: amount,
+      amount: parseFloat(amount * currencyconverter),
       withdrawalbalance: withdrawalBalance,
       gamebalance: gameBalance,
       totalbalance: totalBalance,
