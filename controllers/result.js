@@ -1088,6 +1088,7 @@ const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
       limit: location.maximumRange,
       maximumNumber: location.maximumNumber,
       maximumReturn: location.maximumReturn,
+      automation: location.automation,
       times: timesForLocation,
       createdAt: location.createdAt,
     };
