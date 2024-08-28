@@ -43,7 +43,8 @@ const {
   getAllDeposit,
   getAllWithdrawals,
   transferAmountFromWalletOneToWalletTwo,
-  getAllSubadmin
+  getAllSubadmin,
+  updateRole
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -73,6 +74,7 @@ router.get("/allsubadmin",isAuthenticated, getAllSubadmin);
 
 // All Routes regarding update
 router.put("/updateprofile", isAuthenticated, updateProfile);
+router.put("/updaterole", isAuthenticated, updateRole);
 router.put("/changepassword", isAuthenticated, changePassword);
 router.put("/updatepic", isAuthenticated, singleUpload, updatePic);
 router.route("/singleuser/:id").get(isAuthenticated, getUserDetails);

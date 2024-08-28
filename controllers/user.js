@@ -199,11 +199,10 @@ const logout = asyncError(async (req, res, next) => {
 const updateProfile = asyncError(async (req, res, next) => {
   const user = await User.findById(req.user._id);
 
-  const { name, email, contact, role } = req.body;
+  const { name, email, contact } = req.body;
 
   if (name) user.name = name;
 
-  if (role) user.role = role;
   // if (email) user.email = email;
 
   if (email) {
@@ -223,6 +222,28 @@ const updateProfile = asyncError(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "Profile Updated Successfully",
+  });
+});
+
+const updateRole = asyncError(async (req, res, next) => {
+  
+  const { id, role } = req.body;
+
+  const user = await User.findById(id);
+
+  if (!id)
+  return next(new ErrorHandler("user not found", 400));
+
+  if (!role)
+  return next(new ErrorHandler("please provide role ", 400));
+
+  if (role) user.role = role;
+ 
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Role Updated Successfully",
   });
 });
 
@@ -1839,6 +1860,7 @@ module.exports = {
   getAllWithdrawals,
   transferAmountFromWalletOneToWalletTwo,
   getAllSubadmin,
+  updateRole
 };
 
 // const { asyncError } = require("../middlewares/error.js");
