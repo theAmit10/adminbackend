@@ -199,9 +199,11 @@ const logout = asyncError(async (req, res, next) => {
 const updateProfile = asyncError(async (req, res, next) => {
   const user = await User.findById(req.user._id);
 
-  const { name, email, contact } = req.body;
+  const { name, email, contact, role } = req.body;
 
   if (name) user.name = name;
+
+  if (role) user.role = role;
   // if (email) user.email = email;
 
   if (email) {
