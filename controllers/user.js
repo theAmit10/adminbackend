@@ -1540,12 +1540,12 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     // FOR DEPOSITING MONEY IN USER WALLET ONE
     console.log("Deposit request of user :: " + user);
 
-    const walletId = user.walletOne._id;
-    console.log("wallet one id :: " + walletId);
+    const walletId = user.walletTwo._id;
+    console.log("wallet one 2 id :: " + walletId);
 
-    const wallet = await WalletOne.findById(walletId);
+    const wallet = await WalletTwo.findById(walletId);
 
-    console.log("Wallet one ::  " + wallet);
+    console.log("Wallet one 2 ::  " + wallet);
     console.log("Before User Wallet Two balance :: " + wallet.balance);
     console.log("Amount to Add :: " + amount);
 
@@ -1578,14 +1578,14 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     // Create AppBalanceSheet entry
     // Calculate gameBalance as the total sum of all walletTwo balances
 
-    const walletTwoBalances = await WalletTwo.find({});
+    const walletTwoBalances = await WalletOne.find({});
     const gameBalance = walletTwoBalances.reduce(
       (sum, wallet) => sum + wallet.balance,
       0
     );
 
     // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
-    const walletOneBalances = await WalletOne.find({});
+    const walletOneBalances = await WalletTwo.find({});
     const withdrawalBalance =
       walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
       parseFloat(amount * currencyconverter);
@@ -1594,7 +1594,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     const totalBalance = withdrawalBalance + gameBalance;
 
     // Update wallet
-    const updatedWallet = await WalletOne.findByIdAndUpdate(
+    const updatedWallet = await WalletTwo.findByIdAndUpdate(
       walletId,
       { balance: remainingWalletBalance },
       { new: true }
@@ -1605,8 +1605,8 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     // Create a new AppBalanceSheet document
     const appBalanceSheet = new AppBalanceSheet({
       amount: parseFloat(amount * currencyconverter),
-      withdrawalbalance: withdrawalBalance,
-      gamebalance: gameBalance,
+      withdrawalbalance: gameBalance,
+      gamebalance: withdrawalBalance,
       totalbalance: totalBalance,
       usercurrency: user.country._id.toString(),
       activityType: "Deposit",
