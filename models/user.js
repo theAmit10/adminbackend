@@ -63,6 +63,10 @@ const schema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Playbet'
   }],
+  notifications: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Notification'
+  }],
   createdAt:{
     type: Date,
     default: Date.now(),

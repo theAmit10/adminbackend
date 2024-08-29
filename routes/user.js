@@ -44,7 +44,9 @@ const {
   getAllWithdrawals,
   transferAmountFromWalletOneToWalletTwo,
   getAllSubadmin,
-  updateRole
+  updateRole,
+  getUserNotifications,
+  markUserNotificationsAsSeen
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -92,6 +94,9 @@ router.put("/updateuserid/:userId", isAuthenticated, updateAnyUserUserId);
 router.post("/sendnotification",isAuthenticated,sendNotificationToAllUser);
 router.post("/sendnotificationsingle",isAuthenticated,sendNotificationToSingleUser);
 router.get("/notification/:userId", isAuthenticated, singleUserNotification);
+router.get('/:userId/notifications',  isAuthenticated,getUserNotifications);
+router.put('/:userId/notifications/seen',  isAuthenticated,markUserNotificationsAsSeen);
+
 router.get("/allnotification", isAuthenticated, getAllNotification);
 
 router.post("/updateprofilepic", isAuthenticated, singleUpload, createProfilePic);

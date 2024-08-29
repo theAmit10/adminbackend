@@ -17,6 +17,8 @@ const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 const AppBalanceSheet = require("../models/AppBalanceSheet.js");
 const cookieOptions = require("../utils/features.js");
 const Currency = require("../models/currency.js");
+const mongoose = require('mongoose');
+
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -821,32 +823,121 @@ async function removeUnregisteredToken(token) {
 //   }
 // });
 
+// const sendNotificationToAllUser = asyncError(async (req, res, next) => {
+//   try {
+//     // Fetch users with non-null devicetoken
+//     const users = await User.find({ devicetoken: { $ne: null } })
+//       .populate("walletOne")
+//       .populate("walletTwo")
+//       .sort({ createdAt: -1 });
+
+//     const { title, description } = req.body;
+
+//     console.log("Noti title :: " + title);
+//     console.log("Noti Description :: " + description);
+
+//     if (!title) return next(new ErrorHandler("Enter Notification title", 400));
+//     if (!description)
+//       return next(new ErrorHandler("Enter Notification Description", 400));
+
+//     const tokens = users.map((user) => user.devicetoken).filter(Boolean);
+
+//     console.log("tokens.length :: " + tokens.length);
+//     console.log("tokens :: " + JSON.stringify(tokens));
+
+//     if (tokens.length === 0)
+//       return next(
+//         new ErrorHandler("No user found with valid device token", 400)
+//       );
+
+//     const failedTokens = [];
+
+//     for (const token of tokens) {
+//       try {
+//         await firebase.messaging().send({
+//           token,
+//           notification: {
+//             title: title,
+//             body: description,
+//           },
+//         });
+//       } catch (error) {
+//         if (error.code === "messaging/registration-token-not-registered") {
+//           // Handle unregistered token error
+//           console.log("Unregistered token:", error.errorInfo.message);
+//           // Capture the token that caused the error
+//           const unregisteredToken = error.errorInfo.message.split(" ")[0];
+//           // Remove the unregistered token from your database
+//           await removeUnregisteredToken(unregisteredToken);
+//         } else {
+//           console.log("Error sending notification to token:", token);
+//           console.error(error);
+//           failedTokens.push(token);
+//         }
+//       }
+//     }
+
+//     if (failedTokens.length === tokens.length) {
+//       // If all tokens failed to receive notification
+//       return next(
+//         new ErrorHandler("Failed to send notification to all users", 500)
+//       );
+//     }
+
+//     // Save notification to database
+//     const notification = new Notification({
+//       title: title,
+//       description: description,
+//     });
+//     await notification.save();
+
+//     console.log("Notifications sent to all users successfully");
+//     res.status(200).json({
+//       success: true,
+//       message: "Notification sent successfully",
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     next(new ErrorHandler("Internal server error", 500));
+//   }
+// });
+
+
+
+
 const sendNotificationToAllUser = asyncError(async (req, res, next) => {
+  const { title, description } = req.body;
+
+  // Validate title and description
+  if (!title) return next(new ErrorHandler("Enter Notification title", 400));
+  if (!description)
+    return next(new ErrorHandler("Enter Notification Description", 400));
+
   try {
+    // Create a new notification in the database
+    const notification = new Notification({
+      title,
+      description,
+    });
+    await notification.save();
+
     // Fetch users with non-null devicetoken
     const users = await User.find({ devicetoken: { $ne: null } })
       .populate("walletOne")
       .populate("walletTwo")
       .sort({ createdAt: -1 });
 
-    const { title, description } = req.body;
-
-    console.log("Noti title :: " + title);
-    console.log("Noti Description :: " + description);
-
-    if (!title) return next(new ErrorHandler("Enter Notification title", 400));
-    if (!description)
-      return next(new ErrorHandler("Enter Notification Description", 400));
-
     const tokens = users.map((user) => user.devicetoken).filter(Boolean);
 
     console.log("tokens.length :: " + tokens.length);
     console.log("tokens :: " + JSON.stringify(tokens));
 
-    if (tokens.length === 0)
-      return next(
-        new ErrorHandler("No user found with valid device token", 400)
-      );
+    if (tokens.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "No valid device tokens found. Notifications created in database.",
+      });
+    }
 
     const failedTokens = [];
 
@@ -875,24 +966,17 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
       }
     }
 
-    if (failedTokens.length === tokens.length) {
-      // If all tokens failed to receive notification
-      return next(
-        new ErrorHandler("Failed to send notification to all users", 500)
-      );
-    }
+    // Update all users' notification lists
+    await User.updateMany(
+      { devicetoken: { $ne: null } }, // Match users with a device token
+      { $push: { notifications: notification._id } } // Add the notification ID to their notifications array
+    );
 
-    // Save notification to database
-    const notification = new Notification({
-      title: title,
-      description: description,
-    });
-    await notification.save();
-
-    console.log("Notifications sent to all users successfully");
     res.status(200).json({
       success: true,
-      message: "Notification sent successfully",
+      message: "Notification processed successfully",
+      notification,
+      failedTokens,
     });
   } catch (error) {
     console.error(error);
@@ -900,64 +984,215 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
   }
 });
 
+
+
+
+const getUserNotifications = asyncError(async (req, res, next) => {
+  const { userId } = req.params;
+
+  // Check if the provided userId is a valid MongoDB ObjectId
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return next(new ErrorHandler("Invalid user ID", 400));
+  }
+
+  try {
+    // Find the user by ID and populate the notifications array
+    const user = await User.findById(userId).populate('notifications');
+
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+
+    // Return the populated notifications array
+    res.status(200).json({
+      success: true,
+      notifications: user.notifications,
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
+  }
+});
+
+
+const markUserNotificationsAsSeen = asyncError(async (req, res, next) => {
+  const { userId } = req.params;
+
+  // Validate userId
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return next(new ErrorHandler("Invalid user ID", 400));
+  }
+
+  try {
+    // Find the user by ID and ensure they exist
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+
+    // Update only the notifications that belong to this specific user
+    await Notification.updateMany(
+      { _id: { $in: user.notifications } }, // Check if notification ID exists in the user's notifications array
+      { $set: { seennow: true } } // Set the seenNow field to true
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "User's notifications marked as seen",
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
+  }
+});
+
+
 const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
-  const users = await User.find({})
-    .populate("walletOne")
-    .populate("walletTwo")
-    .sort({ createdAt: -1 });
   const { title, description, devicetoken, userId } = req.body;
 
-  console.log("Noti title :: " + title);
-  console.log("Noti Descrtipton :: " + description);
-
+  // Check for required fields
   if (!title) return next(new ErrorHandler("Enter Notification title", 400));
   if (!description)
     return next(new ErrorHandler("Enter Notification Description", 400));
-  if (!devicetoken)
-    return next(new ErrorHandler("Device token not found", 400));
-  // if (!userId) return next(new ErrorHandler("User not found", 400));
-
-  // djqkwjYdTMGpY1C_vj8cey:APA91bEtG5Zg9YRvWPn2bru3tkGbywzFDr2rtl_HUMQw15ONDG1HdP7cr1NtpwxCCR0I_PE1jCeFKciKX7IP55h4umYlGRVXmRwfV6-E601HKFQDsoZaMVtdZ9WVDALWUU7EDo3w4DA8
 
   try {
-    await firebase.messaging().send({
-      token: devicetoken,
-      notification: {
-        // Notification content goes here
-        title: title,
-        body: description,
-      },
+    // Create a new notification in the database
+    const notification = await Notification.create({ title, description });
+
+    // Find the user and add the notification to their notification list
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { $push: { notifications: notification._id } },
+      { new: true }
+    );
+
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+
+    // If a device token is provided, try to send the notification via Firebase
+    if (devicetoken) {
+      try {
+        await firebase.messaging().send({
+          token: devicetoken,
+          notification: {
+            title: title,
+            body: description,
+          },
+        });
+        console.log("Firebase notification sent");
+      } catch (error) {
+        // Log the error, but do not interrupt the response flow
+        console.error("Error sending Firebase notification:", error);
+      }
+    } else {
+      console.log("Device token not provided, skipping Firebase notification");
+    }
+
+    // Respond with success, regardless of the Firebase result
+    res.status(200).json({
+      success: true,
+      message: "Notification processed successfully",
+      notification,
     });
-
-    // // Create a notification record in the database
-    // const notification = new Notification({
-    //   userId: userId, // Assuming req.user contains the admin's information
-    //   title: title,
-    //   description: description,
-    // });
-    // await notification.save();
-
-    // Update notifications array for each user
-    //  const notificationData = {
-    //   title: title,
-    //   description: description
-    // };
-    // await Promise.all(users.map(async user => {
-    //   user.notifications.push(notificationData);
-    //   await user.save();
-    // }));
-
-    console.log("Notification sent and saved");
   } catch (error) {
-    console.log(error);
-    next(new ErrorHandler(error, 400));
+    next(new ErrorHandler(error.message, 500));
   }
-
-  res.status(200).json({
-    success: true,
-    message: "Notification sent successfully",
-  });
 });
+
+
+
+// const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
+//   const { title, description, devicetoken, userId } = req.body;
+
+//   // Check for required fields
+//   if (!title) return next(new ErrorHandler("Enter Notification title", 400));
+//   if (!description)
+//     return next(new ErrorHandler("Enter Notification Description", 400));
+
+//   try {
+//     // Create a new notification in the database
+//     const notification = await Notification.create({ title, description });
+
+//     // Find the user and add the notification to their notification list
+//     const user = await User.findByIdAndUpdate(
+//       userId,
+//       { $push: { notifications: notification._id } },
+//       { new: true }
+//     );
+
+//     if (!user) {
+//       return next(new ErrorHandler("User not found", 404));
+//     }
+
+//     // If a device token is provided, send the notification via Firebase
+//     if (devicetoken) {
+//       try {
+//         await firebase.messaging().send({
+//           token: devicetoken,
+//           notification: {
+//             title: title,
+//             body: description,
+//           },
+//         });
+//         console.log("Firebase notification sent");
+//       } catch (error) {
+//         console.error("Error sending Firebase notification:", error);
+//         return next(new ErrorHandler("Failed to send Firebase notification", 500));
+//       }
+//     } else {
+//       console.log("Device token not provided, skipping Firebase notification");
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Notification processed successfully",
+//       notification,
+//     });
+//   } catch (error) {
+//     next(new ErrorHandler(error.message, 500));
+//   }
+// });
+
+
+
+
+// const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
+//   const users = await User.find({})
+//     .populate("walletOne")
+//     .populate("walletTwo")
+//     .sort({ createdAt: -1 });
+//   const { title, description, devicetoken, userId } = req.body;
+
+//   console.log("Noti title :: " + title);
+//   console.log("Noti Descrtipton :: " + description);
+
+//   if (!title) return next(new ErrorHandler("Enter Notification title", 400));
+//   if (!description)
+//     return next(new ErrorHandler("Enter Notification Description", 400));
+//   if (!devicetoken)
+//     return next(new ErrorHandler("Device token not found", 400));
+
+//   try {
+//     await firebase.messaging().send({
+//       token: devicetoken,
+//       notification: {
+//         // Notification content goes here
+//         title: title,
+//         body: description,
+//       },
+//     });
+
+//     console.log("Notification sent and saved");
+//   } catch (error) {
+//     console.log(error);
+//     next(new ErrorHandler(error, 400));
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Notification sent successfully",
+//   });
+// });
 
 // All user who have register in last 24 hour
 
@@ -1860,7 +2095,9 @@ module.exports = {
   getAllWithdrawals,
   transferAmountFromWalletOneToWalletTwo,
   getAllSubadmin,
-  updateRole
+  updateRole,
+  getUserNotifications,
+  markUserNotificationsAsSeen
 };
 
 // const { asyncError } = require("../middlewares/error.js");
