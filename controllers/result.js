@@ -2546,10 +2546,14 @@ const createCurrency = asyncError(async (req, res, next) => {
     countryicon,
     countrycurrencysymbol,
     countrycurrencyvaluecomparedtoinr,
+    timezone,
   } = req.body;
 
   if (!countryname)
     return next(new ErrorHandler("country name is missing", 404));
+
+  if (!timezone)
+    return next(new ErrorHandler("country timezone is missing", 404));
 
   if (!countrycurrencysymbol)
     return next(new ErrorHandler("country currency symbol is missing", 404));

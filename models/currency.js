@@ -13,6 +13,10 @@ const schema = new mongoose.Schema({
         type: String,
         required: [true, "Please enter country currency symbol"]
     },
+    timezone: {
+        type: String,
+        required: [true, "Please enter country timezone"]
+    },
     countrycurrencyvaluecomparedtoinr: {
         type: Number,
         required: [true, "Please enter country currency value compared to INR"]
