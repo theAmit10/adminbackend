@@ -2567,6 +2567,7 @@ const createCurrency = asyncError(async (req, res, next) => {
 
   const newCurrency = await Currency.create({
     countryname,
+    timezone,
     countryicon: req.file ? req.file.filename : undefined,
     countrycurrencysymbol,
     countrycurrencyvaluecomparedtoinr,
