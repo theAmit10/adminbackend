@@ -905,6 +905,8 @@ async function removeUnregisteredToken(token) {
 
 
 
+
+
 const sendNotificationToAllUser = asyncError(async (req, res, next) => {
   const { title, description } = req.body;
 
@@ -1854,6 +1856,20 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     await appBalanceSheet.save();
     console.log("AppBalanceSheet Created Successfully");
 
+
+      // Create notification for deposit completion
+      const notification = new Notification({
+        title: "Deposit Completed",
+        description: `Your deposit of ${amount} has been completed successfully.`,
+      });
+      await notification.save();
+  
+      // Add notification to user's notification list
+      user.notifications.push(notification._id);
+      await user.save();
+  
+      console.log("Notification created and added to user successfully");
+
     // END BALANCE SHEET
   }
 
@@ -1959,6 +1975,19 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     console.log("AppBalanceSheet Created Successfully");
 
     // END BALANCE SHEET
+
+    // Create notification for deposit completion
+    const notification = new Notification({
+      title: "Withdraw Completed",
+      description: `Your withdraw of ${amount} has been completed successfully.`,
+    });
+    await notification.save();
+
+    // Add notification to user's notification list
+    user.notifications.push(notification._id);
+    await user.save();
+
+    console.log("Notification created and added to user successfully");
   }
 
   if (paymentStatus) transaction.paymentStatus = paymentStatus;
