@@ -988,7 +988,6 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
 
 
 
-
 const getUserNotifications = asyncError(async (req, res, next) => {
   const { userId } = req.params;
 
@@ -999,7 +998,11 @@ const getUserNotifications = asyncError(async (req, res, next) => {
 
   try {
     // Find the user by ID and populate the notifications array
-    const user = await User.findById(userId).populate('notifications');
+    const user = await User.findById(userId)
+      .populate({
+        path: 'notifications',
+        options: { sort: { createdAt: -1 } }  // Sort notifications by createdAt in descending order
+      });
 
     if (!user) {
       return next(new ErrorHandler("User not found", 404));
@@ -1014,6 +1017,8 @@ const getUserNotifications = asyncError(async (req, res, next) => {
     next(new ErrorHandler(error.message, 500));
   }
 });
+
+
 
 
 const markUserNotificationsAsSeen = asyncError(async (req, res, next) => {
