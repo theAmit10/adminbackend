@@ -2699,6 +2699,38 @@ const updateCurrency = asyncError(async (req, res, next) => {
 // });
 
 // Delete a currency
+// const deleteCurrency = asyncError(async (req, res, next) => {
+//   const { id } = req.params;
+
+//   const currency = await Currency.findById(id);
+
+//   if (!currency) {
+//     return next(new ErrorHandler("Currency not found", 404));
+//   }
+
+//   // Delete the associated image file
+//   const imagePath = path.join(
+//     __dirname,
+//     "../public/uploads/currency",
+//     currency.countryicon
+//   );
+
+//   fs.unlink(imagePath, async (err) => {
+//     if (err) {
+//       return next(
+//         new ErrorHandler("Failed to delete associated image file", 500)
+//       );
+//     }
+
+//     await currency.deleteOne();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Currency deleted successfully",
+//     });
+//   });
+// });
+
 const deleteCurrency = asyncError(async (req, res, next) => {
   const { id } = req.params;
 
@@ -2708,28 +2740,34 @@ const deleteCurrency = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Currency not found", 404));
   }
 
-  // Delete the associated image file
+  // Define the path of the associated image file
   const imagePath = path.join(
     __dirname,
     "../public/uploads/currency",
     currency.countryicon
   );
 
+  // Try deleting the image file, but ensure currency deletion even if it fails
   fs.unlink(imagePath, async (err) => {
     if (err) {
-      return next(
-        new ErrorHandler("Failed to delete associated image file", 500)
-      );
+      console.error("Error deleting image:", err.message);
+      // Log the error, but do not return as we still need to delete the currency
     }
 
-    await currency.deleteOne();
+    // Delete the currency from the database
+    try {
+      await currency.deleteOne();
 
-    res.status(200).json({
-      success: true,
-      message: "Currency deleted successfully",
-    });
+      res.status(200).json({
+        success: true,
+        message: "Currency deleted successfully",
+      });
+    } catch (deleteError) {
+      return next(new ErrorHandler("Failed to delete currency", 500));
+    }
   });
 });
+
 
 // GET ALL THE BALANCE SHEET
 const getAppBalanceSheet = asyncError(async (req, res, next) => {
