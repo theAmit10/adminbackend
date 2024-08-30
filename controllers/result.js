@@ -632,19 +632,47 @@ const createResult = asyncError(async (req, res, next) => {
   // Create AppBalanceSheet entry
   // Calculate gameBalance as the total sum of all walletTwo balances
 
-  const walletTwoBalances = await WalletTwo.find({});
-  const gameBalance = walletTwoBalances.reduce(
-    (sum, wallet) => sum + wallet.balance,
-    0
-  );
+  // const walletTwoBalances = await WalletTwo.find({});
+  // const gameBalance = walletTwoBalances.reduce(
+  //   (sum, wallet) => sum + wallet.balance,
+  //   0
+  // );
 
-  // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
-  const walletOneBalances = await WalletOne.find({});
-  const withdrawalBalance =
-    walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
-    playnumberEntry.distributiveamount;
+  // // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
+  // const walletOneBalances = await WalletOne.find({});
+  // const withdrawalBalance =
+  //   walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
+  //   playnumberEntry.distributiveamount;
 
-  // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+  // // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+  // const totalBalance = withdrawalBalance + gameBalance;
+
+  // Fetch all WalletTwo balances and populate currencyId
+  const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+  let gameBalance = 0;
+
+  walletTwoBalances.forEach((wallet) => {
+    const walletCurrencyConverter = parseFloat(
+      wallet.currencyId.countrycurrencyvaluecomparedtoinr
+    );
+    gameBalance += wallet.balance * walletCurrencyConverter;
+  });
+
+  // Fetch all WalletOne balances and populate currencyId
+  const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+  let withdrawalBalance = 0;
+
+  walletOneBalances.forEach((wallet) => {
+    const walletCurrencyConverter = parseFloat(
+      wallet.currencyId.countrycurrencyvaluecomparedtoinr
+    );
+    withdrawalBalance += wallet.balance * walletCurrencyConverter;
+  });
+
+  // Add the additional amount with currency conversion
+  withdrawalBalance += parseFloat(playnumberEntry.distributiveamount);
+
+  // Calculate total balance as the sum of walletOne and walletTwo balances
   const totalBalance = withdrawalBalance + gameBalance;
 
   // Search for the "INR" countrycurrencysymbol in the Currency Collection
@@ -2401,20 +2429,48 @@ const addPlaybet = asyncError(async (req, res, next) => {
 
   // Create AppBalanceSheet entry
   // Calculate withdrawalbalance as the total sum of all walletOne balances
-  const walletOneBalances = await WalletOne.find({});
-  const withdrawalBalance = walletOneBalances.reduce(
-    (sum, wallet) => sum + wallet.balance,
-    0
-  );
+  // const walletOneBalances = await WalletOne.find({});
+  // const withdrawalBalance = walletOneBalances.reduce(
+  //   (sum, wallet) => sum + wallet.balance,
+  //   0
+  // );
 
-  // Calculate gamebalance as the total sum of all walletTwo balances minus totalAmount
-  const walletTwoBalances = await WalletTwo.find({});
-  const gameBalance =
-    walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
-    totalAmount;
+  // // Calculate gamebalance as the total sum of all walletTwo balances minus totalAmount
+  // const walletTwoBalances = await WalletTwo.find({});
+  // const gameBalance =
+  //   walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
+  //   totalAmount;
 
-  // Calculate totalbalance as the total sum of walletOne and walletTwo balances minus totalAmount
-  const totalBalance = withdrawalBalance + gameBalance;
+  // // Calculate totalbalance as the total sum of walletOne and walletTwo balances minus totalAmount
+  // const totalBalance = withdrawalBalance + gameBalance;
+
+   // Fetch all WalletTwo balances and populate currencyId
+   const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+   let gameBalance = 0;
+
+   walletTwoBalances.forEach((wallet) => {
+     const walletCurrencyConverter = parseFloat(
+       wallet.currencyId.countrycurrencyvaluecomparedtoinr
+     );
+     gameBalance += wallet.balance * walletCurrencyConverter;
+   });
+
+   // Fetch all WalletOne balances and populate currencyId
+   const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+   let withdrawalBalance = 0;
+
+   walletOneBalances.forEach((wallet) => {
+     const walletCurrencyConverter = parseFloat(
+       wallet.currencyId.countrycurrencyvaluecomparedtoinr
+     );
+     withdrawalBalance += wallet.balance * walletCurrencyConverter;
+   });
+
+   // Add the additional amount with currency conversion
+   gameBalance -= parseFloat(totalAmount);
+
+   // Calculate total balance as the sum of walletOne and walletTwo balances
+   const totalBalance = withdrawalBalance + gameBalance;
 
   // Create a new AppBalanceSheet document
   const appBalanceSheet = new AppBalanceSheet({
