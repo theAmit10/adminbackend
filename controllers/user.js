@@ -1840,7 +1840,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     });
 
     // Add the additional amount with currency conversion
-    withdrawalBalance += parseFloat(amount * currencyconverter);
+    gameBalance += parseFloat(amount * currencyconverter);
 
     // Calculate total balance as the sum of walletOne and walletTwo balances
     const totalBalance = withdrawalBalance + gameBalance;
@@ -1857,8 +1857,8 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     // Create a new AppBalanceSheet document
     const appBalanceSheet = new AppBalanceSheet({
       amount: parseFloat(amount * currencyconverter),
-      withdrawalbalance: gameBalance,
-      gamebalance: withdrawalBalance,
+      withdrawalbalance: withdrawalBalance,
+      gamebalance:  gameBalance,
       totalbalance: totalBalance,
       usercurrency: user.country._id.toString(),
       activityType: "Deposit",
