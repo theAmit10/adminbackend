@@ -17,8 +17,7 @@ const Transactionwithdraw = require("../models/Transactionwithdraw.js");
 const AppBalanceSheet = require("../models/AppBalanceSheet.js");
 const cookieOptions = require("../utils/features.js");
 const Currency = require("../models/currency.js");
-const mongoose = require('mongoose');
-
+const mongoose = require("mongoose");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -228,19 +227,16 @@ const updateProfile = asyncError(async (req, res, next) => {
 });
 
 const updateRole = asyncError(async (req, res, next) => {
-  
   const { id, role } = req.body;
 
   const user = await User.findById(id);
 
-  if (!id)
-  return next(new ErrorHandler("user not found", 400));
+  if (!id) return next(new ErrorHandler("user not found", 400));
 
-  if (!role)
-  return next(new ErrorHandler("please provide role ", 400));
+  if (!role) return next(new ErrorHandler("please provide role ", 400));
 
   if (role) user.role = role;
- 
+
   await user.save();
 
   res.status(200).json({
@@ -902,11 +898,6 @@ async function removeUnregisteredToken(token) {
 //   }
 // });
 
-
-
-
-
-
 const sendNotificationToAllUser = asyncError(async (req, res, next) => {
   const { title, description } = req.body;
 
@@ -937,7 +928,8 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
     if (tokens.length === 0) {
       return res.status(200).json({
         success: true,
-        message: "No valid device tokens found. Notifications created in database.",
+        message:
+          "No valid device tokens found. Notifications created in database.",
       });
     }
 
@@ -986,8 +978,6 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
   }
 });
 
-
-
 const getUserNotifications = asyncError(async (req, res, next) => {
   const { userId } = req.params;
 
@@ -998,11 +988,10 @@ const getUserNotifications = asyncError(async (req, res, next) => {
 
   try {
     // Find the user by ID and populate the notifications array
-    const user = await User.findById(userId)
-      .populate({
-        path: 'notifications',
-        options: { sort: { createdAt: -1 } }  // Sort notifications by createdAt in descending order
-      });
+    const user = await User.findById(userId).populate({
+      path: "notifications",
+      options: { sort: { createdAt: -1 } }, // Sort notifications by createdAt in descending order
+    });
 
     if (!user) {
       return next(new ErrorHandler("User not found", 404));
@@ -1017,9 +1006,6 @@ const getUserNotifications = asyncError(async (req, res, next) => {
     next(new ErrorHandler(error.message, 500));
   }
 });
-
-
-
 
 const markUserNotificationsAsSeen = asyncError(async (req, res, next) => {
   const { userId } = req.params;
@@ -1051,7 +1037,6 @@ const markUserNotificationsAsSeen = asyncError(async (req, res, next) => {
     next(new ErrorHandler(error.message, 500));
   }
 });
-
 
 const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
   const { title, description, devicetoken, userId } = req.body;
@@ -1106,8 +1091,6 @@ const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
   }
 });
 
-
-
 // const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
 //   const { title, description, devicetoken, userId } = req.body;
 
@@ -1159,9 +1142,6 @@ const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
 //     next(new ErrorHandler(error.message, 500));
 //   }
 // });
-
-
-
 
 // const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
 //   const users = await User.find({})
@@ -1813,26 +1793,56 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
       return next(new ErrorHandler("Currency not found", 404));
     }
 
-    const currencyconverter = parseFloat(currency.countrycurrencyvaluecomparedtoinr);
+    const currencyconverter = parseFloat(
+      currency.countrycurrencyvaluecomparedtoinr
+    );
 
     // FOR BALANCE SHEET
 
     // Create AppBalanceSheet entry
     // Calculate gameBalance as the total sum of all walletTwo balances
 
-    const walletTwoBalances = await WalletOne.find({});
-    const gameBalance = walletTwoBalances.reduce(
-      (sum, wallet) => sum + wallet.balance,
-      0
-    );
+    // const walletTwoBalances = await WalletOne.find({});
+    // const gameBalance = walletTwoBalances.reduce(
+    //   (sum, wallet) => sum + wallet.balance,
+    //   0
+    // );
 
-    // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
-    const walletOneBalances = await WalletTwo.find({});
-    const withdrawalBalance =
-      walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
-      parseFloat(amount * currencyconverter);
+    // // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
+    // const walletOneBalances = await WalletTwo.find({});
+    // const withdrawalBalance =
+    //   walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
+    //   parseFloat(amount * currencyconverter);
 
-    // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+    // // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+    // const totalBalance = withdrawalBalance + gameBalance;
+
+    // Fetch all WalletTwo balances and populate currencyId
+    const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+    let gameBalance = 0;
+
+    walletTwoBalances.forEach((wallet) => {
+      const walletCurrencyConverter = parseFloat(
+        wallet.currencyId.countrycurrencyvaluecomparedtoinr
+      );
+      gameBalance += wallet.balance * walletCurrencyConverter;
+    });
+
+    // Fetch all WalletOne balances and populate currencyId
+    const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+    let withdrawalBalance = 0;
+
+    walletOneBalances.forEach((wallet) => {
+      const walletCurrencyConverter = parseFloat(
+        wallet.currencyId.countrycurrencyvaluecomparedtoinr
+      );
+      withdrawalBalance += wallet.balance * walletCurrencyConverter;
+    });
+
+    // Add the additional amount with currency conversion
+    withdrawalBalance += parseFloat(amount * currencyconverter);
+
+    // Calculate total balance as the sum of walletOne and walletTwo balances
     const totalBalance = withdrawalBalance + gameBalance;
 
     // Update wallet
@@ -1861,19 +1871,18 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     await appBalanceSheet.save();
     console.log("AppBalanceSheet Created Successfully");
 
+    // Create notification for deposit completion
+    const notification = new Notification({
+      title: "Deposit Completed",
+      description: `Your deposit of ${transaction.amount} has been completed successfully.`,
+    });
+    await notification.save();
 
-      // Create notification for deposit completion
-      const notification = new Notification({
-        title: "Deposit Completed",
-        description: `Your deposit has been completed successfully.`,
-      });
-      await notification.save();
-  
-      // Add notification to user's notification list
-      user.notifications.push(notification._id);
-      await user.save();
-  
-      console.log("Notification created and added to user successfully");
+    // Add notification to user's notification list
+    user.notifications.push(notification._id);
+    await user.save();
+
+    console.log("Notification created and added to user successfully");
 
     // END BALANCE SHEET
   }
@@ -1934,7 +1943,9 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
       return next(new ErrorHandler("Currency not found", 404));
     }
 
-    const currencyconverter = parseFloat(currency.countrycurrencyvaluecomparedtoinr);
+    const currencyconverter = parseFloat(
+      currency.countrycurrencyvaluecomparedtoinr
+    );
 
     // Create AppBalanceSheet entry
     // Calculate gameBalance as the total sum of all walletTwo balances
@@ -2131,7 +2142,7 @@ module.exports = {
   getAllSubadmin,
   updateRole,
   getUserNotifications,
-  markUserNotificationsAsSeen
+  markUserNotificationsAsSeen,
 };
 
 // const { asyncError } = require("../middlewares/error.js");
