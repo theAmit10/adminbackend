@@ -2444,6 +2444,16 @@ const addPlaybet = asyncError(async (req, res, next) => {
   // // Calculate totalbalance as the total sum of walletOne and walletTwo balances minus totalAmount
   // const totalBalance = withdrawalBalance + gameBalance;
 
+  const currencyap = await Currency.findById(user.country._id);
+    if (!currencyap) {
+      return next(new ErrorHandler("Currency not found", 404));
+    }
+
+    const currencyconverter = parseFloat(
+      currencyap.countrycurrencyvaluecomparedtoinr
+    );
+
+
    // Fetch all WalletTwo balances and populate currencyId
    const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
    let gameBalance = 0;
@@ -2467,14 +2477,14 @@ const addPlaybet = asyncError(async (req, res, next) => {
    });
 
    // Add the additional amount with currency conversion
-   gameBalance -= parseFloat(totalAmount);
+   gameBalance -= parseFloat(totalAmount * currencyconverter); 
 
    // Calculate total balance as the sum of walletOne and walletTwo balances
    const totalBalance = withdrawalBalance + gameBalance;
 
   // Create a new AppBalanceSheet document
   const appBalanceSheet = new AppBalanceSheet({
-    amount: totalAmount,
+    amount:  parseFloat(totalAmount * currencyconverter),
     withdrawalbalance: withdrawalBalance,
     gamebalance: gameBalance,
     totalbalance: totalBalance,
