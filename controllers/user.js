@@ -2023,7 +2023,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     // Create notification for deposit completion
     const notification = new Notification({
       title: "Withdraw Completed",
-      description: `Your withdraw has been completed successfully.`,
+      description: `Your withdraw of ${transaction.amount} has been completed successfully.`,
     });
     await notification.save();
 

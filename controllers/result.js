@@ -670,7 +670,7 @@ const createResult = asyncError(async (req, res, next) => {
   });
 
   // Add the additional amount with currency conversion
-  withdrawalBalance -= parseFloat(playnumberEntry.distributiveamount);
+  // withdrawalBalance += parseFloat(playnumberEntry.distributiveamount);
 
   // Calculate total balance as the sum of walletOne and walletTwo balances
   const totalBalance = withdrawalBalance + gameBalance;
