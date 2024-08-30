@@ -84,17 +84,22 @@ schema.pre("save", async function (next) {
       this.password = await bcrypt.hash(this.password, 10);
       const currencyId = this.country;
 
+      const currency = await Currency.findById(this.country);
+      if (!currency) {
+        return next(new ErrorHandler("Currency not found", 404));
+      }
+
       const walletOne = await WalletOne.create({
         userId: this._id,
         walletName: 'Wallet One',
         visibility: true,
-        currencyId: currencyId,
+        currencyId: currency._id ,
       });
       const walletTwo = await WalletTwo.create({
         userId: this._id,
         walletName: 'Wallet Two',
         visibility: true,
-        currencyId: currencyId,
+        currencyId: currency._id ,
       });
       this.walletOne = walletOne._id;
       this.walletTwo = walletTwo._id;
