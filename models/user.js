@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const WalletOne  = require("./walletone.js");
 const WalletTwo  = require("./wallettwo.js");
 const Currency  = require("./currency.js");
+const ErrorHandler = require("../utils/error.js");
 
 const schema = new mongoose.Schema({
   name: {
