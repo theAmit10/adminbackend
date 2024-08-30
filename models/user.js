@@ -82,15 +82,19 @@ schema.pre("save", async function (next) {
   if (this.isNew) {
     try {
       this.password = await bcrypt.hash(this.password, 10);
+      const currencyId = this.country;
+
       const walletOne = await WalletOne.create({
         userId: this._id,
         walletName: 'Wallet One',
-        visibility: true
+        visibility: true,
+        currencyId: currencyId,
       });
       const walletTwo = await WalletTwo.create({
         userId: this._id,
         walletName: 'Wallet Two',
-        visibility: true
+        visibility: true,
+        currencyId: currencyId,
       });
       this.walletOne = walletOne._id;
       this.walletTwo = walletTwo._id;

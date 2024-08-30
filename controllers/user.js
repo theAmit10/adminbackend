@@ -1865,7 +1865,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
       // Create notification for deposit completion
       const notification = new Notification({
         title: "Deposit Completed",
-        description: `Your deposit of ${amount} has been completed successfully.`,
+        description: `Your deposit has been completed successfully.`,
       });
       await notification.save();
   
@@ -1984,7 +1984,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     // Create notification for deposit completion
     const notification = new Notification({
       title: "Withdraw Completed",
-      description: `Your withdraw of ${amount} has been completed successfully.`,
+      description: `Your withdraw has been completed successfully.`,
     });
     await notification.save();
 
