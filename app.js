@@ -149,7 +149,8 @@ cron.schedule("0 * * * *", async () => {
   console.log("Running scheduled task to add LotDates and Playzones");
   try {
     // Fetch all locations with automation set to 'automatic'
-    const locations = await LotLocation.find({ automation: "automatic" });
+    // const locations = await LotLocation.find({ automation: "automatic" });
+    const locations = await LotLocation.find({});
 
     console.log("AUTOMATIC LOCATION COUNT :: " + locations.length);
 
