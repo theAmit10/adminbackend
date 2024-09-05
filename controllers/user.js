@@ -356,9 +356,29 @@ const resetPassword = asyncError(async (req, res, next) => {
   });
 });
 
+// const deleteNotification = asyncError(async (req, res, next) => {
+//   const { id } = req.params;
+//   // Find the promotion by ID and delete it
+//   const deletedNotification = await Notification.findByIdAndDelete(id);
+
+//   if (!deletedNotification) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "Notification not found",
+//     });
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Successfully Deleted",
+//     deletedNotification,
+//   });
+// });
+
 const deleteNotification = asyncError(async (req, res, next) => {
   const { id } = req.params;
-  // Find the promotion by ID and delete it
+
+  // Find and delete the notification by ID
   const deletedNotification = await Notification.findByIdAndDelete(id);
 
   if (!deletedNotification) {
@@ -368,12 +388,19 @@ const deleteNotification = asyncError(async (req, res, next) => {
     });
   }
 
+  // Remove the deleted notification's ID from all users' notification lists
+  await User.updateMany(
+    { notifications: id },
+    { $pull: { notifications: id } }
+  );
+
   res.status(200).json({
     success: true,
-    message: "Successfully Deleted",
+    message: "Notification deleted and removed from user notification lists",
     deletedNotification,
   });
 });
+
 
 const updateProfilePic = asyncError(async (req, res, next) => {
   const user = await User.findById(req.user._id);

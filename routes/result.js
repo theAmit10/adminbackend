@@ -60,7 +60,10 @@ const {
   deletePlayzone,
   getAppBalanceSheet,
   getAllResultsByLocationWithTimes,
-  getAllResultsByLocationWithDates
+  getAllResultsByLocationWithDates,
+  updateAppLinks,
+  getAppLinks,
+  deleteAppLinks
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -163,6 +166,14 @@ router.delete('/removecurrency/:id', isAuthenticated, deleteCurrency);
 
 // GET APP BALANCE SHEET
 router.get("/balancesheet", isAuthenticated, getAppBalanceSheet);
+
+// FOR APP LINK
+router.post("/createapplink", isAuthenticated, updateAppLinks);
+router.get("/getapplink", isAuthenticated, getAppLinks);
+router.delete("/deleteapplink", isAuthenticated, deleteAppLinks);
+
+
+
 
 
 
