@@ -442,11 +442,170 @@ const checkPlaynumberExists = (data, playnumberToCheck) => {
   );
 };
 
+// const createResult = asyncError(async (req, res, next) => {
+//   const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } = req.body;
+
+//   if (!resultNumber)
+//     return next(new ErrorHandler("Result number not found", 404));
+//   if (!lotdate) return next(new ErrorHandler("Date not found", 404));
+//   if (!lottime) return next(new ErrorHandler("Time not found", 404));
+//   if (!lotlocation) return next(new ErrorHandler("Location not found", 404));
+
+//   // Find the Playzone entry by lotlocation, lottime, and lotdate
+//   const playzone = await Playzone.findOne({
+//     lotlocation,
+//     lottime,
+//     lotdate,
+//   });
+
+//   if (!playzone) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "Playzone entry not found",
+//     });
+//   }
+
+//   if (!checkPlaynumberExists(playzone, resultNumber)) {
+//     return next(new ErrorHandler("Result number not in range", 404));
+//   }
+
+//   // Find the playnumber in the playzone
+//   const playnumberEntry = playzone.playnumbers.find(
+//     (pn) => pn.playnumber === parseInt(resultNumber, 10)
+//   );
+
+//   if (!playnumberEntry) {
+//     return next(new ErrorHandler("Playnumber entry not found", 404));
+//   }
+
+//   console.log("now getting users");
+//   // Update walletOne for each user in the playnumber's users list
+//   for (const userz of playnumberEntry.users) {
+//     console.log("GETTING EACH USER");
+//     console.log(userz);
+//     const userId = userz.userId;
+//     const amount = parseInt(userz.winningamount);
+
+//     const user = await User.findOne({ userId });
+
+//     if (!user) {
+//       return next(new ErrorHandler("User not found", 404));
+//     }
+
+//     console.log("SEARCHING FOR USER");
+//     console.log(user);
+
+//     // FOR DEPOSITING MONEY IN USER WALLET ONE
+
+//     const walletId = user.walletOne._id;
+//     const wallet = await WalletOne.findById(walletId);
+//     const totalBalanceAmount = parseFloat(wallet.balance);
+//     const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
+
+//     // Update wallet
+//     await WalletOne.findByIdAndUpdate(
+//       walletId,
+//       { balance: remainingWalletBalance },
+//       { new: true }
+//     );
+
+//     // FOR NOTIFICATION
+//     const notification = await Notification.create({
+//       title: 'Congratulations! You won!',
+//       description: `You have won an amount of ${amount}.`,
+//     });
+
+//     // Add notification to the user's notifications array
+//     user.notifications.push(notification._id);
+//     await user.save();
+
+//     // FOR PLAYBET HISTORY
+//     const playbet = await Playbet.create({
+//       playnumbers: playnumberEntry.playnumber,
+//       username: user.name,
+//       userid: user.userId,
+//       currency: user.country._id.toString(), // Assuming currency is related to the user
+//       lotdate: lotdate,
+//       lottime: lottime,
+//       lotlocation: lotlocation,
+//     });
+
+//     // Add playbet history to the user's playbetHistory array
+//     user.playbetHistory.push(playbet._id);
+//     await user.save();
+//   }
+
+//   // FOR BALANCE SHEET
+
+//   // Fetch all WalletTwo balances and populate currencyId
+//   const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+//   let gameBalance = 0;
+
+//   walletTwoBalances.forEach((wallet) => {
+//     const walletCurrencyConverter = parseFloat(
+//       wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//     );
+//     gameBalance += wallet.balance * walletCurrencyConverter;
+//   });
+
+//   // Fetch all WalletOne balances and populate currencyId
+//   const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+//   let withdrawalBalance = 0;
+
+//   walletOneBalances.forEach((wallet) => {
+//     const walletCurrencyConverter = parseFloat(
+//       wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//     );
+//     withdrawalBalance += wallet.balance * walletCurrencyConverter;
+//   });
+
+//   // Calculate total balance as the sum of walletOne and walletTwo balances
+//   const totalBalance = withdrawalBalance + gameBalance;
+
+//   // Search for the "INR" countrycurrencysymbol in the Currency Collection
+//   const currency = await Currency.findOne({ countrycurrencysymbol: "INR" });
+//   if (!currency) {
+//     return next(new ErrorHandler("Currency not found", 404));
+//   }
+
+//   // Create a new AppBalanceSheet document
+//   const appBalanceSheet = new AppBalanceSheet({
+//     amount: playnumberEntry.distributiveamount,
+//     withdrawalbalance: withdrawalBalance,
+//     gamebalance: gameBalance,
+//     totalbalance: totalBalance,
+//     usercurrency: currency._id, // Use the _id of the found currency
+//     activityType: "Winning",
+//     userId: req.user.userId,
+//     payzoneId: playzone._id,
+//     paymentProcessType: "Credit",
+//   });
+
+//   // Save the AppBalanceSheet document
+//   await appBalanceSheet.save();
+//   console.log("AppBalanceSheet Created Successfully");
+
+//   // END BALANCE SHEET
+
+//   // Create a result entry
+//   await Result.create({
+//     resultNumber,
+//     lotdate,
+//     lottime,
+//     lotlocation,
+//     nextresulttime,
+//   });
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Result Created and Wallets Updated Successfully, Notifications sent, and Playbet History Updated",
+//   });
+// });
+
 const createResult = asyncError(async (req, res, next) => {
   const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } = req.body;
 
-  if (!resultNumber)
-    return next(new ErrorHandler("Result number not found", 404));
+  if (!resultNumber) return next(new ErrorHandler("Result number not found", 404));
   if (!lotdate) return next(new ErrorHandler("Date not found", 404));
   if (!lottime) return next(new ErrorHandler("Time not found", 404));
   if (!lotlocation) return next(new ErrorHandler("Location not found", 404));
@@ -521,7 +680,13 @@ const createResult = asyncError(async (req, res, next) => {
 
     // FOR PLAYBET HISTORY
     const playbet = await Playbet.create({
-      playnumbers: playnumberEntry.playnumber,
+      playnumbers: [
+        {
+          playnumber: playnumberEntry.playnumber,
+          amount: userz.winningamount,
+          winningamount: userz.winningamount,
+        },
+      ],
       username: user.name,
       userid: user.userId,
       currency: user.country._id.toString(), // Assuming currency is related to the user
@@ -536,7 +701,6 @@ const createResult = asyncError(async (req, res, next) => {
   }
 
   // FOR BALANCE SHEET
-
   // Fetch all WalletTwo balances and populate currencyId
   const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
   let gameBalance = 0;
@@ -601,6 +765,7 @@ const createResult = asyncError(async (req, res, next) => {
     message: "Result Created and Wallets Updated Successfully, Notifications sent, and Playbet History Updated",
   });
 });
+
 
 
 
