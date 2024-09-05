@@ -105,7 +105,16 @@ const getMyProfile = asyncError(async (req, res, next) => {
 });
 
 const getUserDetails = asyncError(async (req, res, next) => {
-  const user = await User.findById(req.params.id)
+  let query;
+
+  // Check if the passed id is a valid MongoDB ObjectId
+  if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+    query = { _id: req.params.id };
+  } else {
+    query = { userId: req.params.id };
+  }
+
+  const user = await User.findOne(query)
     .populate("walletOne")
     .populate("walletTwo")
     .populate("country");
@@ -400,7 +409,6 @@ const deleteNotification = asyncError(async (req, res, next) => {
     deletedNotification,
   });
 });
-
 
 const updateProfilePic = asyncError(async (req, res, next) => {
   const user = await User.findById(req.user._id);
