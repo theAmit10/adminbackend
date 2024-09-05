@@ -2795,48 +2795,53 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
   }
 });
 
-// const getUserPlaybets = asyncError(async (req, res, next) => {
-//   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
 
-//   try {
-//     // Find the user by ID to get the playbetHistory
-//     const user = await User.findById(userId).populate({
-//       path: "playbetHistory",
-//       populate: [
-//         { path: "lotdate", model: "LotDate" },
-//         { path: "lottime", model: "LotTime" },
-//         { path: "lotlocation", model: "LotLocation" },
-//       ],
-//     });
+// FOR ADMIN
+const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
+  const userId = req.params.userId;
 
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
+  try {
+    // Find the user by ID to get the playbetHistory
+    const user = await User.findById(userId).populate({
+      path: "playbetHistory",
+      populate: [
+        { path: "lotdate", model: "LotDate" },
+        { path: "lottime", model: "LotTime" },
+        { path: "lotlocation", model: "LotLocation" },
+        { path: "currency", model: "Currency" },
+      ],
+    });
 
-//     // Get the playbetHistory array from the user document
-//     const playbets = user.playbetHistory;
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
-//     res.status(200).json({
-//       success: true,
-//       playbets,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to retrieve playbets",
-//       error: error.message,
-//     });
-//   }
-// });
+    // Get the playbetHistory array from the user document
+    let playbets = user.playbetHistory;
 
-//#####################################
-// CURRENCY MODULE
-//#####################################
+    // Sort playbets by createdAt in descending order
+    playbets = playbets.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
 
-// Create a new currency
+    res.status(200).json({
+      success: true,
+      playbets,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve playbets",
+      error: error.message,
+    });
+  }
+});
+
+
+
 const createCurrency = asyncError(async (req, res, next) => {
   const {
     countryname,
@@ -3199,6 +3204,7 @@ module.exports = {
   updateAppLinks,
   getAppLinks,
   deleteAppLinks,
+  getSingleUserPlaybetHistory,
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;
