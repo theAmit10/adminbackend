@@ -1121,12 +1121,31 @@ const getAllLotTime = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllLotTimeAccordindLocation = asyncError(async (req, res, next) => {
+//   const { locationid } = req.query;
+
+//   // let lottimes = await LotTime.find({}).populate("lotlocation").sort({ createdAt: -1 });
+
+//   let lottimes = await LotTime.find({}).populate("lotlocation");
+
+//   if (locationid) {
+//     // Filter lottimes array based on locationid
+//     lottimes = lottimes.filter(
+//       (item) => item.lotlocation._id.toString() === locationid
+//     );
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     lottimes,
+//   });
+// });
+
 const getAllLotTimeAccordindLocation = asyncError(async (req, res, next) => {
   const { locationid } = req.query;
 
-  // let lottimes = await LotTime.find({}).populate("lotlocation").sort({ createdAt: -1 });
-
-  let lottimes = await LotTime.find({}).populate("lotlocation");
+  // Sort by _id to get the newest documents last
+  let lottimes = await LotTime.find({}).populate("lotlocation").sort({ _id: 1 });
 
   if (locationid) {
     // Filter lottimes array based on locationid
@@ -1140,6 +1159,7 @@ const getAllLotTimeAccordindLocation = asyncError(async (req, res, next) => {
     lottimes,
   });
 });
+
 
 const deleteLotTime = asyncError(async (req, res, next) => {
   const lottime = await LotTime.findById(req.params.id);
