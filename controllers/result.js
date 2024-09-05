@@ -3016,9 +3016,16 @@ const deleteCurrency = asyncError(async (req, res, next) => {
 
 
 // GET ALL THE BALANCE SHEET
+
 const getAppBalanceSheet = asyncError(async (req, res, next) => {
   const balancesheet = await AppBalanceSheet.find()
-    .populate("paybetId")
+    .populate({
+      path: "paybetId",
+      populate: {
+        path: "lotlocation",
+        model: "LotLocation" // Ensure this model name matches your Mongoose schema
+      }
+    })
     .populate("payzoneId")
     .populate("transactionId")
     .sort({ createdAt: -1 })
@@ -3037,14 +3044,16 @@ const getAppBalanceSheet = asyncError(async (req, res, next) => {
     balancesheet,
   });
 });
+
 // const getAppBalanceSheet = asyncError(async (req, res, next) => {
 //   const balancesheet = await AppBalanceSheet.find()
 //     .populate("paybetId")
 //     .populate("payzoneId")
 //     .populate("transactionId")
-//     .sort({ createdAt: -1 });
+//     .sort({ createdAt: -1 })
+//     .lean(); // Using lean for efficient queries and manual population
 
-//      // Manually populate usercurrency if it's an ObjectId
+//   // Manually populate usercurrency if it's an ObjectId
 //   for (const sheet of balancesheet) {
 //     if (mongoose.Types.ObjectId.isValid(sheet.usercurrency)) {
 //       const currency = await Currency.findById(sheet.usercurrency);
@@ -3058,12 +3067,12 @@ const getAppBalanceSheet = asyncError(async (req, res, next) => {
 //   });
 // });
 
-// APP LINK
 
 
 
 
-// Create or Update App Links
+
+
 const updateAppLinks = asyncError(async (req, res, next) => {
   const { androidLink, iosLink } = req.body;
 
