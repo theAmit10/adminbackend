@@ -63,7 +63,8 @@ const {
   getAllResultsByLocationWithDates,
   updateAppLinks,
   getAppLinks,
-  deleteAppLinks
+  deleteAppLinks,
+  getSingleUserPlaybetHistory
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -153,6 +154,7 @@ router.post("/playzone/:id/playnumber/:playnumber/users",isAuthenticated, addUse
 // ADDING GAME BETTING
 router.post('/playbet/addplybet',isAuthenticated, addPlaybet);
 router.get('/singleuser/playbets', isAuthenticated, getUserPlaybets);
+router.get('/singleuserplayhistory/:userid', isAuthenticated, getSingleUserPlaybetHistory);
 
 // FOR CURRECY
 // Create a new currency

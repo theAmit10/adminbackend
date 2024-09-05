@@ -2798,11 +2798,11 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
 
 // FOR ADMIN
 const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
-  const userId = req.params.userId;
+  const userId = req.params.userid;
 
   try {
     // Find the user by ID to get the playbetHistory
-    const user = await User.findById(userId).populate({
+    const user = await User.findOne({userId}).populate({
       path: "playbetHistory",
       populate: [
         { path: "lotdate", model: "LotDate" },
