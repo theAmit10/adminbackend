@@ -1145,7 +1145,7 @@ const getAllLotTimeAccordindLocation = asyncError(async (req, res, next) => {
   const { locationid } = req.query;
 
   // Sort by _id to get the newest documents last
-  let lottimes = await LotTime.find({}).populate("lotlocation").sort({ _id: 1 });
+  let lottimes = await LotTime.find({}).populate("lotlocation").sort({ createdAt: 1 });
 
   if (locationid) {
     // Filter lottimes array based on locationid
