@@ -174,10 +174,21 @@ const getAllResultsByLocationWithTimesMonthYear = asyncError(async (req, res, ne
   console.log(`Converted Month Number: ${monthNumber}`);
 
   // Define the start and end dates for the specified month and year
-  const startDate = new Date(`${year}-${monthNumber.toString().padStart(2, '0')}-01T00:00:00.000Z`);
-  const endDate = new Date(`${year}-${(monthNumber + 1).toString().padStart(2, '0')}-01T00:00:00.000Z`);
+  // const startDate = new Date(`${year}-${monthNumber.toString().padStart(2, '0')}-01T00:00:00.000Z`);
+  // const endDate = new Date(`${year}-${(monthNumber + 1).toString().padStart(2, '0')}-01T00:00:00.000Z`);
 
+    // Define the start and end dates for the specified month and year
+    const startDate = new Date(`${year}-${monthNumber.toString().padStart(2, '0')}-01T00:00:00.000Z`);
+
+    // Handle end date properly, considering the year transition
+    const endMonth = monthNumber === 12 ? 1 : monthNumber + 1; // Next month or January
+    const endYear = monthNumber === 12 ? parseInt(year) + 1 : year; // Increment year if December
+    const endDate = new Date(`${endYear}-${endMonth.toString().padStart(2, '0')}-01T00:00:00.000Z`);
   
+    console.log(`Start Date: ${startDate}`);
+    console.log(`End Date: ${endDate}`);
+
+
 
   // Check if dates are valid
   if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
@@ -200,27 +211,27 @@ const getAllResultsByLocationWithTimesMonthYear = asyncError(async (req, res, ne
     .populate("lotlocation") // Populate the lotlocation field with its full document
     .sort({ createdAt: -1 }); // Sort results by creation date in descending order
 
-
+  console.log(`Fetched Results Count: ${results.length}`);
   // console.log('Fetched Results:', results);
 
   results = results.filter((item) => {
-    if (!item.lotdate || !item.lotdate.lotdate) {
-      // console.warn('Skipping result due to missing lotdate:', item);
-      return false;
-    }
-  
-    // Parse the lotdate in "DD-MM-YYYY" format
-    const [day, month, year] = item.lotdate.lotdate.split('-').map(Number);
-    const lotdate = new Date(year, month - 1, day); // month is 0-based in JavaScript
-  
-    // Extract year and month for comparison
-    const lotdateYear = lotdate.getFullYear();
-    const lotdateMonth = lotdate.getMonth() + 1; // JavaScript months are 0-based
-  
-    // console.log(`Checking Result - date ${item.lotdate.lotdate} Mine Year ${year} Year: ${lotdateYear}, Month: ${lotdateMonth} Mine month ${monthNumber}`);
-    return lotdateYear === parseInt(year) && lotdateMonth === monthNumber;
-  });
-  
+  if (!item.lotdate || !item.lotdate.lotdate) {
+    // console.warn('Skipping result due to missing lotdate:', item);
+    return false;
+  }
+
+  // Parse the lotdate in "DD-MM-YYYY" format
+  const [day, month, year] = item.lotdate.lotdate.split('-').map(Number);
+  const lotdate = new Date(year, month - 1, day); // month is 0-based in JavaScript
+
+  // Extract year and month for comparison
+  const lotdateYear = lotdate.getFullYear();
+  const lotdateMonth = lotdate.getMonth() + 1; // JavaScript months are 0-based
+
+  console.log(`Checking Result - date ${item.lotdate.lotdate} Mine Year ${year} Year: ${lotdateYear}, Month: ${lotdateMonth} Mine month ${monthNumber}`);
+  return lotdateYear === parseInt(year) && lotdateMonth === monthNumber;
+});
+
   console.log(`Filtered Results Count: ${results.length}`);
   // console.log('Filtered Results:', results);
 
