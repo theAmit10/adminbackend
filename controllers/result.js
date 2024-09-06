@@ -61,65 +61,6 @@ const getAllResult = asyncError(async (req, res, next) => {
   });
 });
 
-// const getAllResultsByLocationWithTimes = asyncError(async (req, res, next) => {
-//   const { locationid } = req.query;
-
-//   // Fetch all results and populate relevant fields
-//   let results = await Result.find({})
-//     .populate("lotdate")
-//     .populate("lottime")
-//     .populate("lotlocation")
-//     .sort({ createdAt: -1 });
-
-//   // Filter results by location ID if provided
-//   if (locationid) {
-//     results = results.filter(
-//       (item) => item.lotlocation._id.toString() === locationid
-//     );
-//   }
-
-//   // Create an object to group results by lotdate
-//   const groupedResults = {};
-
-//   results.forEach((item) => {
-//     const lotdateId = item.lotdate._id.toString();
-
-//     // Initialize the lotdate group if it doesn't exist
-//     if (!groupedResults[lotdateId]) {
-//       groupedResults[lotdateId] = {
-//         ...item.lotdate.toObject(),
-//         times: [],
-//       };
-//     }
-
-//     // Add the lottime and the result to the times array
-//     const lottimeObj = {
-//       _id: item.lottime._id,
-//       lottime: item.lottime.lottime,
-//       results: [],
-//     };
-
-//     // Find if lottime already exists in times array
-//     const existingLottime = groupedResults[lotdateId].times.find(
-//       (t) => t._id.toString() === item.lottime._id.toString()
-//     );
-
-//     if (existingLottime) {
-//       existingLottime.results.push(item.toObject());
-//     } else {
-//       lottimeObj.results.push(item.toObject());
-//       groupedResults[lotdateId].times.push(lottimeObj);
-//     }
-//   });
-
-//   // Convert the grouped results object into an array
-//   const finalResults = Object.values(groupedResults);
-
-//   res.status(200).json({
-//     success: true,
-//     results: finalResults,
-//   });
-// });
 
 const getAllResultsByLocationWithTimes = asyncError(async (req, res, next) => {
   const { locationid } = req.query; // Extract the location ID from the query parameters
@@ -192,6 +133,155 @@ const getAllResultsByLocationWithTimes = asyncError(async (req, res, next) => {
   });
 });
 
+const getAllResultsByLocationWithTimesMonthYear = asyncError(async (req, res, next) => {
+  const { locationid, year, month } = req.query; // Extract the location ID, year, and month from the query parameters
+
+  // Validate the year and month
+  if (!year || !month) {
+    return res.status(400).json({
+      success: false,
+      message: "Year and month are required."
+    });
+  }
+
+  console.log(`Year Provided: ${year}`);
+  console.log(`Month Provided: ${month}`);
+
+  // Convert month name to number (e.g., "july" to 7)
+  const monthMap = {
+    january: 1,
+    february: 2,
+    march: 3,
+    april: 4,
+    may: 5,
+    june: 6,
+    july: 7,
+    august: 8,
+    september: 9,
+    october: 10,
+    november: 11,
+    december: 12
+  };
+
+  const monthNumber = monthMap[month.toLowerCase()];
+  if (!monthNumber) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid month provided."
+    });
+  }
+
+  console.log(`Converted Month Number: ${monthNumber}`);
+
+  // Define the start and end dates for the specified month and year
+  const startDate = new Date(`${year}-${monthNumber.toString().padStart(2, '0')}-01T00:00:00.000Z`);
+  const endDate = new Date(`${year}-${(monthNumber + 1).toString().padStart(2, '0')}-01T00:00:00.000Z`);
+
+  
+
+  // Check if dates are valid
+  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid date range."
+    });
+  }
+
+  // Fetch all results from the database with the specified location ID
+  let results = await Result.find({
+    lotlocation: locationid,
+    createdAt: {
+      $gte: startDate,
+      $lt: endDate
+    }
+  })
+    .populate("lotdate") // Populate the lotdate field with its full document
+    .populate("lottime") // Populate the lottime field with its full document
+    .populate("lotlocation") // Populate the lotlocation field with its full document
+    .sort({ createdAt: -1 }); // Sort results by creation date in descending order
+
+
+  // console.log('Fetched Results:', results);
+
+  results = results.filter((item) => {
+    if (!item.lotdate || !item.lotdate.lotdate) {
+      // console.warn('Skipping result due to missing lotdate:', item);
+      return false;
+    }
+  
+    // Parse the lotdate in "DD-MM-YYYY" format
+    const [day, month, year] = item.lotdate.lotdate.split('-').map(Number);
+    const lotdate = new Date(year, month - 1, day); // month is 0-based in JavaScript
+  
+    // Extract year and month for comparison
+    const lotdateYear = lotdate.getFullYear();
+    const lotdateMonth = lotdate.getMonth() + 1; // JavaScript months are 0-based
+  
+    // console.log(`Checking Result - date ${item.lotdate.lotdate} Mine Year ${year} Year: ${lotdateYear}, Month: ${lotdateMonth} Mine month ${monthNumber}`);
+    return lotdateYear === parseInt(year) && lotdateMonth === monthNumber;
+  });
+  
+  console.log(`Filtered Results Count: ${results.length}`);
+  // console.log('Filtered Results:', results);
+
+  // Initialize an empty object to group results by lottime
+  const groupedResults = {};
+
+  // Iterate through each result to group them by lottime and lotdate
+  results.forEach((item) => {
+    const lottimeId = item.lottime._id.toString(); // Convert the lottime ID to a string for easier comparison
+
+    // Check if the lottime group exists in groupedResults; if not, create it
+    if (!groupedResults[lottimeId]) {
+      groupedResults[lottimeId] = {
+        _id: lottimeId, // Store the lottime ID
+        lottime: item.lottime.toObject(), // Store the populated lottime object
+        dates: [], // Initialize an empty array to hold the lotdates for this lottime
+        createdAt: item.createdAt, // Store the creation date of the result
+      };
+    }
+
+    // Check if the lotdate already exists within the current lottime group
+    let dateGroup = groupedResults[lottimeId].dates.find(
+      (date) => date.lotdate._id.toString() === item.lotdate._id.toString()
+    );
+
+    // If the lotdate group doesn't exist, create it
+    if (!dateGroup) {
+      dateGroup = {
+        lotdate: item.lotdate.toObject(), // Store the populated lotdate object
+        lotlocation: item.lotlocation.toObject(), // Store the populated lotlocation object
+        results: [], // Initialize an empty array to hold the results for this lotdate
+        createdAt: item.createdAt, // Store the creation date of the result
+      };
+      groupedResults[lottimeId].dates.push(dateGroup); // Add the new date group to the lottime's dates array
+    }
+
+    // Add the current result to the results array within the date group
+    dateGroup.results.push({
+      resultNumber: item.resultNumber, // Store the result number
+      lotdate: item.lotdate.toObject(), // Store the populated lotdate object
+      lottime: item.lottime.toObject(), // Store the populated lottime object
+      lotlocation: item.lotlocation.toObject(), // Store the populated lotlocation object
+      nextresulttime: item.nextresulttime, // Store the next result time
+      createdAt: item.createdAt, // Store the creation date of the result
+    });
+  });
+
+  // Convert the groupedResults object into an array of lottimes with nested lotdates and results
+  const finalResults = Object.values(groupedResults);
+
+  // console.log('Final Grouped Results:', finalResults);
+
+  // Send the grouped results as a JSON response with a success status
+  res.status(200).json({
+    success: true,
+    results: finalResults, // Send the final grouped results array
+  });
+});
+
+
+
 const getAllResultsByLocationWithDates = asyncError(async (req, res, next) => {
   const { locationid } = req.query; // Get the location ID from the request query parameters
 
@@ -255,9 +345,6 @@ const getAllResultsByLocationWithDates = asyncError(async (req, res, next) => {
     results: finalResults, // Send the grouped and structured results back in the response
   });
 });
-
-
-
 
 
 const getAllResultAccordingToLocation = asyncError(async (req, res, next) => {
@@ -3214,6 +3301,7 @@ module.exports = {
   getAppLinks,
   deleteAppLinks,
   getSingleUserPlaybetHistory,
+  getAllResultsByLocationWithTimesMonthYear
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;
