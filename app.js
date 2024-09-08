@@ -102,17 +102,38 @@ const getNextResultTime = (times, currentTime) => {
   return timeList[index + 1];
 };
 
-const getPlaynumberOfLowestAmount = (data) => {
-  if (!data.playzone || !Array.isArray(data.playzone.playnumbers)) {
-    return null;
+// const getPlaynumberOfLowestAmount = (data) => {
+//   if (!data.playzone || !Array.isArray(data.playzone.playnumbers)) {
+//     return null;
+//   }
+
+//   return data.playzone.playnumbers.reduce((minPlaynumber, playnumber) => {
+//     return playnumber.amount < minPlaynumber.amount
+//       ? playnumber
+//       : minPlaynumber;
+//   }, data.playzone.playnumbers[0]).playnumber;
+// };
+
+function getPlaynumberOfLowestAmount(playinsightdata) {
+  // Extract playnumbers array
+  const playnumbers = playinsightdata.playzone.playnumbers;
+
+  // Find the minimum amount in the playnumbers list
+  const minAmount = Math.min(...playnumbers.map(p => p.amount));
+
+  // Get all playnumbers with the minimum amount
+  const minAmountPlaynumbers = playnumbers.filter(p => p.amount === minAmount);
+
+  // If there's more than one playnumber with the minimum amount, select one randomly
+  if (minAmountPlaynumbers.length > 1) {
+    const randomIndex = Math.floor(Math.random() * minAmountPlaynumbers.length);
+    return minAmountPlaynumbers[randomIndex].playnumber;
   }
 
-  return data.playzone.playnumbers.reduce((minPlaynumber, playnumber) => {
-    return playnumber.amount < minPlaynumber.amount
-      ? playnumber
-      : minPlaynumber;
-  }, data.playzone.playnumbers[0]).playnumber;
-};
+  // Otherwise, return the playnumber of the single minimum amount
+  return minAmountPlaynumbers[0].playnumber;
+}
+
 
 //  FOR TIME FORMATING
 // Options for the formatting

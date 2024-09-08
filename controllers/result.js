@@ -1198,14 +1198,107 @@ const updateDate = asyncError(async (req, res, next) => {
 // LOT TIME
 // ####################
 
-const addLotTime = asyncError(async (req, res, next) => {
-  await LotTime.create(req.body);
+// const addLotTime = asyncError(async (req, res, next) => {
+//   await LotTime.create(req.body);
 
+//   res.status(201).json({
+//     success: true,
+//     message: "Time Added Successfully",
+//   });
+// });
+
+// Function to create playnumbers array
+const createPlaynumbersArray = (numStr) => {
+  const num = parseInt(numStr, 10);
+  const resultArray = [];
+
+  for (let i = 1; i <= num; i++) {
+    resultArray.push({
+      playnumber: i,
+      numbercount: 0,
+      amount: 0,
+      distributiveamount: 0,
+      users: [],
+    });
+  }
+
+  return resultArray;
+};
+
+// const addLotTime = asyncError(async (req, res, next) => {
+//   // Create the LotTime
+//   const lotTime = await LotTime.create(req.body);
+
+//   // Get the newly created lottime._id
+//   const lottimeId = lotTime._id;
+
+//   // Get the current date and format it as DD-MM-YYYY
+//   const currentDate = new Date();
+//   const formattedDate = `${String(currentDate.getDate()).padStart(2, '0')}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getFullYear()).slice(2)}`;
+
+//   // Create the LotDate using the formatted date and lottimeId
+//   const lotDatePayload = {
+//     lotdate: formattedDate,
+//     lottime: lottimeId
+//   };
+
+//   const lotdate = await LotDate.create(lotDatePayload);
+
+//   // Respond with success
+//   res.status(201).json({
+//     success: true,
+//     message: "Time Added Successfully",
+//     lottime: lotTime,
+//     lotdate
+//   });
+// });
+
+const addLotTime = asyncError(async (req, res, next) => {
+  // 1. Create the LotTime
+  const lotTime = await LotTime.create(req.body);
+
+  // 2. Get the newly created lottime._id
+  const lottimeId = lotTime._id;
+
+  // 3. Get the current date and format it as DD-MM-YYYY
+  const currentDate = new Date();
+  const formattedDate = `${String(currentDate.getDate()).padStart(2, '0')}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getFullYear()).slice(2)}`;
+
+  // 4. Create the LotDate using the formatted date and lottimeId
+  const lotDatePayload = {
+    lotdate: formattedDate,
+    lottime: lottimeId
+  };
+  const lotdate = await LotDate.create(lotDatePayload);
+
+  // 5. Retrieve the LotLocation details using the lotlocation ID from the payload
+  const location = await LotLocation.findById(req.body.lotlocation);
+
+  if (!location) {
+    return next(new ErrorHandler("Lot Location not found", 404));
+  }
+
+  // 6. Create the playnumbers array based on location.maximumNumber
+  const playnumbers = createPlaynumbersArray(location.maximumNumber);
+
+  // 7. Create the Playzone with lotlocation, lottime, lotdate, and playnumbers
+  const playzoneData = {
+    lotlocation: location._id,
+    lottime: lotTime._id,
+    lotdate: lotdate._id,
+    playnumbers,
+  };
+  const newPlayzone = await Playzone.create(playzoneData);
+
+ 
+
+  // 8. Respond with success
   res.status(201).json({
     success: true,
     message: "Time Added Successfully",
   });
 });
+
 
 const getAllLotTime = asyncError(async (req, res, next) => {
   //   const lottimes = await LotTime.find({}).populate("lotlocation").sort({ createdAt: -1 });
