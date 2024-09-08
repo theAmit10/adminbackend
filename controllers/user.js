@@ -1700,7 +1700,7 @@ const addDeposit = asyncError(async (req, res, next) => {
     paymenttypeid,
   } = req.body;
 
-  const user = await User.findOne({ contact: userid });
+  const user = await User.findOne({ userId: userid });
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
   }
