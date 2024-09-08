@@ -61,7 +61,6 @@ const getAllResult = asyncError(async (req, res, next) => {
   });
 });
 
-
 const getAllResultsByLocationWithTimes = asyncError(async (req, res, next) => {
   const { locationid } = req.query; // Extract the location ID from the query parameters
 
@@ -133,165 +132,169 @@ const getAllResultsByLocationWithTimes = asyncError(async (req, res, next) => {
   });
 });
 
-const getAllResultsByLocationWithTimesMonthYear = asyncError(async (req, res, next) => {
-  const { locationid, year, month } = req.query; // Extract the location ID, year, and month from the query parameters
+const getAllResultsByLocationWithTimesMonthYear = asyncError(
+  async (req, res, next) => {
+    const { locationid, year, month } = req.query; // Extract the location ID, year, and month from the query parameters
 
-  // Validate the year and month
-  if (!year || !month) {
-    return res.status(400).json({
-      success: false,
-      message: "Year and month are required."
-    });
-  }
+    // Validate the year and month
+    if (!year || !month) {
+      return res.status(400).json({
+        success: false,
+        message: "Year and month are required.",
+      });
+    }
 
-  console.log(`Year Provided: ${year}`);
-  console.log(`Month Provided: ${month}`);
+    console.log(`Year Provided: ${year}`);
+    console.log(`Month Provided: ${month}`);
 
-  // Convert month name to number (e.g., "july" to 7)
-  const monthMap = {
-    january: 1,
-    february: 2,
-    march: 3,
-    april: 4,
-    may: 5,
-    june: 6,
-    july: 7,
-    august: 8,
-    september: 9,
-    october: 10,
-    november: 11,
-    december: 12
-  };
+    // Convert month name to number (e.g., "july" to 7)
+    const monthMap = {
+      january: 1,
+      february: 2,
+      march: 3,
+      april: 4,
+      may: 5,
+      june: 6,
+      july: 7,
+      august: 8,
+      september: 9,
+      october: 10,
+      november: 11,
+      december: 12,
+    };
 
-  const monthNumber = monthMap[month.toLowerCase()];
-  if (!monthNumber) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid month provided."
-    });
-  }
+    const monthNumber = monthMap[month.toLowerCase()];
+    if (!monthNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid month provided.",
+      });
+    }
 
-  console.log(`Converted Month Number: ${monthNumber}`);
-
-  // Define the start and end dates for the specified month and year
-  // const startDate = new Date(`${year}-${monthNumber.toString().padStart(2, '0')}-01T00:00:00.000Z`);
-  // const endDate = new Date(`${year}-${(monthNumber + 1).toString().padStart(2, '0')}-01T00:00:00.000Z`);
+    console.log(`Converted Month Number: ${monthNumber}`);
 
     // Define the start and end dates for the specified month and year
-    const startDate = new Date(`${year}-${monthNumber.toString().padStart(2, '0')}-01T00:00:00.000Z`);
+    // const startDate = new Date(`${year}-${monthNumber.toString().padStart(2, '0')}-01T00:00:00.000Z`);
+    // const endDate = new Date(`${year}-${(monthNumber + 1).toString().padStart(2, '0')}-01T00:00:00.000Z`);
+
+    // Define the start and end dates for the specified month and year
+    const startDate = new Date(
+      `${year}-${monthNumber.toString().padStart(2, "0")}-01T00:00:00.000Z`
+    );
 
     // Handle end date properly, considering the year transition
     const endMonth = monthNumber === 12 ? 1 : monthNumber + 1; // Next month or January
     const endYear = monthNumber === 12 ? parseInt(year) + 1 : year; // Increment year if December
-    const endDate = new Date(`${endYear}-${endMonth.toString().padStart(2, '0')}-01T00:00:00.000Z`);
-  
+    const endDate = new Date(
+      `${endYear}-${endMonth.toString().padStart(2, "0")}-01T00:00:00.000Z`
+    );
+
     console.log(`Start Date: ${startDate}`);
     console.log(`End Date: ${endDate}`);
 
+    // Check if dates are valid
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date range.",
+      });
+    }
 
+    // Fetch all results from the database with the specified location ID
+    let results = await Result.find({
+      lotlocation: locationid,
+      createdAt: {
+        $gte: startDate,
+        $lt: endDate,
+      },
+    })
+      .populate("lotdate") // Populate the lotdate field with its full document
+      .populate("lottime") // Populate the lottime field with its full document
+      .populate("lotlocation") // Populate the lotlocation field with its full document
+      .sort({ createdAt: -1 }); // Sort results by creation date in descending order
 
-  // Check if dates are valid
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid date range."
+    console.log(`Fetched Results Count: ${results.length}`);
+    // console.log('Fetched Results:', results);
+
+    results = results.filter((item) => {
+      if (!item.lotdate || !item.lotdate.lotdate) {
+        // console.warn('Skipping result due to missing lotdate:', item);
+        return false;
+      }
+
+      // Parse the lotdate in "DD-MM-YYYY" format
+      const [day, month, year] = item.lotdate.lotdate.split("-").map(Number);
+      const lotdate = new Date(year, month - 1, day); // month is 0-based in JavaScript
+
+      // Extract year and month for comparison
+      const lotdateYear = lotdate.getFullYear();
+      const lotdateMonth = lotdate.getMonth() + 1; // JavaScript months are 0-based
+
+      console.log(
+        `Checking Result - date ${item.lotdate.lotdate} Mine Year ${year} Year: ${lotdateYear}, Month: ${lotdateMonth} Mine month ${monthNumber}`
+      );
+      return lotdateYear === parseInt(year) && lotdateMonth === monthNumber;
     });
-  }
 
-  // Fetch all results from the database with the specified location ID
-  let results = await Result.find({
-    lotlocation: locationid,
-    createdAt: {
-      $gte: startDate,
-      $lt: endDate
-    }
-  })
-    .populate("lotdate") // Populate the lotdate field with its full document
-    .populate("lottime") // Populate the lottime field with its full document
-    .populate("lotlocation") // Populate the lotlocation field with its full document
-    .sort({ createdAt: -1 }); // Sort results by creation date in descending order
+    console.log(`Filtered Results Count: ${results.length}`);
+    // console.log('Filtered Results:', results);
 
-  console.log(`Fetched Results Count: ${results.length}`);
-  // console.log('Fetched Results:', results);
+    // Initialize an empty object to group results by lottime
+    const groupedResults = {};
 
-  results = results.filter((item) => {
-  if (!item.lotdate || !item.lotdate.lotdate) {
-    // console.warn('Skipping result due to missing lotdate:', item);
-    return false;
-  }
+    // Iterate through each result to group them by lottime and lotdate
+    results.forEach((item) => {
+      const lottimeId = item.lottime._id.toString(); // Convert the lottime ID to a string for easier comparison
 
-  // Parse the lotdate in "DD-MM-YYYY" format
-  const [day, month, year] = item.lotdate.lotdate.split('-').map(Number);
-  const lotdate = new Date(year, month - 1, day); // month is 0-based in JavaScript
+      // Check if the lottime group exists in groupedResults; if not, create it
+      if (!groupedResults[lottimeId]) {
+        groupedResults[lottimeId] = {
+          _id: lottimeId, // Store the lottime ID
+          lottime: item.lottime.toObject(), // Store the populated lottime object
+          dates: [], // Initialize an empty array to hold the lotdates for this lottime
+          createdAt: item.createdAt, // Store the creation date of the result
+        };
+      }
 
-  // Extract year and month for comparison
-  const lotdateYear = lotdate.getFullYear();
-  const lotdateMonth = lotdate.getMonth() + 1; // JavaScript months are 0-based
+      // Check if the lotdate already exists within the current lottime group
+      let dateGroup = groupedResults[lottimeId].dates.find(
+        (date) => date.lotdate._id.toString() === item.lotdate._id.toString()
+      );
 
-  console.log(`Checking Result - date ${item.lotdate.lotdate} Mine Year ${year} Year: ${lotdateYear}, Month: ${lotdateMonth} Mine month ${monthNumber}`);
-  return lotdateYear === parseInt(year) && lotdateMonth === monthNumber;
-});
+      // If the lotdate group doesn't exist, create it
+      if (!dateGroup) {
+        dateGroup = {
+          lotdate: item.lotdate.toObject(), // Store the populated lotdate object
+          lotlocation: item.lotlocation.toObject(), // Store the populated lotlocation object
+          results: [], // Initialize an empty array to hold the results for this lotdate
+          createdAt: item.createdAt, // Store the creation date of the result
+        };
+        groupedResults[lottimeId].dates.push(dateGroup); // Add the new date group to the lottime's dates array
+      }
 
-  console.log(`Filtered Results Count: ${results.length}`);
-  // console.log('Filtered Results:', results);
-
-  // Initialize an empty object to group results by lottime
-  const groupedResults = {};
-
-  // Iterate through each result to group them by lottime and lotdate
-  results.forEach((item) => {
-    const lottimeId = item.lottime._id.toString(); // Convert the lottime ID to a string for easier comparison
-
-    // Check if the lottime group exists in groupedResults; if not, create it
-    if (!groupedResults[lottimeId]) {
-      groupedResults[lottimeId] = {
-        _id: lottimeId, // Store the lottime ID
-        lottime: item.lottime.toObject(), // Store the populated lottime object
-        dates: [], // Initialize an empty array to hold the lotdates for this lottime
-        createdAt: item.createdAt, // Store the creation date of the result
-      };
-    }
-
-    // Check if the lotdate already exists within the current lottime group
-    let dateGroup = groupedResults[lottimeId].dates.find(
-      (date) => date.lotdate._id.toString() === item.lotdate._id.toString()
-    );
-
-    // If the lotdate group doesn't exist, create it
-    if (!dateGroup) {
-      dateGroup = {
+      // Add the current result to the results array within the date group
+      dateGroup.results.push({
+        resultNumber: item.resultNumber, // Store the result number
         lotdate: item.lotdate.toObject(), // Store the populated lotdate object
+        lottime: item.lottime.toObject(), // Store the populated lottime object
         lotlocation: item.lotlocation.toObject(), // Store the populated lotlocation object
-        results: [], // Initialize an empty array to hold the results for this lotdate
+        nextresulttime: item.nextresulttime, // Store the next result time
         createdAt: item.createdAt, // Store the creation date of the result
-      };
-      groupedResults[lottimeId].dates.push(dateGroup); // Add the new date group to the lottime's dates array
-    }
-
-    // Add the current result to the results array within the date group
-    dateGroup.results.push({
-      resultNumber: item.resultNumber, // Store the result number
-      lotdate: item.lotdate.toObject(), // Store the populated lotdate object
-      lottime: item.lottime.toObject(), // Store the populated lottime object
-      lotlocation: item.lotlocation.toObject(), // Store the populated lotlocation object
-      nextresulttime: item.nextresulttime, // Store the next result time
-      createdAt: item.createdAt, // Store the creation date of the result
+      });
     });
-  });
 
-  // Convert the groupedResults object into an array of lottimes with nested lotdates and results
-  const finalResults = Object.values(groupedResults);
+    // Convert the groupedResults object into an array of lottimes with nested lotdates and results
+    const finalResults = Object.values(groupedResults);
 
-  // console.log('Final Grouped Results:', finalResults);
+    // console.log('Final Grouped Results:', finalResults);
 
-  // Send the grouped results as a JSON response with a success status
-  res.status(200).json({
-    success: true,
-    results: finalResults, // Send the final grouped results array
-  });
-});
-
-
+    // Send the grouped results as a JSON response with a success status
+    res.status(200).json({
+      success: true,
+      results: finalResults, // Send the final grouped results array
+    });
+  }
+);
 
 const getAllResultsByLocationWithDates = asyncError(async (req, res, next) => {
   const { locationid } = req.query; // Get the location ID from the request query parameters
@@ -356,7 +359,6 @@ const getAllResultsByLocationWithDates = asyncError(async (req, res, next) => {
     results: finalResults, // Send the grouped and structured results back in the response
   });
 });
-
 
 const getAllResultAccordingToLocation = asyncError(async (req, res, next) => {
   const { locationid } = req.query;
@@ -701,9 +703,11 @@ const checkPlaynumberExists = (data, playnumberToCheck) => {
 // });
 
 const createResult = asyncError(async (req, res, next) => {
-  const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } = req.body;
+  const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } =
+    req.body;
 
-  if (!resultNumber) return next(new ErrorHandler("Result number not found", 404));
+  if (!resultNumber)
+    return next(new ErrorHandler("Result number not found", 404));
   if (!lotdate) return next(new ErrorHandler("Date not found", 404));
   if (!lottime) return next(new ErrorHandler("Time not found", 404));
   if (!lotlocation) return next(new ErrorHandler("Location not found", 404));
@@ -768,7 +772,7 @@ const createResult = asyncError(async (req, res, next) => {
 
     // FOR NOTIFICATION
     const notification = await Notification.create({
-      title: 'Congratulations! You won!',
+      title: "Congratulations! You won!",
       description: `You have won an amount of ${amount}.`,
     });
 
@@ -860,13 +864,10 @@ const createResult = asyncError(async (req, res, next) => {
 
   res.status(200).json({
     success: true,
-    message: "Result Created and Wallets Updated Successfully, Notifications sent, and Playbet History Updated",
+    message:
+      "Result Created and Wallets Updated Successfully, Notifications sent, and Playbet History Updated",
   });
 });
-
-
-
-
 
 // const createResult = asyncError(async (req, res, next) => {
 //   const { resultNumber, lotdate, lottime, lotlocation, nextresulttime } = req.body;
@@ -1024,7 +1025,6 @@ const createResult = asyncError(async (req, res, next) => {
 //   });
 // });
 
-
 const updateResult = asyncError(async (req, res, next) => {
   const { resultNumber, nextresulttime } = req.body;
 
@@ -1156,7 +1156,6 @@ const getAllLotDateAccordindLocationAndTime = asyncError(
   }
 );
 
-
 const deleteLotDate = asyncError(async (req, res, next) => {
   const lotdate = await LotDate.findById(req.params.id);
 
@@ -1243,7 +1242,9 @@ const getAllLotTimeAccordindLocation = asyncError(async (req, res, next) => {
   const { locationid } = req.query;
 
   // Sort by _id to get the newest documents last
-  let lottimes = await LotTime.find({}).populate("lotlocation").sort({ createdAt: 1 });
+  let lottimes = await LotTime.find({})
+    .populate("lotlocation")
+    .sort({ createdAt: 1 });
 
   if (locationid) {
     // Filter lottimes array based on locationid
@@ -1257,7 +1258,6 @@ const getAllLotTimeAccordindLocation = asyncError(async (req, res, next) => {
     lottimes,
   });
 });
-
 
 const deleteLotTime = asyncError(async (req, res, next) => {
   const lottime = await LotTime.findById(req.params.id);
@@ -1457,7 +1457,6 @@ const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
     locationData,
   });
 });
-
 
 const addPayment = asyncError(async (req, res, next) => {
   const { paymentName } = req.body;
@@ -1798,7 +1797,7 @@ const getSinglePlayzone = asyncError(async (req, res, next) => {
       lotlocation,
       lottime,
       lotdate,
-    }).populate('playnumbers.users.currency'); // Populate currency in users array within playnumbers
+    }).populate("playnumbers.users.currency"); // Populate currency in users array within playnumbers
 
     if (!playzone) {
       return res.status(404).json({
@@ -2119,7 +2118,6 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
   }
 });
 
-
 // const addPlaybet = asyncError(async (req, res, next) => {
 //   const { playnumbers, lotdate, lottime, lotlocation } = req.body;
 //   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
@@ -2278,14 +2276,12 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 //         0
 //       );
 
-
 //       // for calculated winning amount
 //       // playzone.playnumbers[playnumberIndex].distributiveamount =
 //       //   playzone.playnumbers[playnumberIndex].users.reduce(
 //       //     (total, user) => total + user.winningamount,
 //       //     0
 //       //   );
-
 
 //       // Calculate distributiveamount with currency value
 //       playzone.playnumbers[playnumberIndex].distributiveamount = playzone.playnumbers[
@@ -2299,7 +2295,6 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 //             ),
 //         0
 //       );
-
 
 //     }
 //   });
@@ -2347,7 +2342,6 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 //     message: "Playbet entry added successfully",
 //   });
 // });
-
 
 // 2
 // const addPlaybet = asyncError(async (req, res, next) => {
@@ -2490,8 +2484,6 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 //           currency: user.country._id.toString(),
 //         });
 //       }
-
-      
 
 //       // Update numbercount and amount
 //       playzone.playnumbers[playnumberIndex].numbercount =
@@ -2690,18 +2682,34 @@ const addPlaybet = asyncError(async (req, res, next) => {
       );
       console.log("User index :: " + userIndex);
 
+      // NOW GETTING THE CALCULATED AMOUNT
+      const currency = await Currency.findById(user.country._id);
+      if (!currency) {
+        return next(new ErrorHandler("Currency not found", 404));
+      }
+      const currencyconverter = parseFloat(
+        currency.countrycurrencyvaluecomparedtoinr
+      );
+
+      const convertedAmount =
+        parseFloat(playbet.amount) * parseFloat(currencyconverter);
+      console.log("convertedAmount :: " + convertedAmount);
+
       if (userIndex !== -1) {
         // User exists, update amount and winningamount
         playzone.playnumbers[playnumberIndex].users[userIndex].amount +=
           playbet.amount;
         playzone.playnumbers[playnumberIndex].users[userIndex].winningamount +=
           playbet.winningamount;
+        playzone.playnumbers[playnumberIndex].users[userIndex].convertedAmount +=
+        convertedAmount;
       } else {
         // User does not exist, add new user
         playzone.playnumbers[playnumberIndex].users.push({
           userId: req.user.userId,
           username: req.user.name,
           amount: playbet.amount,
+          convertedAmount: convertedAmount,
           usernumber: playbet.playnumber,
           winningamount: playbet.winningamount,
           currency: user.country._id.toString(),
@@ -2710,7 +2718,9 @@ const addPlaybet = asyncError(async (req, res, next) => {
       }
 
       // Populate currency for the newly added user
-      await playzone.populate(`playnumbers.${playnumberIndex}.users.${userIndex}.currency`);
+      await playzone.populate(
+        `playnumbers.${playnumberIndex}.users.${userIndex}.currency`
+      );
 
       // Update numbercount and amount
       playzone.playnumbers[playnumberIndex].numbercount =
@@ -2722,9 +2732,13 @@ const addPlaybet = asyncError(async (req, res, next) => {
         console.log("Cal User :: " + JSON.stringify(user));
         const amount = parseFloat(user.amount);
         const curren = await Currency.findById(user.currency);
-        const currencyValue = parseFloat(curren.countrycurrencyvaluecomparedtoinr);
+        const currencyValue = parseFloat(
+          curren.countrycurrencyvaluecomparedtoinr
+        );
         if (isNaN(amount) || isNaN(currencyValue)) {
-          console.error(`Invalid amount or currency value for user: ${JSON.stringify(user)}`);
+          console.error(
+            `Invalid amount or currency value for user: ${JSON.stringify(user)}`
+          );
           continue;
         }
         totalAmount += amount * currencyValue;
@@ -2738,17 +2752,27 @@ const addPlaybet = asyncError(async (req, res, next) => {
         console.log("Cal User :: " + JSON.stringify(user));
         const winningAmount = parseFloat(user.winningamount);
         const curren = await Currency.findById(user.currency);
-        const currencyValue = parseFloat(curren.countrycurrencyvaluecomparedtoinr);
+        const currencyValue = parseFloat(
+          curren.countrycurrencyvaluecomparedtoinr
+        );
         if (isNaN(winningAmount) || isNaN(currencyValue)) {
-          console.error(`Invalid winning amount or currency value for user: ${JSON.stringify(user)}`);
+          console.error(
+            `Invalid winning amount or currency value for user: ${JSON.stringify(
+              user
+            )}`
+          );
           continue;
         }
         totalDistributiveAmount += winningAmount * currencyValue;
       }
 
-      playzone.playnumbers[playnumberIndex].distributiveamount = totalDistributiveAmount;
+      playzone.playnumbers[playnumberIndex].distributiveamount =
+        totalDistributiveAmount;
 
-      console.log("Updated playnumber :: ", JSON.stringify(playzone.playnumbers[playnumberIndex]));
+      console.log(
+        "Updated playnumber :: ",
+        JSON.stringify(playzone.playnumbers[playnumberIndex])
+      );
     }
   }
 
@@ -2774,46 +2798,45 @@ const addPlaybet = asyncError(async (req, res, next) => {
   // const totalBalance = withdrawalBalance + gameBalance;
 
   const currencyap = await Currency.findById(user.country._id);
-    if (!currencyap) {
-      return next(new ErrorHandler("Currency not found", 404));
-    }
+  if (!currencyap) {
+    return next(new ErrorHandler("Currency not found", 404));
+  }
 
-    const currencyconverter = parseFloat(
-      currencyap.countrycurrencyvaluecomparedtoinr
+  const currencyconverter = parseFloat(
+    currencyap.countrycurrencyvaluecomparedtoinr
+  );
+
+  // Fetch all WalletTwo balances and populate currencyId
+  const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+  let gameBalance = 0;
+
+  walletTwoBalances.forEach((wallet) => {
+    const walletCurrencyConverter = parseFloat(
+      wallet.currencyId.countrycurrencyvaluecomparedtoinr
     );
+    gameBalance += wallet.balance * walletCurrencyConverter;
+  });
 
+  // Fetch all WalletOne balances and populate currencyId
+  const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+  let withdrawalBalance = 0;
 
-   // Fetch all WalletTwo balances and populate currencyId
-   const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
-   let gameBalance = 0;
+  walletOneBalances.forEach((wallet) => {
+    const walletCurrencyConverter = parseFloat(
+      wallet.currencyId.countrycurrencyvaluecomparedtoinr
+    );
+    withdrawalBalance += wallet.balance * walletCurrencyConverter;
+  });
 
-   walletTwoBalances.forEach((wallet) => {
-     const walletCurrencyConverter = parseFloat(
-       wallet.currencyId.countrycurrencyvaluecomparedtoinr
-     );
-     gameBalance += wallet.balance * walletCurrencyConverter;
-   });
+  // Add the additional amount with currency conversion
+  gameBalance -= parseFloat(totalAmount * currencyconverter);
 
-   // Fetch all WalletOne balances and populate currencyId
-   const walletOneBalances = await WalletOne.find({}).populate("currencyId");
-   let withdrawalBalance = 0;
-
-   walletOneBalances.forEach((wallet) => {
-     const walletCurrencyConverter = parseFloat(
-       wallet.currencyId.countrycurrencyvaluecomparedtoinr
-     );
-     withdrawalBalance += wallet.balance * walletCurrencyConverter;
-   });
-
-   // Add the additional amount with currency conversion
-   gameBalance -= parseFloat(totalAmount * currencyconverter); 
-
-   // Calculate total balance as the sum of walletOne and walletTwo balances
-   const totalBalance = withdrawalBalance + gameBalance;
+  // Calculate total balance as the sum of walletOne and walletTwo balances
+  const totalBalance = withdrawalBalance + gameBalance;
 
   // Create a new AppBalanceSheet document
   const appBalanceSheet = new AppBalanceSheet({
-    amount:  parseFloat(totalAmount * currencyconverter),
+    amount: parseFloat(totalAmount * currencyconverter),
     withdrawalbalance: withdrawalBalance,
     gamebalance: gameBalance,
     totalbalance: totalBalance,
@@ -2828,7 +2851,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
   await appBalanceSheet.save();
   console.log("AppBalanceSheet Created Successfully");
 
-
   const updatedWallet = await WalletTwo.findByIdAndUpdate(
     walletId,
     { balance: remainingWalletBalance },
@@ -2842,13 +2864,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
     message: "Playbet entry added successfully",
   });
 });
-
-
-
-
-
-
-
 
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id; // Assuming user is authenticated and user ID is available in req.user
@@ -2893,14 +2908,13 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
   }
 });
 
-
 // FOR ADMIN
 const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
   const userId = req.params.userid;
 
   try {
     // Find the user by ID to get the playbetHistory
-    const user = await User.findOne({userId}).populate({
+    const user = await User.findOne({ userId }).populate({
       path: "playbetHistory",
       populate: [
         { path: "lotdate", model: "LotDate" },
@@ -2937,8 +2951,6 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
     });
   }
 });
-
-
 
 const createCurrency = asyncError(async (req, res, next) => {
   const {
@@ -3112,7 +3124,6 @@ const deleteCurrency = asyncError(async (req, res, next) => {
   });
 });
 
-
 // GET ALL THE BALANCE SHEET
 
 const getAppBalanceSheet = asyncError(async (req, res, next) => {
@@ -3121,8 +3132,8 @@ const getAppBalanceSheet = asyncError(async (req, res, next) => {
       path: "paybetId",
       populate: {
         path: "lotlocation",
-        model: "LotLocation" // Ensure this model name matches your Mongoose schema
-      }
+        model: "LotLocation", // Ensure this model name matches your Mongoose schema
+      },
     })
     .populate("payzoneId")
     .populate("transactionId")
@@ -3164,12 +3175,6 @@ const getAppBalanceSheet = asyncError(async (req, res, next) => {
 //     balancesheet,
 //   });
 // });
-
-
-
-
-
-
 
 const updateAppLinks = asyncError(async (req, res, next) => {
   const { androidLink, iosLink } = req.body;
@@ -3247,9 +3252,6 @@ const deleteAppLinks = asyncError(async (req, res, next) => {
   });
 });
 
-
-
-
 module.exports = {
   createCurrency,
   getAllCurrencies,
@@ -3312,7 +3314,7 @@ module.exports = {
   getAppLinks,
   deleteAppLinks,
   getSingleUserPlaybetHistory,
-  getAllResultsByLocationWithTimesMonthYear
+  getAllResultsByLocationWithTimesMonthYear,
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;

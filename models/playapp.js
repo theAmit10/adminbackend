@@ -31,6 +31,9 @@ const playNumberSchema = new mongoose.Schema({
         type: Number,
         required: [true, "Please enter amount"]
       },
+      convertedAmount: {
+        type: Number,
+      },
       usernumber: {
         type: Number,
         required: [true, "Please enter number"]

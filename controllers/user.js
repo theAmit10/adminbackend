@@ -1716,8 +1716,23 @@ const addDeposit = asyncError(async (req, res, next) => {
   // I have just add the below line just to check
   if (!req.file) return next(new ErrorHandler("Please add screenshot", 400));
 
+  // NOW GETTING THE CALCULATED AMOUNT
+
+  const currency = await Currency.findById(user.country._id);
+  if (!currency) {
+    return next(new ErrorHandler("Currency not found", 404));
+  }
+
+  const currencyconverter = parseFloat(
+    currency.countrycurrencyvaluecomparedtoinr
+  );
+
+  const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter)
+  console.log("convertedAmount :: "+convertedAmount)
+
   const transaction = await Transaction.create({
     amount,
+    convertedAmount,
     transactionId: transactionid,
     remark,
     paymentType: paymenttype,

@@ -5,6 +5,9 @@ const transactionSchema = new mongoose.Schema({
     type: String,
     required: [true, "Please enter amount"]
   },
+  convertedAmount: {
+    type: String,
+  },
   currency: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Currency",
