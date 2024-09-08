@@ -2159,7 +2159,7 @@ const addWithdraw = asyncError(async (req, res, next) => {
     skrillContact,
   } = req.body;
 
-  const user = await User.findOne({ contact: userid });
+  const user = await User.findOne({ userId: userid });
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
   }
@@ -2168,8 +2168,23 @@ const addWithdraw = asyncError(async (req, res, next) => {
   if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
   if (!username) return next(new ErrorHandler("Username missing", 400));
 
+  // NOW GETTING THE CALCULATED AMOUNT
+
+  const currency = await Currency.findById(user.country._id);
+  if (!currency) {
+    return next(new ErrorHandler("Currency not found", 404));
+  }
+
+  const currencyconverter = parseFloat(
+    currency.countrycurrencyvaluecomparedtoinr
+  );
+
+  const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter)
+  console.log("convertedAmount :: "+convertedAmount)
+
   const transaction = await Transaction.create({
     amount,
+    convertedAmount,
     remark,
     paymentType: paymenttype,
     username,
