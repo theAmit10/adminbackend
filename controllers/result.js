@@ -3098,7 +3098,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
 // });
 
 
-
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id;
 
@@ -3133,8 +3132,8 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
       createdAt: new Date(bet.createdAt),
     }));
 
-    // Sort playbets by createdAt in descending order
-    playbets.sort((a, b) => b.createdAt - a.createdAt);
+    // Reverse the order of playbets to get the most recent first
+    playbets.reverse();
 
     res.status(200).json({
       success: true,
@@ -3150,6 +3149,56 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
 });
 
 
+
+// const getUserPlaybets = asyncError(async (req, res, next) => {
+//   const userId = req.user._id;
+
+//   try {
+//     const user = await User.findById(userId).populate({
+//       path: "playbetHistory",
+//       populate: [
+//         { path: "lotdate", model: "LotDate" },
+//         { path: "lottime", model: "LotTime" },
+//         { path: "lotlocation", model: "LotLocation" },
+//         { path: "currency", model: "Currency" },
+//       ],
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     let playbets = user.playbetHistory;
+
+//     // Log raw data
+//     playbets.forEach(bet => {
+//       console.log(`ID: ${bet._id}, Created At: ${bet.createdAt}`);
+//     });
+
+//     // Ensure createdAt is treated as a date
+//     playbets = playbets.map(bet => ({
+//       ...bet.toObject(), // Ensure it's a plain object
+//       createdAt: new Date(bet.createdAt),
+//     }));
+
+//     // Sort playbets by createdAt in descending order
+//     playbets.sort((a, b) => b.createdAt - a.createdAt);
+
+//     res.status(200).json({
+//       success: true,
+//       playbets,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to retrieve playbets",
+//       error: error.message,
+//     });
+//   }
+// });
 
 
 
@@ -3178,10 +3227,14 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
     // Get the playbetHistory array from the user document
     let playbets = user.playbetHistory;
 
-    // Sort playbets by createdAt in descending order
-    playbets = playbets.sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
+    // Ensure createdAt is treated as a date
+    playbets = playbets.map(bet => ({
+      ...bet.toObject(), // Ensure it's a plain object
+      createdAt: new Date(bet.createdAt),
+    }));
+
+    // Reverse the order to get the oldest first
+    playbets.reverse();
 
     res.status(200).json({
       success: true,
@@ -3195,6 +3248,50 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
     });
   }
 });
+
+
+// const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
+//   const userId = req.params.userid;
+
+//   try {
+//     // Find the user by ID to get the playbetHistory
+//     const user = await User.findOne({ userId }).populate({
+//       path: "playbetHistory",
+//       populate: [
+//         { path: "lotdate", model: "LotDate" },
+//         { path: "lottime", model: "LotTime" },
+//         { path: "lotlocation", model: "LotLocation" },
+//         { path: "currency", model: "Currency" },
+//       ],
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     // Get the playbetHistory array from the user document
+//     let playbets = user.playbetHistory;
+
+//     // Sort playbets by createdAt in descending order
+//     playbets = playbets.sort(
+//       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       playbets,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to retrieve playbets",
+//       error: error.message,
+//     });
+//   }
+// });
 
 const createCurrency = asyncError(async (req, res, next) => {
   const {
