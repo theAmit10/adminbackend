@@ -47,6 +47,10 @@ const playNumberSchema = new mongoose.Schema({
         ref: "Currency",
         required: [true, "Please provide currency id"],
       },
+      createdAt: {
+        type: Date,
+        default: Date.now()
+      }
     }
   ]
 });
@@ -70,7 +74,7 @@ const playzoneSchema = new mongoose.Schema({
   playnumbers: [playNumberSchema],
   createdAt: {
     type: Date,
-    default: Date.now
+    default: Date.now()
   }
 });
 
