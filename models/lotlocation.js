@@ -30,6 +30,10 @@ const schema = new mongoose.Schema({
         enum: ["automatic", "manual"],
         default: "manual",
     },
+    automationUpdatedAt: {
+        type: Date,
+        default: Date.now, // Default value is the current date and time
+    },
     createdAt: {
         type: Date,
         default: Date.now(),

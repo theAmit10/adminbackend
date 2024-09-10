@@ -1444,6 +1444,39 @@ const deleteLotLocation = asyncError(async (req, res, next) => {
   });
 });
 
+// const updateLocation = asyncError(async (req, res, next) => {
+//   const {
+//     lotlocation,
+//     locationTitle,
+//     locationDescription,
+//     maximumNumber,
+//     maximumRange,
+//     maximumReturn,
+//     automation,
+//   } = req.body;
+
+//   console.log("Request body:", req.body); // Log the request body to check incoming data
+
+//   const llocation = await LotLocation.findById(req.params.id);
+
+//   if (!llocation) return next(new ErrorHandler("Location not found", 404));
+//   if (maximumReturn !== undefined) llocation.maximumReturn = maximumReturn;
+//   if (lotlocation !== undefined) llocation.lotlocation = lotlocation;
+//   if (locationTitle !== undefined) llocation.locationTitle = locationTitle;
+//   if (locationDescription !== undefined)
+//     llocation.locationDescription = locationDescription;
+//   if (maximumRange !== undefined) llocation.maximumRange = maximumRange;
+//   if (maximumNumber !== undefined) llocation.maximumNumber = maximumNumber;
+//   if (automation !== undefined) llocation.automation = automation;
+
+//   await llocation.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Location Updated Successfully",
+//   });
+// });
+
 const updateLocation = asyncError(async (req, res, next) => {
   const {
     lotlocation,
@@ -1460,6 +1493,7 @@ const updateLocation = asyncError(async (req, res, next) => {
   const llocation = await LotLocation.findById(req.params.id);
 
   if (!llocation) return next(new ErrorHandler("Location not found", 404));
+
   if (maximumReturn !== undefined) llocation.maximumReturn = maximumReturn;
   if (lotlocation !== undefined) llocation.lotlocation = lotlocation;
   if (locationTitle !== undefined) llocation.locationTitle = locationTitle;
@@ -1467,7 +1501,12 @@ const updateLocation = asyncError(async (req, res, next) => {
     llocation.locationDescription = locationDescription;
   if (maximumRange !== undefined) llocation.maximumRange = maximumRange;
   if (maximumNumber !== undefined) llocation.maximumNumber = maximumNumber;
-  if (automation !== undefined) llocation.automation = automation;
+
+  // Update automation and automationUpdatedAt if automation is changed
+  if (automation !== undefined) {
+    llocation.automation = automation;
+    llocation.automationUpdatedAt = Date.now(); // Update automationUpdatedAt to the current time
+  }
 
   await llocation.save();
 
@@ -1476,6 +1515,7 @@ const updateLocation = asyncError(async (req, res, next) => {
     message: "Location Updated Successfully",
   });
 });
+
 
 // const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
 //   // Fetch all lot locations
