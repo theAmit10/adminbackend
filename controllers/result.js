@@ -1262,7 +1262,7 @@ const addLotTime = asyncError(async (req, res, next) => {
 
   // 3. Get the current date and format it as DD-MM-YYYY
   const currentDate = new Date();
-  const formattedDate = `${String(currentDate.getDate()).padStart(2, '0')}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getFullYear()).slice(2)}`;
+  const formattedDate = `${String(currentDate.getDate()).padStart(2, '0')}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getFullYear())}`;
 
   // 4. Create the LotDate using the formatted date and lottimeId
   const lotDatePayload = {
@@ -1352,26 +1352,58 @@ const getAllLotTimeAccordindLocation = asyncError(async (req, res, next) => {
   });
 });
 
+// const deleteLotTime = asyncError(async (req, res, next) => {
+//   const lottime = await LotTime.findById(req.params.id);
+
+//   if (!lottime) return next(new ErrorHandler("Time not found", 404));
+
+//   const lottimes = await LotDate.find({ lottime: lottime._id });
+
+//   for (let index = 0; index < lottimes.length; index++) {
+//     const lottime = array[index];
+//     lottime.lottime = undefined;
+//     await lottime.save();
+//   }
+
+//   await lottime.deleteOne();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Time Deleted Successfully",
+//   });
+// });
+
 const deleteLotTime = asyncError(async (req, res, next) => {
+  // 1. Find the LotTime by its ID
   const lottime = await LotTime.findById(req.params.id);
 
   if (!lottime) return next(new ErrorHandler("Time not found", 404));
 
-  const lottimes = await LotDate.find({ lottime: lottime._id });
+  // 2. Find all associated LotDate entries
+  const lotdates = await LotDate.find({ lottime: lottime._id });
 
-  for (let index = 0; index < lottimes.length; index++) {
-    const lottime = array[index];
-    lottime.lottime = undefined;
-    await lottime.save();
+  // 3. Loop through each LotDate and remove associated Playzone entries
+  for (let index = 0; index < lotdates.length; index++) {
+    const lotdate = lotdates[index];
+
+    // Find and delete Playzones linked to the current LotDate and LotTime
+    await Playzone.deleteMany({ lotdate: lotdate._id, lottime: lottime._id });
+
+    // Remove the LotTime reference from the LotDate (optional: delete the LotDate entirely if you prefer)
+    await lotdate.deleteOne();
   }
 
+  // 4. Delete the LotTime itself
   await lottime.deleteOne();
 
+  // 5. Respond with success
   res.status(200).json({
     success: true,
-    message: "Time Deleted Successfully",
+    message: "Time deleted successfully",
   });
 });
+
+
 
 const updateTime = asyncError(async (req, res, next) => {
   const { lottime } = req.body;

@@ -119,10 +119,12 @@ function getPlaynumberOfLowestAmount(playinsightdata) {
   const playnumbers = playinsightdata.playzone.playnumbers;
 
   // Find the minimum amount in the playnumbers list
-  const minAmount = Math.min(...playnumbers.map(p => p.amount));
+  const minAmount = Math.min(...playnumbers.map((p) => p.amount));
 
   // Get all playnumbers with the minimum amount
-  const minAmountPlaynumbers = playnumbers.filter(p => p.amount === minAmount);
+  const minAmountPlaynumbers = playnumbers.filter(
+    (p) => p.amount === minAmount
+  );
 
   // If there's more than one playnumber with the minimum amount, select one randomly
   if (minAmountPlaynumbers.length > 1) {
@@ -133,7 +135,6 @@ function getPlaynumberOfLowestAmount(playinsightdata) {
   // Otherwise, return the playnumber of the single minimum amount
   return minAmountPlaynumbers[0].playnumber;
 }
-
 
 //  FOR TIME FORMATING
 // Options for the formatting
@@ -166,177 +167,33 @@ function addLeadingZero(value) {
 // '0 0 * * *'
 
 // Schedule the task to run every 24 hours 0 0 * * *
-cron.schedule("0 * * * *", async () => {
-  console.log("Running scheduled task to add LotDates and Playzones");
-  try {
-    // Fetch all locations with automation set to 'automatic'
-    // const locations = await LotLocation.find({ automation: "automatic" });
-    const locations = await LotLocation.find({});
-
-    console.log("AUTOMATIC LOCATION COUNT :: " + locations.length);
-
-    for (const location of locations) {
-      // Fetch times for each location
-      const times = await LotTime.find({ lotlocation: location._id });
-
-      for (const time of times) {
-        // Create a LotDate entry for each time
-        const lotdate = getCurrentDate();
-
-        // Check if the LotDate already exists
-        const existingLotDate = await LotDate.findOne({
-          lotdate,
-          lottime: time._id,
-        });
-
-        if (!existingLotDate) {
-          // LotDate does not exist, create a new one
-          const newLotDate = await LotDate.create({
-            lotdate,
-            lottime: time._id,
-          });
-
-          console.log(
-            `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
-          );
-
-          // Create Playzone entry for each LotDate
-          const playnumbers = createPlaynumbersArray(location.maximumNumber);
-          const playzoneData = {
-            lotlocation: location._id,
-            lottime: time._id,
-            lotdate: newLotDate._id,
-            playnumbers,
-          };
-          const newPlayzone = await Playzone.create(playzoneData);
-
-          console.log(
-            `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
-          );
-        } else {
-          console.log(
-            `LotDate already exists for location ${location.lotlocation} at time ${time.lottime} on date ${lotdate}`
-          );
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Error running scheduled task:", error);
-  }
-});
-
-
-// cron.schedule("*/15 * * * *", async () => {
-//   console.log("Running automation script every minute...");
+// cron.schedule("0 * * * *", async () => {
+//   console.log("Running scheduled task to add LotDates and Playzones");
 //   try {
 //     // Fetch all locations with automation set to 'automatic'
-//     const locations = await LotLocation.find({ automation: "automatic" });
+//     // const locations = await LotLocation.find({ automation: "automatic" });
+//     const locations = await LotLocation.find({});
+
 //     console.log("AUTOMATIC LOCATION COUNT :: " + locations.length);
 
 //     for (const location of locations) {
 //       // Fetch times for each location
 //       const times = await LotTime.find({ lotlocation: location._id });
-//       console.log(
-//         `AUTOMATIC TIME COUNT for ${location.lotlocation} :: ${times.length}`
-//       );
 
 //       for (const time of times) {
-//         // Get all LotDates for the current lottime
-//         let lotdates = await LotDate.find({ lottime: time._id })
-//           .populate("lottime")
-//           .sort({ "lottime.lotdate": -1 }); // Sort based on lotdate in descending order
+//         // Create a LotDate entry for each time
+//         const lotdate = getCurrentDate();
 
-//         // Get current date and time using Moment.js
-//         const now = moment();
-//         const todayDate = now.format("DD-MM-YYYY");
-//         const currentTimeString = now.format("HH:mm:ss");
+//         // Check if the LotDate already exists
+//         const existingLotDate = await LotDate.findOne({
+//           lotdate,
+//           lottime: time._id,
+//         });
 
-//         let dateExists = false;
-
-//         for (const date of lotdates) {
-//           if (date.lotdate === todayDate) {
-//             dateExists = true;
-
-//             // Create a Moment object for the lotdate and lottime
-//             const scheduledDateTime = moment(
-//               `${date.lotdate} ${time.lottime}`,
-//               "DD-MM-YYYY hh:mm A"
-//             );
-
-//             // Log the current time and the scheduled time for debugging
-//             // console.log("Current time: ", now.format('HH:mm:ss'));
-//             // console.log("Scheduled datetime: ", scheduledDateTime.format('YYYY-MM-DD HH:mm:ss'));
-
-//             if (now.isSameOrAfter(scheduledDateTime)) {
-//               // console.log("Current time matches or is after scheduled time");
-
-//               // Check if result already exists
-//               const existingResult = await Result.findOne({
-//                 lotdate: date._id,
-//                 lottime: time._id,
-//                 lotlocation: location._id,
-//               });
-
-//               if (!existingResult) {
-//                 console.log("No existing result found");
-
-//                 // Get playzone and create result
-//                 const playzone = await Playzone.findOne({
-//                   lotlocation: location._id,
-//                   lottime: time._id,
-//                   lotdate: date._id,
-//                 });
-
-//                 if (!playzone) {
-//                   console.error(
-//                     "Playzone not found for location:",
-//                     location._id,
-//                     "time:",
-//                     time._id,
-//                     "date:",
-//                     date._id
-//                   );
-//                   continue;
-//                 }
-
-//                 const playnumber = getPlaynumberOfLowestAmount({ playzone });
-//                 const nextResultTime = getNextResultTime(times, time.lottime);
-
-//                 await Result.create({
-//                   resultNumber: addLeadingZero(playnumber),
-//                   lotdate: date._id,
-//                   lottime: time._id,
-//                   lotlocation: location._id,
-//                   nextresulttime: nextResultTime,
-//                 });
-
-//                 console.log(
-//                   `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
-//                 );
-//               } else {
-//                 console.log(
-//                   "Result already exists for Location:",
-//                   location.lotlocation,
-//                   "Time:",
-//                   time.lottime,
-//                   "Date:",
-//                   date.lotdate
-//                 );
-//               }
-//             } else {
-//               console.log(
-//                 "Current time does not match or is before scheduled time"
-//               );
-//             }
-//           }
-//         }
-
-//         if (!dateExists) {
-//           // Create LotDate and Playzone if current date does not exist
-//           console.log("Date does not exist, creating new LotDate and Playzone");
-
+//         if (!existingLotDate) {
+//           // LotDate does not exist, create a new one
 //           const newLotDate = await LotDate.create({
-//             lotdate: todayDate,
+//             lotdate,
 //             lottime: time._id,
 //           });
 
@@ -344,6 +201,7 @@ cron.schedule("0 * * * *", async () => {
 //             `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
 //           );
 
+//           // Create Playzone entry for each LotDate
 //           const playnumbers = createPlaynumbersArray(location.maximumNumber);
 //           const playzoneData = {
 //             lotlocation: location._id,
@@ -351,18 +209,160 @@ cron.schedule("0 * * * *", async () => {
 //             lotdate: newLotDate._id,
 //             playnumbers,
 //           };
-//           await Playzone.create(playzoneData);
+//           const newPlayzone = await Playzone.create(playzoneData);
 
 //           console.log(
 //             `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
+//           );
+//         } else {
+//           console.log(
+//             `LotDate already exists for location ${location.lotlocation} at time ${time.lottime} on date ${lotdate}`
 //           );
 //         }
 //       }
 //     }
 //   } catch (error) {
-//     console.error("Error running automation script:", error);
+//     console.error("Error running scheduled task:", error);
 //   }
 // });
+
+// // cron.schedule("*/15 * * * *", async () => {
+// //   console.log("Running automation script every minute...");
+// //   try {
+// //     // Fetch all locations with automation set to 'automatic'
+// //     const locations = await LotLocation.find({ automation: "automatic" });
+// //     console.log("AUTOMATIC LOCATION COUNT :: " + locations.length);
+
+// //     for (const location of locations) {
+// //       // Fetch times for each location
+// //       const times = await LotTime.find({ lotlocation: location._id });
+// //       console.log(
+// //         `AUTOMATIC TIME COUNT for ${location.lotlocation} :: ${times.length}`
+// //       );
+
+// //       for (const time of times) {
+// //         // Get all LotDates for the current lottime
+// //         let lotdates = await LotDate.find({ lottime: time._id })
+// //           .populate("lottime")
+// //           .sort({ "lottime.lotdate": -1 }); // Sort based on lotdate in descending order
+
+// //         // Get current date and time using Moment.js
+// //         const now = moment();
+// //         const todayDate = now.format("DD-MM-YYYY");
+// //         const currentTimeString = now.format("HH:mm:ss");
+
+// //         let dateExists = false;
+
+// //         for (const date of lotdates) {
+// //           if (date.lotdate === todayDate) {
+// //             dateExists = true;
+
+// //             // Create a Moment object for the lotdate and lottime
+// //             const scheduledDateTime = moment(
+// //               `${date.lotdate} ${time.lottime}`,
+// //               "DD-MM-YYYY hh:mm A"
+// //             );
+
+// //             // Log the current time and the scheduled time for debugging
+// //             // console.log("Current time: ", now.format('HH:mm:ss'));
+// //             // console.log("Scheduled datetime: ", scheduledDateTime.format('YYYY-MM-DD HH:mm:ss'));
+
+// //             if (now.isSameOrAfter(scheduledDateTime)) {
+// //               // console.log("Current time matches or is after scheduled time");
+
+// //               // Check if result already exists
+// //               const existingResult = await Result.findOne({
+// //                 lotdate: date._id,
+// //                 lottime: time._id,
+// //                 lotlocation: location._id,
+// //               });
+
+// //               if (!existingResult) {
+// //                 console.log("No existing result found");
+
+// //                 // Get playzone and create result
+// //                 const playzone = await Playzone.findOne({
+// //                   lotlocation: location._id,
+// //                   lottime: time._id,
+// //                   lotdate: date._id,
+// //                 });
+
+// //                 if (!playzone) {
+// //                   console.error(
+// //                     "Playzone not found for location:",
+// //                     location._id,
+// //                     "time:",
+// //                     time._id,
+// //                     "date:",
+// //                     date._id
+// //                   );
+// //                   continue;
+// //                 }
+
+// //                 const playnumber = getPlaynumberOfLowestAmount({ playzone });
+// //                 const nextResultTime = getNextResultTime(times, time.lottime);
+
+// //                 await Result.create({
+// //                   resultNumber: addLeadingZero(playnumber),
+// //                   lotdate: date._id,
+// //                   lottime: time._id,
+// //                   lotlocation: location._id,
+// //                   nextresulttime: nextResultTime,
+// //                 });
+
+// //                 console.log(
+// //                   `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
+// //                 );
+// //               } else {
+// //                 console.log(
+// //                   "Result already exists for Location:",
+// //                   location.lotlocation,
+// //                   "Time:",
+// //                   time.lottime,
+// //                   "Date:",
+// //                   date.lotdate
+// //                 );
+// //               }
+// //             } else {
+// //               console.log(
+// //                 "Current time does not match or is before scheduled time"
+// //               );
+// //             }
+// //           }
+// //         }
+
+// //         if (!dateExists) {
+// //           // Create LotDate and Playzone if current date does not exist
+// //           console.log("Date does not exist, creating new LotDate and Playzone");
+
+// //           const newLotDate = await LotDate.create({
+// //             lotdate: todayDate,
+// //             lottime: time._id,
+// //           });
+
+// //           console.log(
+// //             `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
+// //           );
+
+// //           const playnumbers = createPlaynumbersArray(location.maximumNumber);
+// //           const playzoneData = {
+// //             lotlocation: location._id,
+// //             lottime: time._id,
+// //             lotdate: newLotDate._id,
+// //             playnumbers,
+// //           };
+// //           await Playzone.create(playzoneData);
+
+// //           console.log(
+// //             `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
+// //           );
+// //         }
+// //       }
+// //     }
+// //   } catch (error) {
+// //     console.error("Error running automation script:", error);
+// //   }
+// // });
 
 cron.schedule("*/5 * * * *", async () => {
   console.log("Running automation script every 15 minutes...");
@@ -378,137 +378,372 @@ cron.schedule("*/5 * * * *", async () => {
 
       const automationUpdatedAt = location.automationUpdatedAt;
       const automationUpdatedTime = moment(automationUpdatedAt, "hh:mm A");
+      const automationUpdatedDate = moment(automationUpdatedAt, "DD-MM-YYYY");
 
       console.log(
-        `Automation Updated Time for location ${location.lotlocation}: ${automationUpdatedTime.format("hh:mm A")}`
+        `Automation Updated Time for location ${
+          location.lotlocation
+        }: ${automationUpdatedTime.format(
+          "hh:mm A"
+        )} :: Date ${automationUpdatedDate.format("DD-MM-YYYY")}`
       );
 
       const now = moment();
       console.log("Current Time: ", now.format("hh:mm A"));
+      console.log("Current Date: ", now.format("DD-MM-YYYY"));
 
-      for (const time of times) {
-        const lotTimeMoment = moment(time.lottime, "hh:mm A");
-        console.log(`Lot Time for location ${location.lotlocation}: ${lotTimeMoment.format("hh:mm A")}`);
-
-        // Adjusted logic: Only skip if both times have passed
-        const isAutomationTimePassed = now.isSameOrAfter(automationUpdatedTime);
-        const isLotTimePassed = now.isSameOrAfter(lotTimeMoment);
-
-        console.log(
-          `Checking times for location ${location.lotlocation}: Automation Time Passed: ${isAutomationTimePassed}, Lot Time Passed: ${isLotTimePassed}`
-        );
-
-        // Adjust the condition to skip only if both times have passed
-        if (isAutomationTimePassed && isLotTimePassed && lotTimeMoment.isBefore(automationUpdatedTime)) {
+      if (
+        automationUpdatedDate.format("DD-MM-YYYY") === now.format("DD-MM-YYYY")
+      ) {
+        console.log("SAME DATE");
+        for (const time of times) {
+          const lotTimeMoment = moment(time.lottime, "hh:mm A");
+          console.log("###################");
           console.log(
-            `Skipping location ${location.lotlocation} as both automationUpdatedAt and lottime have passed.`
+            `Lot Time for location ${
+              location.lotlocation
+            }: ${lotTimeMoment.format("hh:mm A")}`
           );
-          continue; // Skip this iteration if both the times have passed
-        }
 
-        // Process further if only automationUpdatedAt time has passed but lottime is valid
-        if (isAutomationTimePassed && now.isSameOrAfter(lotTimeMoment)) {
-          let lotdates = await LotDate.find({ lottime: time._id })
-            .populate("lottime")
-            .sort({ "lottime.lotdate": -1 });
+          // Adjusted logic: Only skip if both times have passed
+          const isAutomationTimePassed = now.isSameOrAfter(
+            automationUpdatedTime
+          );
+          const isLotTimePassed = now.isSameOrAfter(lotTimeMoment);
 
-          let dateExists = false;
+          console.log(
+            `Checking times FOR ${location.lotlocation} :: Automation Time Passed: ${isAutomationTimePassed}, Lot Time Passed: ${isLotTimePassed}`
+          );
 
-          for (const date of lotdates) {
-            if (date.lotdate === now.format("DD-MM-YYYY")) {
-              dateExists = true;
+          // Adjust the condition to skip only if both times have passed
+          if (isAutomationTimePassed && isLotTimePassed) {
+            console.log(
+              `SKIPPING location ${location.lotlocation} ${lotTimeMoment.format(
+                "hh:mm A"
+              )} as both automationUpdatedAt and lottime have passed.`
+            );
+            // continue; // Skip this iteration if both the times have passed
 
-              const scheduledDateTime = moment(
-                `${date.lotdate} ${time.lottime}`,
-                "DD-MM-YYYY hh:mm A"
-              );
+            // Process further if only automationUpdatedAt time has passed but lottime is valid
+            if (isAutomationTimePassed && now.isSameOrAfter(lotTimeMoment)) {
+              let lotdates = await LotDate.find({ lottime: time._id })
+                .populate("lottime")
+                .sort({ "lottime.lotdate": -1 });
 
-              if (now.isSameOrAfter(scheduledDateTime)) {
-                const existingResult = await Result.findOne({
-                  lotdate: date._id,
-                  lottime: time._id,
-                  lotlocation: location._id,
-                });
+              let dateExists = false;
 
-                if (!existingResult) {
-                  console.log("No existing result found");
+              for (const date of lotdates) {
+                if (date.lotdate === now.format("DD-MM-YYYY")) {
+                  dateExists = true;
 
-                  const playzone = await Playzone.findOne({
-                    lotlocation: location._id,
-                    lottime: time._id,
+                  console.log("FOUND DATE :: " + date.lotdate);
+                  const scheduledDateTime = moment(
+                    `${date.lotdate} ${time.lottime}`,
+                    "DD-MM-YYYY hh:mm A"
+                  );
+
+                  // console.log("scheduledDateTime :: "+scheduledDateTime)
+                  const existingResult = await Result.findOne({
                     lotdate: date._id,
+                    lottime: time._id,
+                    lotlocation: location._id,
                   });
 
-                  if (!playzone) {
-                    console.error(
-                      "Playzone not found for location:",
-                      location._id,
-                      "time:",
-                      time._id,
-                      "date:",
-                      date._id
+                  if (!existingResult) {
+                    console.log(
+                      `No existing result found for ${lotTimeMoment.format(
+                        "hh:mm A"
+                      )}`
                     );
-                    continue;
+
+                    const playzone = await Playzone.findOne({
+                      lotlocation: location._id,
+                      lottime: time._id,
+                      lotdate: date._id,
+                    });
+
+                    if (!playzone) {
+                      console.error(
+                        "Playzone not found for location:",
+                        location._id,
+                        "time:",
+                        time._id,
+                        "date:",
+                        date._id
+                      );
+                      continue;
+                    }
+
+                    const playnumber = getPlaynumberOfLowestAmount({
+                      playzone,
+                    });
+                    const nextResultTime = getNextResultTime(
+                      times,
+                      time.lottime
+                    );
+
+                    await Result.create({
+                      resultNumber: addLeadingZero(playnumber),
+                      lotdate: date._id,
+                      lottime: time._id,
+                      lotlocation: location._id,
+                      nextresulttime: nextResultTime,
+                    });
+
+                    console.log(
+                      `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
+                    );
+                  } else {
+                    console.log(
+                      "Result already exists for Location:",
+                      location.lotlocation,
+                      "Time:",
+                      time.lottime,
+                      "Date:",
+                      date.lotdate
+                    );
                   }
 
-                  const playnumber = getPlaynumberOfLowestAmount({
-                    playzone,
-                  });
-                  const nextResultTime = getNextResultTime(times, time.lottime);
+                  // if (now.isSameOrAfter(scheduledDateTime)) {
+                  // const existingResult = await Result.findOne({
+                  //   lotdate: date._id,
+                  //   lottime: time._id,
+                  //   lotlocation: location._id,
+                  // });
 
-                  await Result.create({
-                    resultNumber: addLeadingZero(playnumber),
-                    lotdate: date._id,
-                    lottime: time._id,
-                    lotlocation: location._id,
-                    nextresulttime: nextResultTime,
-                  });
+                  //   if (!existingResult) {
+                  //     console.log("No existing result found");
 
-                  console.log(
-                    `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
-                  );
-                } else {
-                  console.log(
-                    "Result already exists for Location:",
-                    location.lotlocation,
-                    "Time:",
-                    time.lottime,
-                    "Date:",
-                    date.lotdate
-                  );
+                  //     const playzone = await Playzone.findOne({
+                  //       lotlocation: location._id,
+                  //       lottime: time._id,
+                  //       lotdate: date._id,
+                  //     });
+
+                  //     if (!playzone) {
+                  //       console.error(
+                  //         "Playzone not found for location:",
+                  //         location._id,
+                  //         "time:",
+                  //         time._id,
+                  //         "date:",
+                  //         date._id
+                  //       );
+                  //       continue;
+                  //     }
+
+                  //     const playnumber = getPlaynumberOfLowestAmount({
+                  //       playzone,
+                  //     });
+                  //     const nextResultTime = getNextResultTime(
+                  //       times,
+                  //       time.lottime
+                  //     );
+
+                  //     await Result.create({
+                  //       resultNumber: addLeadingZero(playnumber),
+                  //       lotdate: date._id,
+                  //       lottime: time._id,
+                  //       lotlocation: location._id,
+                  //       nextresulttime: nextResultTime,
+                  //     });
+
+                  //     console.log(
+                  //       `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
+                  //     );
+                  //   } else {
+                  //     console.log(
+                  //       "Result already exists for Location:",
+                  //       location.lotlocation,
+                  //       "Time:",
+                  //       time.lottime,
+                  //       "Date:",
+                  //       date.lotdate
+                  //     );
+                  //   }
+                  // } else {
+                  //   console.log(
+                  //     "Current time does not match or is before scheduled time"
+                  //   );
+                  // }
                 }
-              } else {
+              }
+
+              if (!dateExists) {
                 console.log(
-                  "Current time does not match or is before scheduled time"
+                  "Date does not exist, creating new LotDate and Playzone"
+                );
+
+                const newLotDate = await LotDate.create({
+                  lotdate: now.format("DD-MM-YYYY"),
+                  lottime: time._id,
+                });
+
+                console.log(
+                  `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
+                );
+
+                const playnumbers = createPlaynumbersArray(
+                  location.maximumNumber
+                );
+                const playzoneData = {
+                  lotlocation: location._id,
+                  lottime: time._id,
+                  lotdate: newLotDate._id,
+                  playnumbers,
+                };
+                await Playzone.create(playzoneData);
+
+                console.log(
+                  `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
                 );
               }
             }
           }
+        }
+      } else {
+        console.log("NOT SAME DATE");
 
-          if (!dateExists) {
-            console.log("Date does not exist, creating new LotDate and Playzone");
+        for (const time of times) {
+          const lotTimeMoment = moment(time.lottime, "hh:mm A");
+          console.log("###################");
+          console.log(
+            `Lot Time for location ${
+              location.lotlocation
+            }: ${lotTimeMoment.format("hh:mm A")}`
+          );
 
-            const newLotDate = await LotDate.create({
-              lotdate: now.format("DD-MM-YYYY"),
-              lottime: time._id,
-            });
+          // Adjusted logic: Only skip if both times have passed
+          const isAutomationTimePassed = now.isSameOrAfter(
+            automationUpdatedTime
+          );
+          const isLotTimePassed = now.isSameOrAfter(lotTimeMoment);
 
+          console.log(
+            `Checking times FOR ${location.lotlocation} :: Automation Time Passed: ${isAutomationTimePassed}, Lot Time Passed: ${isLotTimePassed}`
+          );
+
+          // Adjust the condition to skip only if both times have passed
+          if (isLotTimePassed) {
             console.log(
-              `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
+              `SKIPPING location ${location.lotlocation} ${lotTimeMoment.format(
+                "hh:mm A"
+              )} as both automationUpdatedAt and lottime have passed.`
             );
+            // continue; // Skip this iteration if both the times have passed
 
-            const playnumbers = createPlaynumbersArray(location.maximumNumber);
-            const playzoneData = {
-              lotlocation: location._id,
-              lottime: time._id,
-              lotdate: newLotDate._id,
-              playnumbers,
-            };
-            await Playzone.create(playzoneData);
+            // Process further if only automationUpdatedAt time has passed but lottime is valid
+            if (isAutomationTimePassed && now.isSameOrAfter(lotTimeMoment)) {
+              let lotdates = await LotDate.find({ lottime: time._id })
+                .populate("lottime")
+                .sort({ "lottime.lotdate": -1 });
 
-            console.log(
-              `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
-            );
+              let dateExists = false;
+
+              for (const date of lotdates) {
+                if (date.lotdate === now.format("DD-MM-YYYY")) {
+                  dateExists = true;
+
+                  console.log("FOUND DATE :: " + date.lotdate);
+                  const scheduledDateTime = moment(
+                    `${date.lotdate} ${time.lottime}`,
+                    "DD-MM-YYYY hh:mm A"
+                  );
+
+                  // console.log("scheduledDateTime :: "+scheduledDateTime)
+                  const existingResult = await Result.findOne({
+                    lotdate: date._id,
+                    lottime: time._id,
+                    lotlocation: location._id,
+                  });
+
+                  if (!existingResult) {
+                    console.log(
+                      `No existing result found for ${lotTimeMoment.format(
+                        "hh:mm A"
+                      )}`
+                    );
+
+                    const playzone = await Playzone.findOne({
+                      lotlocation: location._id,
+                      lottime: time._id,
+                      lotdate: date._id,
+                    });
+
+                    if (!playzone) {
+                      console.error(
+                        "Playzone not found for location:",
+                        location._id,
+                        "time:",
+                        time._id,
+                        "date:",
+                        date._id
+                      );
+                      continue;
+                    }
+
+                    const playnumber = getPlaynumberOfLowestAmount({
+                      playzone,
+                    });
+                    const nextResultTime = getNextResultTime(
+                      times,
+                      time.lottime
+                    );
+
+                    await Result.create({
+                      resultNumber: addLeadingZero(playnumber),
+                      lotdate: date._id,
+                      lottime: time._id,
+                      lotlocation: location._id,
+                      nextresulttime: nextResultTime,
+                    });
+
+                    console.log(
+                      `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
+                    );
+                  } else {
+                    console.log(
+                      "Result already exists for Location:",
+                      location.lotlocation,
+                      "Time:",
+                      time.lottime,
+                      "Date:",
+                      date.lotdate
+                    );
+                  }
+                }
+              }
+
+              if (!dateExists) {
+                console.log(
+                  "Date does not exist, creating new LotDate and Playzone"
+                );
+
+                const newLotDate = await LotDate.create({
+                  lotdate: now.format("DD-MM-YYYY"),
+                  lottime: time._id,
+                });
+
+                console.log(
+                  `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
+                );
+
+                const playnumbers = createPlaynumbersArray(
+                  location.maximumNumber
+                );
+                const playzoneData = {
+                  lotlocation: location._id,
+                  lottime: time._id,
+                  lotdate: newLotDate._id,
+                  playnumbers,
+                };
+                await Playzone.create(playzoneData);
+
+                console.log(
+                  `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
+                );
+              }
+            }
           }
         }
       }
@@ -518,8 +753,161 @@ cron.schedule("*/5 * * * *", async () => {
   }
 });
 
+// cron.schedule("*/1 * * * *", async () => {
+//   console.log("Running automation script every 15 minutes...");
+//   try {
+//     const locations = await LotLocation.find({ automation: "automatic" });
+//     console.log("AUTOMATIC LOCATION COUNT :: " + locations.length);
 
+//     for (const location of locations) {
+//       const times = await LotTime.find({ lotlocation: location._id });
+//       console.log(
+//         `AUTOMATIC TIME COUNT for ${location.lotlocation} :: ${times.length}`
+//       );
 
+//       const automationUpdatedAt = location.automationUpdatedAt;
+//       const automationUpdatedTime = moment(automationUpdatedAt, "hh:mm A");
+//       const automationUpdatedDate = moment(automationUpdatedAt, "DD-MM-YYYY");
+
+//       console.log(
+//         `Automation Updated Time for location ${location.lotlocation}: ${automationUpdatedTime.format("hh:mm A")} :: Date ${automationUpdatedDate.format("DD-MM-YYYY")}`
+//       );
+
+//       const now = moment();
+//       console.log("Current Time: ", now.format("hh:mm A"));
+//       console.log("Current Date: ", now.format("DD-MM-YYYY"));
+
+//       for (const time of times) {
+//         const lotTimeMoment = moment(time.lottime, "hh:mm A");
+//         console.log(`Lot Time for location ${location.lotlocation}: ${lotTimeMoment.format("hh:mm A")}`);
+
+//         // Adjusted logic: Only skip if both times have passed
+//         const isAutomationTimePassed = now.isSameOrAfter(automationUpdatedTime);
+//         const isLotTimePassed = now.isSameOrAfter(lotTimeMoment);
+
+//         console.log(
+//           `Checking times FOR ${location.lotlocation} :: Automation Time Passed: ${isAutomationTimePassed}, Lot Time Passed: ${isLotTimePassed}`
+//         );
+
+//         // Adjust the condition to skip only if both times have passed
+//         if (isAutomationTimePassed && isLotTimePassed && lotTimeMoment.isBefore(automationUpdatedTime)) {
+//           console.log(
+//             `Skipping location ${location.lotlocation} as both automationUpdatedAt and lottime have passed.`
+//           );
+//           continue; // Skip this iteration if both the times have passed
+//         }
+
+//         // Process further if only automationUpdatedAt time has passed but lottime is valid
+//         // if (isAutomationTimePassed && now.isSameOrAfter(lotTimeMoment)) {
+//         //   let lotdates = await LotDate.find({ lottime: time._id })
+//         //     .populate("lottime")
+//         //     .sort({ "lottime.lotdate": -1 });
+
+//         //   let dateExists = false;
+
+//         //   for (const date of lotdates) {
+//         //     if (date.lotdate === now.format("DD-MM-YYYY")) {
+//         //       dateExists = true;
+
+//         //       const scheduledDateTime = moment(
+//         //         `${date.lotdate} ${time.lottime}`,
+//         //         "DD-MM-YYYY hh:mm A"
+//         //       );
+
+//         //       if (now.isSameOrAfter(scheduledDateTime)) {
+//         //         const existingResult = await Result.findOne({
+//         //           lotdate: date._id,
+//         //           lottime: time._id,
+//         //           lotlocation: location._id,
+//         //         });
+
+//         //         if (!existingResult) {
+//         //           console.log("No existing result found");
+
+//         //           const playzone = await Playzone.findOne({
+//         //             lotlocation: location._id,
+//         //             lottime: time._id,
+//         //             lotdate: date._id,
+//         //           });
+
+//         //           if (!playzone) {
+//         //             console.error(
+//         //               "Playzone not found for location:",
+//         //               location._id,
+//         //               "time:",
+//         //               time._id,
+//         //               "date:",
+//         //               date._id
+//         //             );
+//         //             continue;
+//         //           }
+
+//         //           const playnumber = getPlaynumberOfLowestAmount({
+//         //             playzone,
+//         //           });
+//         //           const nextResultTime = getNextResultTime(times, time.lottime);
+
+//         //           await Result.create({
+//         //             resultNumber: addLeadingZero(playnumber),
+//         //             lotdate: date._id,
+//         //             lottime: time._id,
+//         //             lotlocation: location._id,
+//         //             nextresulttime: nextResultTime,
+//         //           });
+
+//         //           console.log(
+//         //             `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
+//         //           );
+//         //         } else {
+//         //           console.log(
+//         //             "Result already exists for Location:",
+//         //             location.lotlocation,
+//         //             "Time:",
+//         //             time.lottime,
+//         //             "Date:",
+//         //             date.lotdate
+//         //           );
+//         //         }
+//         //       } else {
+//         //         console.log(
+//         //           "Current time does not match or is before scheduled time"
+//         //         );
+//         //       }
+//         //     }
+//         //   }
+
+//         //   if (!dateExists) {
+//         //     console.log("Date does not exist, creating new LotDate and Playzone");
+
+//         //     const newLotDate = await LotDate.create({
+//         //       lotdate: now.format("DD-MM-YYYY"),
+//         //       lottime: time._id,
+//         //     });
+
+//         //     console.log(
+//         //       `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
+//         //     );
+
+//         //     const playnumbers = createPlaynumbersArray(location.maximumNumber);
+//         //     const playzoneData = {
+//         //       lotlocation: location._id,
+//         //       lottime: time._id,
+//         //       lotdate: newLotDate._id,
+//         //       playnumbers,
+//         //     };
+//         //     await Playzone.create(playzoneData);
+
+//         //     console.log(
+//         //       `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
+//         //     );
+//         //   }
+//         // }
+//       }
+//     }
+//   } catch (error) {
+//     console.error("Error running automation script:", error);
+//   }
+// });
 
 app.listen(process.env.PORT, () => {
   console.log(
@@ -530,4 +918,3 @@ app.listen(process.env.PORT, () => {
 module.exports = {
   app,
 };
-
