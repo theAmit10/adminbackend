@@ -53,6 +53,7 @@ const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
 const {singleUpload}  = require("../middlewares/multer.js");
 const {singleUploadForPromotion}  = require("../middlewares/promotionmiddlerware.js");
 const { singleUploadForDeposit } = require("../middlewares/depositmiddleware.js");
+const { singleUploadForDepositWithdrawUpdate } = require("../middlewares/depositWithdrawUpdateMiddleware.js");
 
 const router = express.Router();
 
@@ -121,7 +122,7 @@ router.put("/updateabout/:id", isAuthenticated, updateAbout);
 router.post("/createdeposit",isAuthenticated,singleUploadForDeposit, addDeposit);
 router.get("/getalltransaction",isAuthenticated, getAllTransaction);
 router.get("/getuserdeposit",isAuthenticated, getUserTransactions);
-router.put("/updateuserdeposit",isAuthenticated, updateDepositStatus);
+router.put("/updateuserdeposit",isAuthenticated,singleUploadForDepositWithdrawUpdate, updateDepositStatus);
 router.get("/getalldeposit",isAuthenticated, getAllDeposit);
 
 //FOR WITHDRAW

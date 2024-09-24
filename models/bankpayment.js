@@ -15,12 +15,15 @@ const schema = new mongoose.Schema({
         type: String,
         required: [true, "Please enter account number"]
     },
+    swiftcode: {
+        type: String,
+        required: [true, "Please enter swift code"]
+    },
+    paymentnote: {
+        type: String,
+    },
     paymentId: Number,
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    }
-});
+},{ timestamps: true });
 
 // Pre-save hook to auto-increment paymentId
 schema.pre('save', async function (next) {

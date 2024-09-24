@@ -65,7 +65,8 @@ const {
   getAppLinks,
   deleteAppLinks,
   getSingleUserPlaybetHistory,
-  getAllResultsByLocationWithTimesMonthYear
+  getAllResultsByLocationWithTimesMonthYear,
+  getAllTopWinner
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -170,6 +171,8 @@ router.delete('/removecurrency/:id', isAuthenticated, deleteCurrency);
 
 // GET APP BALANCE SHEET
 router.get("/balancesheet", isAuthenticated, getAppBalanceSheet);
+
+router.get("/topwinner", isAuthenticated, getAllTopWinner);
 
 // FOR APP LINK
 router.post("/createapplink", isAuthenticated, updateAppLinks);

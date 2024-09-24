@@ -37,7 +37,7 @@ function checkFileType(file, cb) {
 }
 
 module.exports = {
-    singleUploadForDeposit: multer({ storage }).single("receipt")
+    singleUploadForDepositWithdrawUpdate: multer({ storage }).single("paymentupdatereceipt")
 };
 
 

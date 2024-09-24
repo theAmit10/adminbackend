@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const ErrorHandler = require("../utils/error");
 
 const schema = new mongoose.Schema({
     resultNumber:{
@@ -24,10 +25,18 @@ const schema = new mongoose.Schema({
         type: String,
         required: [true,"please enter next result time"]
     },
-    createdAt:{
-        type: Date,
-        default: Date.now(),
+    resultCreatedMethod:{
+        type: String,
+        required: [true,"please provide result created method"]
     }
+}, { timestamps: true });
+
+schema.pre('save', function (next) {
+    if (!this.resultCreatedMethod) {
+        console.log("resultCreatedMethod is missing:", this);
+        return next(new ErrorHandler("resultCreatedMethod is missing:", 404));
+    }
+    next();
 });
 
 module.exports = mongoose.model("Result", schema);

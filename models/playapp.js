@@ -49,7 +49,7 @@ const playNumberSchema = new mongoose.Schema({
       },
       createdAt: {
         type: Date,
-        default: Date.now()
+        default: Date.now
       }
     }
   ]
@@ -74,7 +74,7 @@ const playzoneSchema = new mongoose.Schema({
   playnumbers: [playNumberSchema],
   createdAt: {
     type: Date,
-    default: Date.now()
+    default: Date.now
   }
 });
 

@@ -6,11 +6,10 @@ const schema = new mongoose.Schema({
         required: [true, "Please enter email address or phone number"]
     },
     paymentId: Number,
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    }
-});
+    paymentnote: {
+        type: String,
+    },
+}, { timestamps: true });
 
 // Pre-save hook to auto-increment paymentId
 schema.pre('save', async function (next) {

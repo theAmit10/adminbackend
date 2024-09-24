@@ -14,11 +14,10 @@ const schema = new mongoose.Schema({
         type: String,
         required: [true, "Please add QR code"]
     },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    }
-});
+    paymentnote: {
+        type: String,
+    },
+}, { timestamps: true });
 
 // Pre-save hook to auto-increment paymentId
 schema.pre('save', async function (next) {

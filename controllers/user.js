@@ -140,6 +140,115 @@ const updateWalletOne = asyncError(async (req, res, next) => {
         .json({ success: false, message: "Invalid balance value" });
     }
 
+    if (balance) {
+      const wallet = await WalletOne.findById(walletId);
+      if (!wallet) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Wallet not found" });
+      }
+
+      const walletBalance = parseFloat(wallet.balance);
+      const newWalletBalance = parseFloat(balance);
+      let amount = 0;
+      let paymentType = "";
+
+      if (walletBalance > newWalletBalance) {
+        amount = walletBalance - newWalletBalance;
+        paymentType = "Debit";
+      } else {
+        amount = newWalletBalance - walletBalance;
+        paymentType = "Credit";
+      }
+
+      // NOW GETTING THE CALCULATED AMOUNT
+
+      const user = await User.findById(wallet.userId);
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "user not found" });
+      }
+
+      const currency = await Currency.findById(user.country._id);
+      if (!currency) {
+        return next(new ErrorHandler("Currency not found", 404));
+      }
+
+      const currencyconverter = parseFloat(
+        currency.countrycurrencyvaluecomparedtoinr
+      );
+
+      const convertedAmount =
+        parseFloat(amount) * parseFloat(currencyconverter);
+      console.log("convertedAmount :: " + convertedAmount);
+
+      const transaction = await Transaction.create({
+        amount,
+        convertedAmount: amount,
+        paymentType: paymentType,
+        username: user.name,
+        userId: user.userId,
+        transactionType: "AdminUpdate",
+        paymentStatus: "Completed",
+        currency: user.country._id.toString(),
+      });
+
+      user.transactionHistory.push(transaction._id);
+      await user.save();
+
+      const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+      let gameBalance = 0;
+
+      walletTwoBalances.forEach((wallet) => {
+        const walletCurrencyConverter = parseFloat(
+          wallet.currencyId.countrycurrencyvaluecomparedtoinr
+        );
+        gameBalance += wallet.balance * walletCurrencyConverter;
+      });
+
+      // Fetch all WalletOne balances and populate currencyId
+      const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+      let withdrawalBalance = 0;
+
+      walletOneBalances.forEach((wallet) => {
+        const walletCurrencyConverter = parseFloat(
+          wallet.currencyId.countrycurrencyvaluecomparedtoinr
+        );
+        withdrawalBalance += wallet.balance * walletCurrencyConverter;
+      });
+
+      // Add the additional amount with currency conversion
+
+      if (walletBalance > newWalletBalance) {
+        withdrawalBalance -= parseFloat(amount * currencyconverter);
+      } else {
+        withdrawalBalance += parseFloat(amount * currencyconverter);
+      }
+
+      // Calculate total balance as the sum of walletOne and walletTwo balances
+      const totalBalance = withdrawalBalance + gameBalance;
+
+      // Create a new AppBalanceSheet document
+      const appBalanceSheet = new AppBalanceSheet({
+        amount: parseFloat(amount * currencyconverter),
+        withdrawalbalance: withdrawalBalance,
+        gamebalance: gameBalance,
+        totalbalance: totalBalance,
+        usercurrency: user.country._id.toString(),
+        activityType: "AdminUpdate",
+        userId: user.userId,
+        transactionId: transaction._id,
+        paymentProcessType: paymentType,
+        walletName: wallet.walletName,
+      });
+
+      // Save the AppBalanceSheet document
+      await appBalanceSheet.save();
+      console.log("AppBalanceSheet Created Successfully");
+    }
+
     // Update wallet
     const updatedWallet = await WalletOne.findByIdAndUpdate(
       walletId,
@@ -173,6 +282,115 @@ const updateWalletTwo = asyncError(async (req, res, next) => {
         .json({ success: false, message: "Invalid balance value" });
     }
 
+    if (balance) {
+      const wallet = await WalletTwo.findById(walletId);
+      if (!wallet) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Wallet not found" });
+      }
+
+      const walletBalance = parseFloat(wallet.balance);
+      const newWalletBalance = parseFloat(balance);
+      let amount = 0;
+      let paymentType = "";
+
+      if (walletBalance > newWalletBalance) {
+        amount = walletBalance - newWalletBalance;
+        paymentType = "Debit";
+      } else {
+        amount = newWalletBalance - walletBalance;
+        paymentType = "Credit";
+      }
+
+      // NOW GETTING THE CALCULATED AMOUNT
+
+      const user = await User.findById(wallet.userId);
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "user not found" });
+      }
+
+      const currency = await Currency.findById(user.country._id);
+      if (!currency) {
+        return next(new ErrorHandler("Currency not found", 404));
+      }
+
+      const currencyconverter = parseFloat(
+        currency.countrycurrencyvaluecomparedtoinr
+      );
+
+      const convertedAmount =
+        parseFloat(amount) * parseFloat(currencyconverter);
+      console.log("convertedAmount :: " + convertedAmount);
+
+      const transaction = await Transaction.create({
+        amount,
+        convertedAmount: amount,
+        paymentType: paymentType,
+        username: user.name,
+        userId: user.userId,
+        transactionType: "AdminUpdate",
+        paymentStatus: "Completed",
+        currency: user.country._id.toString(),
+      });
+
+      user.transactionHistory.push(transaction._id);
+      await user.save();
+
+      const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+      let gameBalance = 0;
+
+      walletTwoBalances.forEach((wallet) => {
+        const walletCurrencyConverter = parseFloat(
+          wallet.currencyId.countrycurrencyvaluecomparedtoinr
+        );
+        gameBalance += wallet.balance * walletCurrencyConverter;
+      });
+
+      // Fetch all WalletOne balances and populate currencyId
+      const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+      let withdrawalBalance = 0;
+
+      walletOneBalances.forEach((wallet) => {
+        const walletCurrencyConverter = parseFloat(
+          wallet.currencyId.countrycurrencyvaluecomparedtoinr
+        );
+        withdrawalBalance += wallet.balance * walletCurrencyConverter;
+      });
+
+      // Add the additional amount with currency conversion
+
+      if (walletBalance > newWalletBalance) {
+        gameBalance -= parseFloat(amount * currencyconverter);
+      } else {
+        gameBalance += parseFloat(amount * currencyconverter);
+      }
+
+      // Calculate total balance as the sum of walletOne and walletTwo balances
+      const totalBalance = withdrawalBalance + gameBalance;
+
+      // Create a new AppBalanceSheet document
+      const appBalanceSheet = new AppBalanceSheet({
+        amount: parseFloat(amount * currencyconverter),
+        withdrawalbalance: withdrawalBalance,
+        gamebalance: gameBalance,
+        totalbalance: totalBalance,
+        usercurrency: user.country._id.toString(),
+        activityType: "AdminUpdate",
+        userId: user.userId,
+        transactionId: transaction._id,
+        paymentProcessType: paymentType,
+        walletName: wallet.walletName,
+      });
+
+      // Save the AppBalanceSheet document
+      await appBalanceSheet.save();
+      console.log("AppBalanceSheet Created Successfully");
+    }
+
     // Update wallet
     const updatedWallet = await WalletTwo.findByIdAndUpdate(
       walletId,
@@ -198,7 +416,7 @@ const logout = asyncError(async (req, res, next) => {
     .status(200)
     .cookie("token", "", {
       ...cookieOptions,
-      expires: new Date(Date.now()),
+      expires: new Date(Date.now),
     })
     .json({
       success: true,
@@ -310,7 +528,7 @@ const forgetPassword = asyncError(async (req, res, next) => {
 
   // Adding to the user otp
   user.otp = otp;
-  user.otp_expire = new Date(Date.now() + otp_expire);
+  user.otp_expire = new Date(Date.now + otp_expire);
 
   // console.log("OTP CODE :: " + otp);
 
@@ -343,7 +561,7 @@ const resetPassword = asyncError(async (req, res, next) => {
   const user = await User.findOne({
     otp,
     otp_expire: {
-      $gt: Date.now(),
+      $gt: Date.now,
     },
   });
 
@@ -695,6 +913,15 @@ const updateAnyUserUserId = asyncError(async (req, res, next) => {
     }
 
     // Update the userId of the user
+
+    console.log("Getting user info for checking id and contact");
+    console.log(user.contact)
+    console.log(user.userId)
+
+    if(user.contact === String(user.userId))
+    {
+      user.contact = newUserId
+    }
     user.userId = newUserId;
     await user.save();
 
@@ -1727,8 +1954,8 @@ const addDeposit = asyncError(async (req, res, next) => {
     currency.countrycurrencyvaluecomparedtoinr
   );
 
-  const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter)
-  console.log("convertedAmount :: "+convertedAmount)
+  const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter);
+  console.log("convertedAmount :: " + convertedAmount);
 
   const transaction = await Transaction.create({
     amount,
@@ -1758,11 +1985,9 @@ const addDeposit = asyncError(async (req, res, next) => {
 // const getUserTransactions = asyncError(async (req, res, next) => {
 //   const { userid } = req.query;
 
-//   const transactions = await Transaction.find({ userId: userid });
-
-//   // if (!transactions || transactions.length === 0) {
-//   //   return next(new ErrorHandler("No transactions found for this user", 404));
-//   // }
+//   const transactions = await Transaction.find({ userId: userid }).sort({
+//     createdAt: -1,
+//   });
 
 //   res.status(200).json({
 //     success: true,
@@ -1770,23 +1995,48 @@ const addDeposit = asyncError(async (req, res, next) => {
 //   });
 // });
 
-// // Get All Deposits and Withdrawals of a Single User
 const getUserTransactions = asyncError(async (req, res, next) => {
   const { userid } = req.query;
 
-  const transactions = await Transaction.find({ userId: userid }).sort({
-    createdAt: -1,
-  });
+  try {
+    // Find the user by ID and populate transactions with currency in each transaction
+    const user = await User.findOne({ userId: userid }).populate({
+      path: "transactionHistory",
+      populate: { path: "currency", model: "Currency" }, // Populate currency within each transaction
+    });
 
-  // if (!transactions || transactions.length === 0) {
-  //   return next(new ErrorHandler("No transactions found for this user", 404));
-  // }
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
-  res.status(200).json({
-    success: true,
-    transactions,
-  });
+    // Get the transactions array from the user document
+    let transactions = user.transactionHistory;
+
+    // Ensure createdAt is treated as a date
+    transactions = transactions.map((transaction) => ({
+      ...transaction.toObject(), // Ensure it's a plain object
+      createdAt: new Date(transaction.createdAt),
+    }));
+
+    // Reverse the order to get the oldest first
+    transactions.reverse();
+
+    res.status(200).json({
+      success: true,
+      transactions,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve transactions",
+      error: error.message,
+    });
+  }
 });
+
 
 const getAllTransaction = asyncError(async (req, res, next) => {
   const transactions = await Transaction.find().sort({ createdAt: -1 });
@@ -1813,7 +2063,13 @@ const getAllDeposit = asyncError(async (req, res, next) => {
 
 // UPDATE PAYMENT STATUS
 const updateDepositStatus = asyncError(async (req, res, next) => {
-  const { transactionId, paymentStatus } = req.body;
+  const {
+    transactionId,
+    paymentStatus,
+    paymentUpdateNote,
+    paymentupdatereceipt,
+    amount: reqAmount
+  } = req.body;
 
   // Validate required fields
   if (!transactionId) {
@@ -1821,6 +2077,9 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
   }
   if (!paymentStatus) {
     return next(new ErrorHandler("Payment status missing", 400));
+  }
+  if (!reqAmount) {
+    return next(new ErrorHandler("Amount not found", 400));
   }
 
   // Validate payment status value
@@ -1841,7 +2100,8 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     transaction.transactionType === "Deposit"
   ) {
     const userId = transaction.userId;
-    const amount = parseInt(transaction.amount);
+    // const amount = parseInt(transaction.amount);
+    let amount = parseInt(reqAmount);
 
     const user = await User.findOne({ userId });
 
@@ -1851,6 +2111,19 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     // FOR DEPOSITING MONEY IN USER WALLET ONE
     console.log("Deposit request of user :: " + user);
+
+    const currency = await Currency.findById(user.country._id);
+    if (!currency) {
+      return next(new ErrorHandler("Currency not found", 404));
+    }
+
+    const currencyconverter = parseFloat(
+      currency.countrycurrencyvaluecomparedtoinr
+    );
+
+    amount = amount / currencyconverter; 
+
+    transaction.amount = amount;
 
     const walletId = user.walletTwo._id;
     console.log("wallet one 2 id :: " + walletId);
@@ -1878,14 +2151,14 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     // console.log("User's walletOne updated successfully :: " + updatedWallet);
 
     // Search for the "INR" countrycurrencysymbol in the Currency Collection
-    const currency = await Currency.findById(user.country._id);
-    if (!currency) {
-      return next(new ErrorHandler("Currency not found", 404));
-    }
+    // const currency = await Currency.findById(user.country._id);
+    // if (!currency) {
+    //   return next(new ErrorHandler("Currency not found", 404));
+    // }
 
-    const currencyconverter = parseFloat(
-      currency.countrycurrencyvaluecomparedtoinr
-    );
+    // const currencyconverter = parseFloat(
+    //   currency.countrycurrencyvaluecomparedtoinr
+    // );
 
     // FOR BALANCE SHEET
 
@@ -1955,6 +2228,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
       userId: userId,
       transactionId: transaction._id,
       paymentProcessType: "Credit",
+      walletName: wallet.walletName
     });
 
     // Save the AppBalanceSheet document
@@ -1964,7 +2238,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     // Create notification for deposit completion
     const notification = new Notification({
       title: "Deposit Completed",
-      description: `Your deposit of ${transaction.amount} has been completed successfully.`,
+      description: `Your deposit of ${amount} has been completed successfully.`,
     });
     await notification.save();
 
@@ -1983,7 +2257,8 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     transaction.transactionType === "Withdraw"
   ) {
     const userId = transaction.userId;
-    const amount = parseInt(transaction.amount);
+    // const amount = parseInt(transaction.amount);
+    let amount = parseInt(reqAmount);
 
     const user = await User.findOne({ userId });
 
@@ -1993,6 +2268,19 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     // FOR DEPOSITING MONEY IN USER WALLET ONE
     console.log("Deposit request of user :: " + user);
+
+    const currency = await Currency.findById(user.country._id);
+    if (!currency) {
+      return next(new ErrorHandler("Currency not found", 404));
+    }
+
+    const currencyconverter = parseFloat(
+      currency.countrycurrencyvaluecomparedtoinr
+    );
+
+    amount = amount / currencyconverter; 
+
+    transaction.amount = amount;
 
     const walletId = user.walletOne._id;
     console.log("wallet one id :: " + walletId);
@@ -2028,14 +2316,14 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     // FOR BALANCE SHEET
 
-    const currency = await Currency.findById(user.country._id);
-    if (!currency) {
-      return next(new ErrorHandler("Currency not found", 404));
-    }
+    // const currency = await Currency.findById(user.country._id);
+    // if (!currency) {
+    //   return next(new ErrorHandler("Currency not found", 404));
+    // }
 
-    const currencyconverter = parseFloat(
-      currency.countrycurrencyvaluecomparedtoinr
-    );
+    // const currencyconverter = parseFloat(
+    //   currency.countrycurrencyvaluecomparedtoinr
+    // );
 
     // Create AppBalanceSheet entry
     // Calculate gameBalance as the total sum of all walletTwo balances
@@ -2102,6 +2390,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
       userId: userId,
       transactionId: transaction._id,
       paymentProcessType: "Debit",
+      walletName: wallet.walletName
     });
 
     // Save the AppBalanceSheet document
@@ -2113,7 +2402,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     // Create notification for deposit completion
     const notification = new Notification({
       title: "Withdraw Completed",
-      description: `Your withdraw of ${transaction.amount} has been completed successfully.`,
+      description: `Your withdraw of ${amount} has been completed successfully.`,
     });
     await notification.save();
 
@@ -2125,6 +2414,14 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
   }
 
   if (paymentStatus) transaction.paymentStatus = paymentStatus;
+  if (paymentUpdateNote) transaction.paymentUpdateNote = paymentUpdateNote;
+
+  if (req.file)
+    transaction.paymentupdatereceipt = req.file ? req.file.filename : undefined;
+
+  if(reqAmount){
+    transaction.convertedAmount = reqAmount;
+  }
 
   await transaction.save();
 
@@ -2179,8 +2476,8 @@ const addWithdraw = asyncError(async (req, res, next) => {
     currency.countrycurrencyvaluecomparedtoinr
   );
 
-  const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter)
-  console.log("convertedAmount :: "+convertedAmount)
+  const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter);
+  console.log("convertedAmount :: " + convertedAmount);
 
   const transaction = await Transaction.create({
     amount,

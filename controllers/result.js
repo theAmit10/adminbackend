@@ -27,6 +27,7 @@ const AppBalanceSheet = require("../models/AppBalanceSheet.js");
 const currency = require("../models/currency");
 const AppLink = require("../models/AppLink");
 const Notification = require("../models/Notification.js");
+const topwinner = require("../models/topwinner.js");
 
 // ####################
 // RESULTS
@@ -58,6 +59,18 @@ const getAllResult = asyncError(async (req, res, next) => {
   res.status(200).json({
     success: true,
     results,
+  });
+});
+
+const getAllTopWinner = asyncError(async (req, res, next) => {
+  const topwinners = await topwinner
+    .find({})
+    .populate("currency")
+    .sort({ createdAt: -1 }); // Sort by _id in descending order
+
+  res.status(200).json({
+    success: true,
+    topwinners,
   });
 });
 
@@ -800,6 +813,28 @@ const createResult = asyncError(async (req, res, next) => {
     // Add playbet history to the user's playbetHistory array
     user.playbetHistory.push(playbet._id);
     await user.save();
+
+    // Creating top winner list
+    const topWinner = await topwinner.create({
+      userId: user.userId,
+      name: user.name,
+      avatar: user?.avatar,
+      playnumber: playnumberEntry.playnumber,
+      amount: userz.amount,
+      winningamount: userz.winningamount,
+      currency: user.country._id.toString(),
+    });
+
+    console.log(topWinner);
+    console.log({
+      userId: user.userId,
+      name: user.name,
+      avatar: user?.avatar,
+      playnumber: playnumberEntry.playnumber,
+      amount: userz.amount,
+      winningamount: userz.winningamount,
+      currency: user.country._id.toString(),
+    });
   }
 
   // FOR BALANCE SHEET
@@ -842,7 +877,7 @@ const createResult = asyncError(async (req, res, next) => {
     totalbalance: totalBalance,
     usercurrency: currency._id, // Use the _id of the found currency
     activityType: "Winning",
-    userId: req.user.userId,
+    userId: playnumberEntry?.users[0]?.userId || "1000",
     payzoneId: playzone._id,
     paymentProcessType: "Credit",
   });
@@ -853,14 +888,29 @@ const createResult = asyncError(async (req, res, next) => {
 
   // END BALANCE SHEET
 
-  // Create a result entry
-  await Result.create({
-    resultNumber,
-    lotdate,
-    lottime,
-    lotlocation,
-    nextresulttime,
-  });
+  // // Create a result entry
+  // await Result.create({
+  //   resultNumber,
+  //   lotdate,
+  //   lottime,
+  //   lotlocation,
+  //   nextresulttime,
+  //   resultCreatedMethod: "mannual",
+  // });
+  try {
+    // Create and save a new result document
+    const result = await Result.create({
+      resultNumber,
+      lotdate,
+      lottime,
+      lotlocation,
+      nextresulttime,
+      resultCreatedMethod: "mannual", // Ensure this field is provided
+    });
+    console.log("Result created successfully:", result); // Successfully created document
+  } catch (err) {
+    console.error("Error creating result:", err.message); // Handle validation or save errors
+  }
 
   res.status(200).json({
     success: true,
@@ -1121,6 +1171,7 @@ const getAllLotDateAccordindLocationAndTime = asyncError(
   async (req, res, next) => {
     const { lottimeId, lotlocationId } = req.query;
 
+    // Fetch and sort LotDate based on the actual lotdate field in descending order
     let lotdates = await LotDate.find({})
       .populate({
         path: "lottime",
@@ -1128,27 +1179,26 @@ const getAllLotDateAccordindLocationAndTime = asyncError(
           path: "lotlocation",
         },
       })
-      .sort({ "lottime.lotdate": -1 }); // Sort based on lotdate in descending order
+      .sort({ lotdate: -1 }); // Sort based on lotdate in descending order (newest first)
 
+    // Apply filtering based on lottimeId and lotlocationId if provided
     if (lottimeId && lotlocationId) {
-      // Filter lotdates array based on both lottimeId and lotlocationId
       lotdates = lotdates.filter(
         (item) =>
           item.lottime._id.toString() === lottimeId &&
           item.lottime.lotlocation._id.toString() === lotlocationId
       );
     } else if (lottimeId) {
-      // Filter lotdates array based on lottimeId
       lotdates = lotdates.filter(
         (item) => item.lottime._id.toString() === lottimeId
       );
     } else if (lotlocationId) {
-      // Filter lotdates array based on lotlocationId
       lotdates = lotdates.filter(
         (item) => item.lottime.lotlocation._id.toString() === lotlocationId
       );
     }
 
+    // Send the filtered and sorted results
     res.status(200).json({
       success: true,
       lotdates,
@@ -1262,12 +1312,17 @@ const addLotTime = asyncError(async (req, res, next) => {
 
   // 3. Get the current date and format it as DD-MM-YYYY
   const currentDate = new Date();
-  const formattedDate = `${String(currentDate.getDate()).padStart(2, '0')}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getFullYear())}`;
+  const formattedDate = `${String(currentDate.getDate()).padStart(
+    2,
+    "0"
+  )}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(
+    currentDate.getFullYear()
+  )}`;
 
   // 4. Create the LotDate using the formatted date and lottimeId
   const lotDatePayload = {
     lotdate: formattedDate,
-    lottime: lottimeId
+    lottime: lottimeId,
   };
   const lotdate = await LotDate.create(lotDatePayload);
 
@@ -1290,15 +1345,12 @@ const addLotTime = asyncError(async (req, res, next) => {
   };
   const newPlayzone = await Playzone.create(playzoneData);
 
- 
-
   // 8. Respond with success
   res.status(201).json({
     success: true,
     message: "Time Added Successfully",
   });
 });
-
 
 const getAllLotTime = asyncError(async (req, res, next) => {
   //   const lottimes = await LotTime.find({}).populate("lotlocation").sort({ createdAt: -1 });
@@ -1402,8 +1454,6 @@ const deleteLotTime = asyncError(async (req, res, next) => {
     message: "Time deleted successfully",
   });
 });
-
-
 
 const updateTime = asyncError(async (req, res, next) => {
   const { lottime } = req.body;
@@ -1548,7 +1598,6 @@ const updateLocation = asyncError(async (req, res, next) => {
   });
 });
 
-
 // const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
 //   // Fetch all lot locations
 //   const lotlocations = await LotLocation.find({});
@@ -1590,7 +1639,7 @@ const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
   // Fetch all lot times, populate the related lotlocation field, and sort by createdAt in descending order
   const lottimes = await LotTime.find({})
     .populate("lotlocation")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: 1 });
 
   // Combine data
   const locationData = lotlocations.map((location) => {
@@ -1666,7 +1715,7 @@ const deletePayment = asyncError(async (req, res, next) => {
 // ##############################
 
 const addUpiPayment = asyncError(async (req, res, next) => {
-  const { upiholdername, upiid } = req.body;
+  const { upiholdername, upiid, paymentnote } = req.body;
 
   if (!upiholdername)
     return next(new ErrorHandler("UPI holder name is missing", 404));
@@ -1678,6 +1727,7 @@ const addUpiPayment = asyncError(async (req, res, next) => {
     upiholdername,
     upiid,
     qrcode: req.file ? req.file.filename : undefined,
+    paymentnote,
   });
 
   res.status(201).json({
@@ -1715,7 +1765,14 @@ const deleteUPIPayment = asyncError(async (req, res, next) => {
 // ##############################
 
 const addBankPayment = asyncError(async (req, res, next) => {
-  const { bankname, accountholdername, ifsccode, accountnumber } = req.body;
+  const {
+    bankname,
+    accountholdername,
+    ifsccode,
+    accountnumber,
+    swiftcode,
+    paymentnote,
+  } = req.body;
 
   if (!bankname) return next(new ErrorHandler("Bank name is missing", 404));
   if (!accountholdername)
@@ -1723,6 +1780,7 @@ const addBankPayment = asyncError(async (req, res, next) => {
   if (!ifsccode) return next(new ErrorHandler("IFSC code is missing", 404));
   if (!accountnumber)
     return next(new ErrorHandler("Account number is missing", 404));
+  if (!swiftcode) return next(new ErrorHandler("Swift code is missing", 404));
 
   await BankPaymentType.create(req.body);
 
@@ -1761,7 +1819,7 @@ const deleteBankPayment = asyncError(async (req, res, next) => {
 // ##############################
 
 const addPaypalPayment = asyncError(async (req, res, next) => {
-  const { emailaddress } = req.body;
+  const { emailaddress, paymentnote } = req.body;
 
   if (!emailaddress)
     return next(new ErrorHandler("Email address is missing", 404));
@@ -1803,7 +1861,7 @@ const deletePaypalPayment = asyncError(async (req, res, next) => {
 // ##############################
 
 const addCryptoPayment = asyncError(async (req, res, next) => {
-  const { walletaddress, networktype } = req.body;
+  const { walletaddress, networktype, paymentnote } = req.body;
 
   if (!walletaddress)
     return next(new ErrorHandler("Wallet address is missing", 404));
@@ -1816,6 +1874,7 @@ const addCryptoPayment = asyncError(async (req, res, next) => {
     walletaddress,
     networktype,
     qrcode: req.file ? req.file.filename : undefined,
+    paymentnote,
   });
 
   res.status(201).json({
@@ -1853,7 +1912,7 @@ const deleteCryptoPayment = asyncError(async (req, res, next) => {
 // ##############################
 
 const addSkrillPayment = asyncError(async (req, res, next) => {
-  const { address } = req.body;
+  const { address, paymentnote } = req.body;
 
   if (!address)
     return next(
@@ -2866,8 +2925,9 @@ const addPlaybet = asyncError(async (req, res, next) => {
           playbet.amount;
         playzone.playnumbers[playnumberIndex].users[userIndex].winningamount +=
           playbet.winningamount;
-        playzone.playnumbers[playnumberIndex].users[userIndex].convertedAmount +=
-        convertedAmount;
+        playzone.playnumbers[playnumberIndex].users[
+          userIndex
+        ].convertedAmount += convertedAmount;
       } else {
         // User does not exist, add new user
         playzone.playnumbers[playnumberIndex].users.push({
@@ -3007,7 +3067,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
     totalbalance: totalBalance,
     usercurrency: user.country._id.toString(),
     activityType: "Bet",
-    userId: userId,
+    userId: user.userId,
     paybetId: newPlaybet._id,
     paymentProcessType: "Debit",
   });
@@ -3075,7 +3135,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
 
 // FOR ADMIN
 
-
 // const getUserPlaybets = asyncError(async (req, res, next) => {
 //   const userId = req.user._id;
 
@@ -3129,7 +3188,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
 //   }
 // });
 
-
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id;
 
@@ -3154,12 +3212,12 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
     let playbets = user.playbetHistory;
 
     // Log raw data
-    playbets.forEach(bet => {
+    playbets.forEach((bet) => {
       console.log(`ID: ${bet._id}, Created At: ${bet.createdAt}`);
     });
 
     // Ensure createdAt is treated as a date
-    playbets = playbets.map(bet => ({
+    playbets = playbets.map((bet) => ({
       ...bet.toObject(), // Ensure it's a plain object
       createdAt: new Date(bet.createdAt),
     }));
@@ -3179,8 +3237,6 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
     });
   }
 });
-
-
 
 // const getUserPlaybets = asyncError(async (req, res, next) => {
 //   const userId = req.user._id;
@@ -3232,8 +3288,6 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
 //   }
 // });
 
-
-
 const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
   const userId = req.params.userid;
 
@@ -3260,7 +3314,7 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
     let playbets = user.playbetHistory;
 
     // Ensure createdAt is treated as a date
-    playbets = playbets.map(bet => ({
+    playbets = playbets.map((bet) => ({
       ...bet.toObject(), // Ensure it's a plain object
       createdAt: new Date(bet.createdAt),
     }));
@@ -3280,7 +3334,6 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
     });
   }
 });
-
 
 // const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
 //   const userId = req.params.userid;
@@ -3688,6 +3741,7 @@ module.exports = {
   deleteAppLinks,
   getSingleUserPlaybetHistory,
   getAllResultsByLocationWithTimesMonthYear,
+  getAllTopWinner,
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;

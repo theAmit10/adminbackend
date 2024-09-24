@@ -48,7 +48,7 @@ const transactionSchema = new mongoose.Schema({
   },
   transactionType: {
     type: String,
-    enum: ["Deposit", "Withdraw"],
+    enum: ["Deposit", "Withdraw","AdminUpdate"],
     required: true
   },
   paymentStatus: {
@@ -56,9 +56,11 @@ const transactionSchema = new mongoose.Schema({
     enum: ["Pending", "Completed", "Cancelled"],
     default: "Pending",
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
+  paymentUpdateNote: {
+    type: String,
+  },
+  paymentupdatereceipt: {
+    type: String,
   },
   // Fields for Bank payment type
   bankName: {
@@ -125,7 +127,7 @@ const transactionSchema = new mongoose.Schema({
       return this.transactionType === "Withdraw" && this.paymentType === "Upi";
     }
   }
-});
+}, { timestamps: true });
 
 transactionSchema.pre('save', function(next) {
   if (this.transactionType === "Withdraw" && this.paymentType === "Upi" && (!this.upiHolderName || !this.upiId)) {

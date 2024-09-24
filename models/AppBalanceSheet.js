@@ -20,12 +20,15 @@ const schema = new mongoose.Schema({
   },
   activityType: {
     type: String,
-    enum: ["Deposit", "Withdraw", "Bet", "Winning", "Transfer"],
+    enum: ["Deposit", "Withdraw", "Bet", "Winning", "Transfer","AdminUpdate"],
     required: true
   },
   userId: {
     type: String,
     required: [true, "Please enter user ID"]
+  },
+  walletName: {
+    type: String,
   },
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,

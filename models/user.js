@@ -70,42 +70,104 @@ const schema = new mongoose.Schema({
   }],
   createdAt:{
     type: Date,
-    default: Date.now(),
+    default: Date.now,
   }
 });
+
+// schema.pre("save", async function (next) {
+//   if (!this.isNew && this.isModified("password")) {
+//     this.password = await bcrypt.hash(this.password, 10);
+//     return;
+//   }
+
+//   if (this.isNew) {
+//     try {
+//       this.password = await bcrypt.hash(this.password, 10);
+//       const currencyId = this.country;
+
+//       const currency = await Currency.findById(this.country);
+//       if (!currency) {
+//         return next(new ErrorHandler("Currency not found", 404));
+//       }
+
+//       const walletOne = await WalletOne.create({
+//         userId: this._id,
+//         walletName: 'Wallet One',
+//         visibility: true,
+//         currencyId: currency._id ,
+//       });
+//       const walletTwo = await WalletTwo.create({
+//         userId: this._id,
+//         walletName: 'Wallet Two',
+//         visibility: true,
+//         currencyId: currency._id ,
+//       });
+//       this.walletOne = walletOne._id;
+//       this.walletTwo = walletTwo._id;
+//       this.transactionHistory = [];
+//       this.playbetHistory = [];
+//       next();
+//     } catch (error) {
+//       next(error);
+//     }
+//     return;
+//   }
+
+//   if (!this.isNew || !this.isModified("password")) {
+//     next();
+//     return;
+//   }
+// });
 
 schema.pre("save", async function (next) {
   if (!this.isNew && this.isModified("password")) {
     this.password = await bcrypt.hash(this.password, 10);
-    return;
+    return next();
   }
 
   if (this.isNew) {
     try {
+      // Hash the password
       this.password = await bcrypt.hash(this.password, 10);
-      const currencyId = this.country;
 
+      // Fetch the currency based on the provided country
       const currency = await Currency.findById(this.country);
       if (!currency) {
         return next(new ErrorHandler("Currency not found", 404));
       }
 
+      // **Fetch existing WalletOne to determine the walletName**
+      let existingWalletOne = await WalletOne.findOne().sort({ _id: 1 }); // Sort by _id to get the first created
+      let walletOneName = existingWalletOne ? existingWalletOne.walletName : 'Wallet One';
+
+      // **Create WalletOne with the determined walletName**
       const walletOne = await WalletOne.create({
         userId: this._id,
-        walletName: 'Wallet One',
+        walletName: walletOneName, // Use existing name or default
         visibility: true,
-        currencyId: currency._id ,
+        currencyId: currency._id,
       });
+
+      // **Fetch existing WalletTwo to determine the walletName**
+      let existingWalletTwo = await WalletTwo.findOne().sort({ _id: 1 }); // Sort by _id to get the first created
+      let walletTwoName = existingWalletTwo ? existingWalletTwo.walletName : 'Wallet Two';
+
+      // **Create WalletTwo with the determined walletName**
       const walletTwo = await WalletTwo.create({
         userId: this._id,
-        walletName: 'Wallet Two',
+        walletName: walletTwoName, // Use existing name or default
         visibility: true,
-        currencyId: currency._id ,
+        currencyId: currency._id,
       });
+
+      // Assign the created wallets to the user
       this.walletOne = walletOne._id;
       this.walletTwo = walletTwo._id;
+
+      // Initialize history arrays
       this.transactionHistory = [];
       this.playbetHistory = [];
+
       next();
     } catch (error) {
       next(error);
@@ -118,6 +180,7 @@ schema.pre("save", async function (next) {
     return;
   }
 });
+
 
 schema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
