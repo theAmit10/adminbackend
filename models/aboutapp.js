@@ -12,11 +12,7 @@ const schema = new mongoose.Schema({
     locationDescription: {
         type: String,
         default: ""
-    },
-    createdAt:{
-        type: Date,
-        default: Date.now,
     }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("AboutApp", schema);

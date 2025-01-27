@@ -168,752 +168,765 @@ const getNextDate = () => {
   return `${day}-${month}-${year}`;
 };
 
-cron.schedule("0 * * * *", async () => {
-  console.log("Running scheduled task to add LotDates and Playzones");
-  try {
-    // Fetch all locations with automation set to 'automatic'
-    const locations = await LotLocation.find({});
+// cron.schedule("*/2 * * * *", async () => {
+//   console.log("Running scheduled task to add LotDates and Playzones");
+//   try {
+//     // Fetch all locations with automation set to 'automatic'
+//     const locations = await LotLocation.find({});
 
-    console.log("AUTOMATIC LOCATION COUNT :: " + locations.length);
+//     console.log("AUTOMATIC LOCATION COUNT :: " + locations.length);
 
-    for (const location of locations) {
-      // Fetch times for each location
-      const times = await LotTime.find({ lotlocation: location._id });
+//     for (const location of locations) {
+//       // Fetch times for each location
+//       const times = await LotTime.find({ lotlocation: location._id });
 
-      for (const time of times) {
-        // Get the current date and next day's date
-        const lotdate = getCurrentDate();
-        const nextLotDate = getNextDate();
+//       for (const time of times) {
+//         // Get the current date and next day's date
+//         const lotdate = getCurrentDate();
+//         const nextLotDate = getNextDate();
 
-        // Function to check and create LotDate and Playzone for a given date
-        const checkAndCreateLotDate = async (date) => {
-          const existingLotDate = await LotDate.findOne({
-            lotdate: date,
-            lottime: time._id,
-          });
+//         // Function to check and create LotDate and Playzone for a given date
+//         const checkAndCreateLotDate = async (date) => {
+//           const existingLotDate = await LotDate.findOne({
+//             lotdate: date,
+//             lottime: time._id,
+//           });
 
-          if (!existingLotDate) {
-            // LotDate does not exist, create a new one
-            const newLotDate = await LotDate.create({
-              lotdate: date,
-              lottime: time._id,
-            });
+//           if (!existingLotDate) {
+//             // LotDate does not exist, create a new one
+//             const newLotDate = await LotDate.create({
+//               lotdate: date,
+//               lottime: time._id,
+//             });
 
-            console.log(
-              `Added LotDate for location ${location.lotlocation} at time ${time.lottime} on date ${date}`
-            );
+//             console.log(
+//               `Added LotDate for location ${location.lotlocation} at time ${time.lottime} on date ${date}`
+//             );
 
-            // Create Playzone entry for each LotDate
-            const playnumbers = createPlaynumbersArray(location.maximumNumber);
-            const playzoneData = {
-              lotlocation: location._id,
-              lottime: time._id,
-              lotdate: newLotDate._id,
-              playnumbers,
-            };
-            const newPlayzone = await Playzone.create(playzoneData);
+//             // Create Playzone entry for each LotDate
+//             const playnumbers = createPlaynumbersArray(location.maximumNumber);
+//             const playzoneData = {
+//               lotlocation: location._id,
+//               lottime: time._id,
+//               lotdate: newLotDate._id,
+//               playnumbers,
+//             };
+//             const newPlayzone = await Playzone.create(playzoneData);
 
-            console.log(
-              `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
-            );
-          } else {
-            console.log(
-              `LotDate already exists for location ${location.lotlocation} at time ${time.lottime} on date ${date}`
-            );
-          }
-        };
+//             console.log(
+//               `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
+//             );
+//           } else {
+//             console.log(
+//               `LotDate already exists for location ${location.lotlocation} at time ${time.lottime} on date ${date}`
+//             );
+//           }
+//         };
 
-        // Create LotDate and Playzone for current date
-        await checkAndCreateLotDate(lotdate);
+//         // Create LotDate and Playzone for current date
+//         await checkAndCreateLotDate(lotdate);
 
-        // Create LotDate and Playzone for next day date
-        await checkAndCreateLotDate(nextLotDate);
-      }
-    }
-  } catch (error) {
-    console.error("Error running scheduled task:", error);
-  }
-});
+//         // Create LotDate and Playzone for next day date
+//         await checkAndCreateLotDate(nextLotDate);
+//       }
+//     }
+//   } catch (error) {
+//     console.error("Error running scheduled task:", error);
+//   }
+// });
 
-cron.schedule("*/5 * * * *", async () => {
-  console.log("Running automation script every ONE minutes...");
-  try {
-    const locations = await LotLocation.find({ automation: "automatic" });
 
-    for (const location of locations) {
-      const times = await LotTime.find({ lotlocation: location._id });
 
-      const automationUpdatedAt = location.automationUpdatedAt;
-      const automationUpdatedTime = moment.tz(
-        automationUpdatedAt,
-        "hh:mm A",
-        "Asia/Kolkata"
-      );
-      const automationUpdatedDate = moment.tz(
-        automationUpdatedAt,
-        "DD-MM-YYYY",
-        "Asia/Kolkata"
-      );
+// cron.schedule("*/5 * * * *", async () => {
+//   console.log("Running automation script every ONE minutes...");
+//   try {
+//     const locations = await LotLocation.find({ automation: "automatic" });
 
-      console.log(
-        `Automation Updated Date and Time for location ${
-          location.lotlocation
-        }: ${automationUpdatedTime.format(
-          "hh:mm A"
-        )} :: Date ${automationUpdatedDate.format("DD-MM-YYYY")}`
-      );
+//     for (const location of locations) {
+//       const times = await LotTime.find({ lotlocation: location._id });
 
-      const now = moment.tz("Asia/Kolkata");
+//       const automationUpdatedAt = location.automationUpdatedAt;
+//       const automationUpdatedTime = moment.tz(
+//         automationUpdatedAt,
+//         "hh:mm A",
+//         "Asia/Kolkata"
+//       );
+//       const automationUpdatedDate = moment.tz(
+//         automationUpdatedAt,
+//         "DD-MM-YYYY",
+//         "Asia/Kolkata"
+//       );
 
-      console.log("Current Time: ", now.format("hh:mm A"));
-      console.log("Current Date: ", now.format("DD-MM-YYYY"));
+//       console.log(
+//         `Automation Updated Date and Time for location ${
+//           location.lotlocation
+//         }: ${automationUpdatedTime.format(
+//           "hh:mm A"
+//         )} :: Date ${automationUpdatedDate.format("DD-MM-YYYY")}`
+//       );
 
-      if (
-        automationUpdatedDate.format("DD-MM-YYYY") === now.format("DD-MM-YYYY")
-      ) {
-        console.log("SAME DATE");
-        for (const time of times) {
-          const lotTimeMoment = moment.tz(
-            time.lottime,
-            "hh:mm A",
-            "Asia/Kolkata"
-          );
-          console.log("###################");
-          console.log(
-            `Lot Time for location ${
-              location.lotlocation
-            }: ${lotTimeMoment.format("hh:mm A")}`
-          );
+//       const now = moment.tz("Asia/Kolkata");
 
-          const isAutoUpdatetime =
-            automationUpdatedTime.isSameOrAfter(lotTimeMoment);
-          console.log(
-            `isAutoUpdatetime time ${automationUpdatedTime.format(
-              "hh:mm A"
-            )} :: ` + isAutoUpdatetime
-          );
+//       console.log("Current Time: ", now.format("hh:mm A"));
+//       console.log("Current Date: ", now.format("DD-MM-YYYY"));
 
-          // Adjust the condition to skip only if both times have passed
-          if (!isAutoUpdatetime) {
-            console.log(
-              `location ${location.lotlocation} ${lotTimeMoment.format(
-                "hh:mm A"
-              )} as automationUpdatedAt  have passed.`
-            );
-            // Process further if only automationUpdatedAt time has passed but lottime is valid
-            if (now.isSameOrAfter(lotTimeMoment)) {
-              console.log(
-                `location ${location.lotlocation} ${lotTimeMoment.format(
-                  "hh:mm A"
-                )} as both automationUpdatedAt and lottime have passed.`
-              );
-              let lotdates = await LotDate.find({ lottime: time._id })
-                .populate("lottime")
-                .sort({ "lottime.lotdate": -1 });
+//       if (
+//         automationUpdatedDate.format("DD-MM-YYYY") === now.format("DD-MM-YYYY")
+//       ) {
+//         console.log("SAME DATE");
+//         for (const time of times) {
+//           const lotTimeMoment = moment.tz(
+//             time.lottime,
+//             "hh:mm A",
+//             "Asia/Kolkata"
+//           );
+//           console.log("###################");
+//           console.log(
+//             `Lot Time for location ${
+//               location.lotlocation
+//             }: ${lotTimeMoment.format("hh:mm A")}`
+//           );
 
-              let dateExists = false;
+//           const isAutoUpdatetime =
+//             automationUpdatedTime.isSameOrAfter(lotTimeMoment);
+//           console.log(
+//             `isAutoUpdatetime time ${automationUpdatedTime.format(
+//               "hh:mm A"
+//             )} :: ` + isAutoUpdatetime
+//           );
 
-              for (const date of lotdates) {
-                if (date.lotdate === now.format("DD-MM-YYYY")) {
-                  dateExists = true;
+//           // Adjust the condition to skip only if both times have passed
+//           if (!isAutoUpdatetime) {
+//             console.log(
+//               `location ${location.lotlocation} ${lotTimeMoment.format(
+//                 "hh:mm A"
+//               )} as automationUpdatedAt  have passed.`
+//             );
+//             // Process further if only automationUpdatedAt time has passed but lottime is valid
+//             if (now.isSameOrAfter(lotTimeMoment)) {
+//               console.log(
+//                 `location ${location.lotlocation} ${lotTimeMoment.format(
+//                   "hh:mm A"
+//                 )} as both automationUpdatedAt and lottime have passed.`
+//               );
+//               let lotdates = await LotDate.find({ lottime: time._id })
+//                 .populate("lottime")
+//                 .sort({ "lottime.lotdate": -1 });
 
-                  console.log("FOUND DATE :: " + date.lotdate);
-                  const scheduledDateTime = moment.tz(
-                    `${date.lotdate} ${time.lottime}`,
-                    "DD-MM-YYYY hh:mm A",
-                    "Asia/Kolkata"
-                  );
+//               let dateExists = false;
 
-                  if (now.isSameOrAfter(scheduledDateTime)) {
-                    console.log(
-                      `Current date and time is the same or after the provided date ${scheduledDateTime.format(
-                        "DD-MM-YYYY"
-                      )} and time. ${scheduledDateTime.format("hh:mm A")}`
-                    );
-                    const existingResult = await Result.findOne({
-                      lotdate: date._id,
-                      lottime: time._id,
-                      lotlocation: location._id,
-                    });
+//               for (const date of lotdates) {
+//                 if (date.lotdate === now.format("DD-MM-YYYY")) {
+//                   dateExists = true;
 
-                    if (!existingResult) {
-                      console.log(
-                        `No existing result found for ${lotTimeMoment.format(
-                          "hh:mm A"
-                        )}`
-                      );
-                      const playzone = await Playzone.findOne({
-                        lotlocation: location._id,
-                        lottime: time._id,
-                        lotdate: date._id,
-                      });
+//                   console.log("FOUND DATE :: " + date.lotdate);
+//                   const scheduledDateTime = moment.tz(
+//                     `${date.lotdate} ${time.lottime}`,
+//                     "DD-MM-YYYY hh:mm A",
+//                     "Asia/Kolkata"
+//                   );
 
-                      if (!playzone) {
-                        console.error(
-                          "Playzone not found for location:",
-                          location._id,
-                          "time:",
-                          time._id,
-                          "date:",
-                          date._id
-                        );
-                        continue;
-                      }
+//                   if (now.isSameOrAfter(scheduledDateTime)) {
+//                     console.log(
+//                       `Current date and time is the same or after the provided date ${scheduledDateTime.format(
+//                         "DD-MM-YYYY"
+//                       )} and time. ${scheduledDateTime.format("hh:mm A")}`
+//                     );
+//                     const existingResult = await Result.findOne({
+//                       lotdate: date._id,
+//                       lottime: time._id,
+//                       lotlocation: location._id,
+//                     });
 
-                      const playnumber = getPlaynumberOfLowestAmount({
-                        playzone,
-                      });
-                      const nextResultTime = getNextResultTime(
-                        times,
-                        time.lottime
-                      );
+//                     if (!existingResult) {
+//                       console.log(
+//                         `No existing result found for ${lotTimeMoment.format(
+//                           "hh:mm A"
+//                         )}`
+//                       );
+//                       const playzone = await Playzone.findOne({
+//                         lotlocation: location._id,
+//                         lottime: time._id,
+//                         lotdate: date._id,
+//                       });
 
-                      // PROCESS TO SEND AMOUNT TO THE USER WALLET AND UPDATING BALANCESHEET
-                      // Find the playnumber in the playzone
-                      const playnumberEntry = playzone.playnumbers.find(
-                        (pn) => pn.playnumber === parseInt(playnumber, 10)
-                      );
+//                       if (!playzone) {
+//                         console.error(
+//                           "Playzone not found for location:",
+//                           location._id,
+//                           "time:",
+//                           time._id,
+//                           "date:",
+//                           date._id
+//                         );
+//                         continue;
+//                       }
 
-                      if (!playnumberEntry) {
-                        continue;
-                      }
+//                       const playnumber = getPlaynumberOfLowestAmount({
+//                         playzone,
+//                       });
+//                       const nextResultTime = getNextResultTime(
+//                         times,
+//                         time.lottime
+//                       );
 
-                      console.log("now getting users");
-                      // Update walletOne for each user in the playnumber's users list
-                      for (const userz of playnumberEntry.users) {
-                        console.log("GETTING EACH USER");
-                        console.log(userz);
-                        const userId = userz.userId;
-                        const amount = parseInt(userz.winningamount);
+//                       // PROCESS TO SEND AMOUNT TO THE USER WALLET AND UPDATING BALANCESHEET
+//                       // Find the playnumber in the playzone
+//                       const playnumberEntry = playzone.playnumbers.find(
+//                         (pn) => pn.playnumber === parseInt(playnumber, 10)
+//                       );
 
-                        const user = await User.findOne({ userId });
+//                       if (!playnumberEntry) {
+//                         continue;
+//                       }
 
-                        if (!user) {
-                          continue;
-                        }
+//                       console.log("now getting users");
+//                       // Update walletOne for each user in the playnumber's users list
+//                       for (const userz of playnumberEntry.users) {
+//                         console.log("GETTING EACH USER");
+//                         console.log(userz);
+//                         const userId = userz.userId;
+//                         const amount = parseInt(userz.winningamount);
 
-                        console.log("SEARCHING FOR USER");
-                        console.log(user);
+//                         const user = await User.findOne({ userId });
 
-                        // FOR DEPOSITING MONEY IN USER WALLET ONE
+//                         if (!user) {
+//                           continue;
+//                         }
 
-                        const walletId = user.walletOne._id;
-                        const wallet = await WalletOne.findById(walletId);
-                        const totalBalanceAmount = parseFloat(wallet.balance);
-                        const remainingWalletBalance =
-                          totalBalanceAmount + parseFloat(amount);
+//                         console.log("SEARCHING FOR USER");
+//                         console.log(user);
 
-                        // Update wallet
-                        await WalletOne.findByIdAndUpdate(
-                          walletId,
-                          { balance: remainingWalletBalance },
-                          { new: true }
-                        );
+//                         // FOR DEPOSITING MONEY IN USER WALLET ONE
 
-                        // FOR NOTIFICATION
-                        const notification = await Notification.create({
-                          title: "Congratulations! You won!",
-                          description: `You have won an amount of ${amount}.`,
-                        });
+//                         const walletId = user.walletOne._id;
+//                         const wallet = await WalletOne.findById(walletId);
+//                         const totalBalanceAmount = parseFloat(wallet.balance);
+//                         const remainingWalletBalance =
+//                           totalBalanceAmount + parseFloat(amount);
 
-                        // Add notification to the user's notifications array
-                        user.notifications.push(notification._id);
-                        await user.save();
+//                         // Update wallet
+//                         await WalletOne.findByIdAndUpdate(
+//                           walletId,
+//                           { balance: remainingWalletBalance },
+//                           { new: true }
+//                         );
 
-                        // FOR PLAYBET HISTORY
-                        const playbet = await Playbet.create({
-                          playnumbers: [
-                            {
-                              playnumber: playnumberEntry.playnumber,
-                              amount: userz.winningamount,
-                              winningamount: userz.winningamount,
-                            },
-                          ],
-                          username: user.name,
-                          userid: user.userId,
-                          currency: user.country._id.toString(), // Assuming currency is related to the user
-                          lotdate: date._id,
-                          lottime: time._id,
-                          lotlocation: location._id,
-                        });
+//                         // FOR NOTIFICATION
+//                         const notification = await Notification.create({
+//                           title: "Congratulations! You won!",
+//                           description: `You have won an amount of ${amount}.`,
+//                         });
 
-                        // Add playbet history to the user's playbetHistory array
-                        user.playbetHistory.push(playbet._id);
-                        await user.save();
+//                         // Add notification to the user's notifications array
+//                         user.notifications.push(notification._id);
+//                         await user.save();
 
-                        // Creating top winner list
-                        const topWinner = await topwinner.create({
-                          userId: user.userId,
-                          name: user.name,
-                          avatar: user?.avatar,
-                          playnumber: playnumberEntry.playnumber,
-                          amount: userz.amount,
-                          winningamount: userz.winningamount,
-                          currency: user.country._id.toString(),
-                        });
-                      }
+//                         // FOR PLAYBET HISTORY
+//                         const playbet = await Playbet.create({
+//                           playnumbers: [
+//                             {
+//                               playnumber: playnumberEntry.playnumber,
+//                               amount: userz.winningamount,
+//                               winningamount: userz.winningamount,
+//                             },
+//                           ],
+//                           username: user.name,
+//                           userid: user.userId,
+//                           currency: user.country._id.toString(), // Assuming currency is related to the user
+//                           lotdate: date._id,
+//                           lottime: time._id,
+//                           lotlocation: location._id,
+//                           walletName: wallet.walletName,
+//                         });
 
-                      // FOR BALANCE SHEET
+//                         // Add playbet history to the user's playbetHistory array
+//                         user.playbetHistory.push(playbet._id);
+//                         await user.save();
 
-                      // Fetch all WalletTwo balances and populate currencyId
-                      const walletTwoBalances = await WalletTwo.find(
-                        {}
-                      ).populate("currencyId");
-                      let gameBalance = 0;
+//                         // Creating top winner list
+//                         const topWinner = await topwinner.create({
+//                           userId: user.userId,
+//                           name: user.name,
+//                           avatar: user?.avatar,
+//                           playnumber: playnumberEntry.playnumber,
+//                           amount: userz.amount,
+//                           winningamount: userz.winningamount,
+//                           currency: user.country._id.toString(),
+//                         });
+//                       }
 
-                      walletTwoBalances.forEach((wallet) => {
-                        const walletCurrencyConverter = parseFloat(
-                          wallet.currencyId.countrycurrencyvaluecomparedtoinr
-                        );
-                        gameBalance += wallet.balance * walletCurrencyConverter;
-                      });
+//                       // FOR BALANCE SHEET
 
-                      // Fetch all WalletOne balances and populate currencyId
-                      const walletOneBalances = await WalletOne.find(
-                        {}
-                      ).populate("currencyId");
-                      let withdrawalBalance = 0;
+//                       // Fetch all WalletTwo balances and populate currencyId
+//                       const walletTwoBalances = await WalletTwo.find(
+//                         {}
+//                       ).populate("currencyId");
+//                       let gameBalance = 0;
 
-                      walletOneBalances.forEach((wallet) => {
-                        const walletCurrencyConverter = parseFloat(
-                          wallet.currencyId.countrycurrencyvaluecomparedtoinr
-                        );
-                        withdrawalBalance +=
-                          wallet.balance * walletCurrencyConverter;
-                      });
+//                       walletTwoBalances.forEach((wallet) => {
+//                         const walletCurrencyConverter = parseFloat(
+//                           wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//                         );
+//                         gameBalance += wallet.balance * walletCurrencyConverter;
+//                       });
 
-                      // Calculate total balance as the sum of walletOne and walletTwo balances
-                      const totalBalance = withdrawalBalance + gameBalance;
+//                       // Fetch all WalletOne balances and populate currencyId
+//                       const walletOneBalances = await WalletOne.find(
+//                         {}
+//                       ).populate("currencyId");
+//                       let withdrawalBalance = 0;
 
-                      // Search for the "INR" countrycurrencysymbol in the Currency Collection
-                      const currency = await Currency.findOne({
-                        countrycurrencysymbol: "INR",
-                      });
-                      if (!currency) {
-                        continue;
-                      }
+//                       walletOneBalances.forEach((wallet) => {
+//                         const walletCurrencyConverter = parseFloat(
+//                           wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//                         );
+//                         withdrawalBalance +=
+//                           wallet.balance * walletCurrencyConverter;
+//                       });
 
-                      // Create a new AppBalanceSheet document
-                      const appBalanceSheet = new AppBalanceSheet({
-                        amount: playnumberEntry.distributiveamount,
-                        withdrawalbalance: withdrawalBalance,
-                        gamebalance: gameBalance,
-                        totalbalance: totalBalance,
-                        usercurrency: currency._id, // Use the _id of the found currency
-                        activityType: "Winning",
-                        userId: playnumberEntry?.users[0]?.userId || "1000",
-                        payzoneId: playzone._id,
-                        paymentProcessType: "Credit",
-                      });
+//                       // Calculate total balance as the sum of walletOne and walletTwo balances
+//                       const totalBalance = withdrawalBalance + gameBalance;
 
-                      // Save the AppBalanceSheet document
-                      await appBalanceSheet.save();
-                      console.log("AppBalanceSheet Created Successfully");
+//                       // Search for the "INR" countrycurrencysymbol in the Currency Collection
+//                       const currency = await Currency.findOne({
+//                         countrycurrencysymbol: "INR",
+//                       });
+//                       if (!currency) {
+//                         continue;
+//                       }
+
+// let existingWalletOne = await WalletOne.findOne().sort({ _id: 1 }); // Sort by _id to get the first created
+// let walletOneName = existingWalletOne ? existingWalletOne.walletName : 'Wallet One';
+
+
+//                       // Create a new AppBalanceSheet document
+//                       const appBalanceSheet = new AppBalanceSheet({
+//                         amount: playnumberEntry.distributiveamount,
+//                         withdrawalbalance: withdrawalBalance,
+//                         gamebalance: gameBalance,
+//                         totalbalance: totalBalance,
+//                         usercurrency: currency._id, // Use the _id of the found currency
+//                         activityType: "Winning",
+//                         userId: playnumberEntry?.users[0]?.userId || "1000",
+//                         payzoneId: playzone._id,
+//                         paymentProcessType: "Credit",
+//                         walletName: walletOneName,
+//                       });
+
+//                       // Save the AppBalanceSheet document
+//                       await appBalanceSheet.save();
+//                       console.log("AppBalanceSheet Created Successfully");
                     
 
-                      // END BALANCE SHEET
+//                       // END BALANCE SHEET
 
-                      // await Result.create({
-                      //   resultNumber: addLeadingZero(playnumber),
-                      //   lotdate: date._id,
-                      //   lottime: time._id,
-                      //   lotlocation: location._id,
-                      //   nextresulttime: nextResultTime,
-                      //   resultCreatedMethod: "automatic",
-                      // });
+//                       // await Result.create({
+//                       //   resultNumber: addLeadingZero(playnumber),
+//                       //   lotdate: date._id,
+//                       //   lottime: time._id,
+//                       //   lotlocation: location._id,
+//                       //   nextresulttime: nextResultTime,
+//                       //   resultCreatedMethod: "automatic",
+//                       // });
 
-                      try {
-                        // Create and save a new result document
-                        const result =  await Result.create({
-                          resultNumber: addLeadingZero(playnumber),
-                          lotdate: date._id,
-                          lottime: time._id,
-                          lotlocation: location._id,
-                          nextresulttime: nextResultTime,
-                          resultCreatedMethod: "automatic",
-                        });
-                        console.log("Result created successfully:", result); // Successfully created document
-                      } catch (err) {
-                        console.error("Error creating result:", err.message); // Handle validation or save errors
-                      }
+//                       try {
+//                         // Create and save a new result document
+//                         const result =  await Result.create({
+//                           resultNumber: addLeadingZero(playnumber),
+//                           lotdate: date._id,
+//                           lottime: time._id,
+//                           lotlocation: location._id,
+//                           nextresulttime: nextResultTime,
+//                           resultCreatedMethod: "automatic",
+//                         });
+//                         console.log("Result created successfully:", result); // Successfully created document
+//                       } catch (err) {
+//                         console.error("Error creating result:", err.message); // Handle validation or save errors
+//                       }
 
-                      console.log(
-                        `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
-                      );
-                    } else {
-                      console.log(
-                        "Result already exists for Location:",
-                        location.lotlocation,
-                        "Time:",
-                        time.lottime,
-                        "Date:",
-                        date.lotdate
-                      );
-                    }
-                  } else {
-                    console.log(
-                      `Current date and time is before the provided time  ${scheduledDateTime.format(
-                        "hh:mm A"
-                      )} and date.  ${scheduledDateTime.format("DD-MM-YYYY")}`
-                    );
-                  }
-                }
-              }
+//                       console.log(
+//                         `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
+//                       );
+//                     } else {
+//                       console.log(
+//                         "Result already exists for Location:",
+//                         location.lotlocation,
+//                         "Time:",
+//                         time.lottime,
+//                         "Date:",
+//                         date.lotdate
+//                       );
+//                     }
+//                   } else {
+//                     console.log(
+//                       `Current date and time is before the provided time  ${scheduledDateTime.format(
+//                         "hh:mm A"
+//                       )} and date.  ${scheduledDateTime.format("DD-MM-YYYY")}`
+//                     );
+//                   }
+//                 }
+//               }
 
-              if (!dateExists) {
-                console.log(
-                  "Date does not exist, creating new LotDate and Playzone"
-                );
+//               if (!dateExists) {
+//                 console.log(
+//                   "Date does not exist, creating new LotDate and Playzone"
+//                 );
 
-                const newLotDate = await LotDate.create({
-                  lotdate: now.format("DD-MM-YYYY"),
-                  lottime: time._id,
-                });
+//                 const newLotDate = await LotDate.create({
+//                   lotdate: now.format("DD-MM-YYYY"),
+//                   lottime: time._id,
+//                 });
 
-                console.log(
-                  `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
-                );
+//                 console.log(
+//                   `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
+//                 );
 
-                const playnumbers = createPlaynumbersArray(
-                  location.maximumNumber
-                );
-                const playzoneData = {
-                  lotlocation: location._id,
-                  lottime: time._id,
-                  lotdate: newLotDate._id,
-                  playnumbers,
-                };
-                await Playzone.create(playzoneData);
+//                 const playnumbers = createPlaynumbersArray(
+//                   location.maximumNumber
+//                 );
+//                 const playzoneData = {
+//                   lotlocation: location._id,
+//                   lottime: time._id,
+//                   lotdate: newLotDate._id,
+//                   playnumbers,
+//                 };
+//                 await Playzone.create(playzoneData);
 
-                console.log(
-                  `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
-                );
-              }
-            }
-          }
-        }
-      } else {
-        console.log("NOT SAME DATE");
+//                 console.log(
+//                   `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
+//                 );
+//               }
+//             }
+//           }
+//         }
+//       } else {
+//         console.log("NOT SAME DATE");
 
-        const now = moment.tz("Asia/Kolkata");
+//         const now = moment.tz("Asia/Kolkata");
 
-        for (const time of times) {
-          const lotTimeMoment = moment.tz(
-            time.lottime,
-            "hh:mm A",
-            "Asia/Kolkata"
-          );
-          console.log("###################");
-          console.log(
-            `Lot Time for location ${
-              location.lotlocation
-            }: ${lotTimeMoment.format("hh:mm A")}`
-          );
+//         for (const time of times) {
+//           const lotTimeMoment = moment.tz(
+//             time.lottime,
+//             "hh:mm A",
+//             "Asia/Kolkata"
+//           );
+//           console.log("###################");
+//           console.log(
+//             `Lot Time for location ${
+//               location.lotlocation
+//             }: ${lotTimeMoment.format("hh:mm A")}`
+//           );
 
-          const isLotTimePassed = now.isSameOrAfter(lotTimeMoment);
+//           const isLotTimePassed = now.isSameOrAfter(lotTimeMoment);
 
-          // Adjust the condition to skip only if both times have passed
-          if (isLotTimePassed) {
-            console.log(
-              `location ${location.lotlocation} ${lotTimeMoment.format(
-                "hh:mm A"
-              )} as lottime have passed.`
-            );
+//           // Adjust the condition to skip only if both times have passed
+//           if (isLotTimePassed) {
+//             console.log(
+//               `location ${location.lotlocation} ${lotTimeMoment.format(
+//                 "hh:mm A"
+//               )} as lottime have passed.`
+//             );
 
-            // Process further if only automationUpdatedAt time has passed but lottime is valid
-            if (now.isSameOrAfter(lotTimeMoment)) {
-              let lotdates = await LotDate.find({ lottime: time._id })
-                .populate("lottime")
-                .sort({ "lottime.lotdate": -1 });
+//             // Process further if only automationUpdatedAt time has passed but lottime is valid
+//             if (now.isSameOrAfter(lotTimeMoment)) {
+//               let lotdates = await LotDate.find({ lottime: time._id })
+//                 .populate("lottime")
+//                 .sort({ "lottime.lotdate": -1 });
 
-              let dateExists = false;
+//               let dateExists = false;
 
-              for (const date of lotdates) {
-                if (date.lotdate === now.format("DD-MM-YYYY")) {
-                  dateExists = true;
+//               for (const date of lotdates) {
+//                 if (date.lotdate === now.format("DD-MM-YYYY")) {
+//                   dateExists = true;
 
-                  console.log("FOUND DATE :: " + date.lotdate);
-                  const scheduledDateTime = moment.tz(
-                    `${date.lotdate} ${time.lottime}`,
-                    "DD-MM-YYYY hh:mm A",
-                    "Asia/Kolkata"
-                  );
+//                   console.log("FOUND DATE :: " + date.lotdate);
+//                   const scheduledDateTime = moment.tz(
+//                     `${date.lotdate} ${time.lottime}`,
+//                     "DD-MM-YYYY hh:mm A",
+//                     "Asia/Kolkata"
+//                   );
 
-                  if (now.isSameOrAfter(scheduledDateTime)) {
-                    console.log(
-                      `Current date and time is the same or after the provided date ${scheduledDateTime.format(
-                        "DD-MM-YYYY"
-                      )} and time. ${scheduledDateTime.format("hh:mm A")}`
-                    );
-                    const existingResult = await Result.findOne({
-                      lotdate: date._id,
-                      lottime: time._id,
-                      lotlocation: location._id,
-                    });
+//                   if (now.isSameOrAfter(scheduledDateTime)) {
+//                     console.log(
+//                       `Current date and time is the same or after the provided date ${scheduledDateTime.format(
+//                         "DD-MM-YYYY"
+//                       )} and time. ${scheduledDateTime.format("hh:mm A")}`
+//                     );
+//                     const existingResult = await Result.findOne({
+//                       lotdate: date._id,
+//                       lottime: time._id,
+//                       lotlocation: location._id,
+//                     });
 
-                    if (!existingResult) {
-                      console.log(
-                        `No existing result found for ${lotTimeMoment.format(
-                          "hh:mm A"
-                        )}`
-                      );
+//                     if (!existingResult) {
+//                       console.log(
+//                         `No existing result found for ${lotTimeMoment.format(
+//                           "hh:mm A"
+//                         )}`
+//                       );
 
-                      const playzone = await Playzone.findOne({
-                        lotlocation: location._id,
-                        lottime: time._id,
-                        lotdate: date._id,
-                      });
+//                       const playzone = await Playzone.findOne({
+//                         lotlocation: location._id,
+//                         lottime: time._id,
+//                         lotdate: date._id,
+//                       });
 
-                      if (!playzone) {
-                        console.error(
-                          "Playzone not found for location:",
-                          location._id,
-                          "time:",
-                          time._id,
-                          "date:",
-                          date._id
-                        );
-                        continue;
-                      }
+//                       if (!playzone) {
+//                         console.error(
+//                           "Playzone not found for location:",
+//                           location._id,
+//                           "time:",
+//                           time._id,
+//                           "date:",
+//                           date._id
+//                         );
+//                         continue;
+//                       }
 
-                      const playnumber = getPlaynumberOfLowestAmount({
-                        playzone,
-                      });
-                      const nextResultTime = getNextResultTime(
-                        times,
-                        time.lottime
-                      );
+//                       const playnumber = getPlaynumberOfLowestAmount({
+//                         playzone,
+//                       });
+//                       const nextResultTime = getNextResultTime(
+//                         times,
+//                         time.lottime
+//                       );
 
-                      // PROCESS TO SEND AMOUNT TO THE USER WALLET AND UPDATING BALANCESHEET
-                      // Find the playnumber in the playzone
-                      const playnumberEntry = playzone.playnumbers.find(
-                        (pn) => pn.playnumber === parseInt(playnumber, 10)
-                      );
+//                       // PROCESS TO SEND AMOUNT TO THE USER WALLET AND UPDATING BALANCESHEET
+//                       // Find the playnumber in the playzone
+//                       const playnumberEntry = playzone.playnumbers.find(
+//                         (pn) => pn.playnumber === parseInt(playnumber, 10)
+//                       );
 
-                      if (!playnumberEntry) {
-                        continue;
-                      }
+//                       if (!playnumberEntry) {
+//                         continue;
+//                       }
 
-                      console.log("now getting users");
-                      // Update walletOne for each user in the playnumber's users list
-                      for (const userz of playnumberEntry.users) {
-                        console.log("GETTING EACH USER");
-                        console.log(userz);
-                        const userId = userz.userId;
-                        const amount = parseInt(userz.winningamount);
+//                       console.log("now getting users");
+//                       // Update walletOne for each user in the playnumber's users list
+//                       for (const userz of playnumberEntry.users) {
+//                         console.log("GETTING EACH USER");
+//                         console.log(userz);
+//                         const userId = userz.userId;
+//                         const amount = parseInt(userz.winningamount);
 
-                        const user = await User.findOne({ userId });
+//                         const user = await User.findOne({ userId });
 
-                        if (!user) {
-                          continue;
-                        }
+//                         if (!user) {
+//                           continue;
+//                         }
 
-                        console.log("SEARCHING FOR USER");
-                        console.log(user);
+//                         console.log("SEARCHING FOR USER");
+//                         console.log(user);
 
-                        // FOR DEPOSITING MONEY IN USER WALLET ONE
+//                         // FOR DEPOSITING MONEY IN USER WALLET ONE
 
-                        const walletId = user.walletOne._id;
-                        const wallet = await WalletOne.findById(walletId);
-                        const totalBalanceAmount = parseFloat(wallet.balance);
-                        const remainingWalletBalance =
-                          totalBalanceAmount + parseFloat(amount);
+//                         const walletId = user.walletOne._id;
+//                         const wallet = await WalletOne.findById(walletId);
+//                         const totalBalanceAmount = parseFloat(wallet.balance);
+//                         const remainingWalletBalance =
+//                           totalBalanceAmount + parseFloat(amount);
 
-                        // Update wallet
-                        await WalletOne.findByIdAndUpdate(
-                          walletId,
-                          { balance: remainingWalletBalance },
-                          { new: true }
-                        );
+//                         // Update wallet
+//                         await WalletOne.findByIdAndUpdate(
+//                           walletId,
+//                           { balance: remainingWalletBalance },
+//                           { new: true }
+//                         );
 
-                        // FOR NOTIFICATION
-                        const notification = await Notification.create({
-                          title: "Congratulations! You won!",
-                          description: `You have won an amount of ${amount}.`,
-                        });
+//                         // FOR NOTIFICATION
+//                         const notification = await Notification.create({
+//                           title: "Congratulations! You won!",
+//                           description: `You have won an amount of ${amount}.`,
+//                         });
 
-                        // Add notification to the user's notifications array
-                        user.notifications.push(notification._id);
-                        await user.save();
+//                         // Add notification to the user's notifications array
+//                         user.notifications.push(notification._id);
+//                         await user.save();
 
-                        // FOR PLAYBET HISTORY
-                        const playbet = await Playbet.create({
-                          playnumbers: [
-                            {
-                              playnumber: playnumberEntry.playnumber,
-                              amount: userz.winningamount,
-                              winningamount: userz.winningamount,
-                            },
-                          ],
-                          username: user.name,
-                          userid: user.userId,
-                          currency: user.country._id.toString(), // Assuming currency is related to the user
-                          lotdate: date._id,
-                          lottime: time._id,
-                          lotlocation: location._id,
-                        });
+//                         // FOR PLAYBET HISTORY
+//                         const playbet = await Playbet.create({
+//                           playnumbers: [
+//                             {
+//                               playnumber: playnumberEntry.playnumber,
+//                               amount: userz.winningamount,
+//                               winningamount: userz.winningamount,
+//                             },
+//                           ],
+//                           username: user.name,
+//                           userid: user.userId,
+//                           currency: user.country._id.toString(), // Assuming currency is related to the user
+//                           lotdate: date._id,
+//                           lottime: time._id,
+//                           lotlocation: location._id,
+//                           walletName: wallet.walletName,
+//                         });
 
-                        // Add playbet history to the user's playbetHistory array
-                        user.playbetHistory.push(playbet._id);
-                        await user.save();
+//                         // Add playbet history to the user's playbetHistory array
+//                         user.playbetHistory.push(playbet._id);
+//                         await user.save();
 
-                        // Creating top winner list
-                        const topWinner = await topwinner.create({
-                          userId: user.userId,
-                          name: user.name,
-                          avatar: user?.avatar,
-                          playnumber: playnumberEntry.playnumber,
-                          amount: userz.amount,
-                          winningamount: userz.winningamount,
-                          currency: user.country._id.toString(),
-                        });
-                      }
+//                         // Creating top winner list
+//                         const topWinner = await topwinner.create({
+//                           userId: user.userId,
+//                           name: user.name,
+//                           avatar: user?.avatar,
+//                           playnumber: playnumberEntry.playnumber,
+//                           amount: userz.amount,
+//                           winningamount: userz.winningamount,
+//                           currency: user.country._id.toString(),
+//                         });
+//                       }
 
-                      // FOR BALANCE SHEET
+//                       // FOR BALANCE SHEET
 
-                      // Fetch all WalletTwo balances and populate currencyId
-                      const walletTwoBalances = await WalletTwo.find(
-                        {}
-                      ).populate("currencyId");
-                      let gameBalance = 0;
+//                       // Fetch all WalletTwo balances and populate currencyId
+//                       const walletTwoBalances = await WalletTwo.find(
+//                         {}
+//                       ).populate("currencyId");
+//                       let gameBalance = 0;
 
-                      walletTwoBalances.forEach((wallet) => {
-                        const walletCurrencyConverter = parseFloat(
-                          wallet.currencyId.countrycurrencyvaluecomparedtoinr
-                        );
-                        gameBalance += wallet.balance * walletCurrencyConverter;
-                      });
+//                       walletTwoBalances.forEach((wallet) => {
+//                         const walletCurrencyConverter = parseFloat(
+//                           wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//                         );
+//                         gameBalance += wallet.balance * walletCurrencyConverter;
+//                       });
 
-                      // Fetch all WalletOne balances and populate currencyId
-                      const walletOneBalances = await WalletOne.find(
-                        {}
-                      ).populate("currencyId");
-                      let withdrawalBalance = 0;
+//                       // Fetch all WalletOne balances and populate currencyId
+//                       const walletOneBalances = await WalletOne.find(
+//                         {}
+//                       ).populate("currencyId");
+//                       let withdrawalBalance = 0;
 
-                      walletOneBalances.forEach((wallet) => {
-                        const walletCurrencyConverter = parseFloat(
-                          wallet.currencyId.countrycurrencyvaluecomparedtoinr
-                        );
-                        withdrawalBalance +=
-                          wallet.balance * walletCurrencyConverter;
-                      });
+//                       walletOneBalances.forEach((wallet) => {
+//                         const walletCurrencyConverter = parseFloat(
+//                           wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//                         );
+//                         withdrawalBalance +=
+//                           wallet.balance * walletCurrencyConverter;
+//                       });
 
-                      // Calculate total balance as the sum of walletOne and walletTwo balances
-                      const totalBalance = withdrawalBalance + gameBalance;
+//                       // Calculate total balance as the sum of walletOne and walletTwo balances
+//                       const totalBalance = withdrawalBalance + gameBalance;
 
-                      // Search for the "INR" countrycurrencysymbol in the Currency Collection
-                      const currency = await Currency.findOne({
-                        countrycurrencysymbol: "INR",
-                      });
-                      if (!currency) {
-                        continue;
-                      }
+//                       // Search for the "INR" countrycurrencysymbol in the Currency Collection
+//                       const currency = await Currency.findOne({
+//                         countrycurrencysymbol: "INR",
+//                       });
+//                       if (!currency) {
+//                         continue;
+//                       }
 
-                      // Create a new AppBalanceSheet document
-                      const appBalanceSheet = new AppBalanceSheet({
-                        amount: playnumberEntry.distributiveamount,
-                        withdrawalbalance: withdrawalBalance,
-                        gamebalance: gameBalance,
-                        totalbalance: totalBalance,
-                        usercurrency: currency._id, // Use the _id of the found currency
-                        activityType: "Winning",
-                        userId: playnumberEntry?.users[0]?.userId || "1000",
-                        payzoneId: playzone._id,
-                        paymentProcessType: "Credit",
-                      });
+//      let existingWalletOne = await WalletOne.findOne().sort({ _id: 1 }); // Sort by _id to get the first created
+//      let walletOneName = existingWalletOne ? existingWalletOne.walletName : 'Wallet One';
 
-                      // Save the AppBalanceSheet document
-                      await appBalanceSheet.save();
-                      console.log("AppBalanceSheet Created Successfully");
-                      console.log("playnumberEntry?.users[0]?.userId :: "+playnumberEntry?.users[0]?.userId)
+//                       // Create a new AppBalanceSheet document
+//                       const appBalanceSheet = new AppBalanceSheet({
+//                         amount: playnumberEntry.distributiveamount,
+//                         withdrawalbalance: withdrawalBalance,
+//                         gamebalance: gameBalance,
+//                         totalbalance: totalBalance,
+//                         usercurrency: currency._id, // Use the _id of the found currency
+//                         activityType: "Winning",
+//                         userId: playnumberEntry?.users[0]?.userId || "1000",
+//                         payzoneId: playzone._id,
+//                         paymentProcessType: "Credit",
+//                         walletName: walletOneName
+//                       });
 
-                      // END BALANCE SHEET
+//                       // Save the AppBalanceSheet document
+//                       await appBalanceSheet.save();
+//                       console.log("AppBalanceSheet Created Successfully");
+//                       console.log("playnumberEntry?.users[0]?.userId :: "+playnumberEntry?.users[0]?.userId)
 
-                      // await Result.create({
-                      //   resultNumber: addLeadingZero(playnumber),
-                      //   lotdate: date._id,
-                      //   lottime: time._id,
-                      //   lotlocation: location._id,
-                      //   nextresulttime: nextResultTime,
-                      //   resultCreatedMethod: "automatic",
-                      // });
+//                       // END BALANCE SHEET
 
-                      try {
-                        // Create and save a new result document
-                        const result =  await Result.create({
-                          resultNumber: addLeadingZero(playnumber),
-                          lotdate: date._id,
-                          lottime: time._id,
-                          lotlocation: location._id,
-                          nextresulttime: nextResultTime,
-                          resultCreatedMethod: "automatic",
-                        });
-                        console.log("Result created successfully:"); // Successfully created document
-                      } catch (err) {
-                        console.error("Error creating result:", err.message); // Handle validation or save errors
-                      }
+//                       // await Result.create({
+//                       //   resultNumber: addLeadingZero(playnumber),
+//                       //   lotdate: date._id,
+//                       //   lottime: time._id,
+//                       //   lotlocation: location._id,
+//                       //   nextresulttime: nextResultTime,
+//                       //   resultCreatedMethod: "automatic",
+//                       // });
 
-                      console.log(
-                        `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
-                      );
-                    } else {
-                      console.log(
-                        "Result already exists for Location:",
-                        location.lotlocation,
-                        "Time:",
-                        time.lottime,
-                        "Date:",
-                        date.lotdate
-                      );
-                    }
-                  } else {
-                    console.log(
-                      `Current date and time is before the provided time  ${scheduledDateTime.format(
-                        "hh:mm A"
-                      )} and date.  ${scheduledDateTime.format("DD-MM-YYYY")}`
-                    );
-                  }
-                }
-              }
+//                       try {
+//                         // Create and save a new result document
+//                         const result =  await Result.create({
+//                           resultNumber: addLeadingZero(playnumber),
+//                           lotdate: date._id,
+//                           lottime: time._id,
+//                           lotlocation: location._id,
+//                           nextresulttime: nextResultTime,
+//                           resultCreatedMethod: "automatic",
+//                         });
+//                         console.log("Result created successfully:"); // Successfully created document
+//                       } catch (err) {
+//                         console.error("Error creating result:", err.message); // Handle validation or save errors
+//                       }
 
-              if (!dateExists) {
-                console.log(
-                  "Date does not exist, creating new LotDate and Playzone"
-                );
+//                       console.log(
+//                         `Result created for Location ${location._id}, Time ${time._id}, Date ${date._id}`
+//                       );
+//                     } else {
+//                       console.log(
+//                         "Result already exists for Location:",
+//                         location.lotlocation,
+//                         "Time:",
+//                         time.lottime,
+//                         "Date:",
+//                         date.lotdate
+//                       );
+//                     }
+//                   } else {
+//                     console.log(
+//                       `Current date and time is before the provided time  ${scheduledDateTime.format(
+//                         "hh:mm A"
+//                       )} and date.  ${scheduledDateTime.format("DD-MM-YYYY")}`
+//                     );
+//                   }
+//                 }
+//               }
 
-                const newLotDate = await LotDate.create({
-                  lotdate: now.format("DD-MM-YYYY"),
-                  lottime: time._id,
-                });
+//               if (!dateExists) {
+//                 console.log(
+//                   "Date does not exist, creating new LotDate and Playzone"
+//                 );
 
-                console.log(
-                  `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
-                );
+//                 const newLotDate = await LotDate.create({
+//                   lotdate: now.format("DD-MM-YYYY"),
+//                   lottime: time._id,
+//                 });
 
-                const playnumbers = createPlaynumbersArray(
-                  location.maximumNumber
-                );
-                const playzoneData = {
-                  lotlocation: location._id,
-                  lottime: time._id,
-                  lotdate: newLotDate._id,
-                  playnumbers,
-                };
-                await Playzone.create(playzoneData);
+//                 console.log(
+//                   `Added LotDate for location ${location.lotlocation} at time ${time.lottime}`
+//                 );
 
-                console.log(
-                  `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
-                );
-              }
-            }
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Error running automation script:", error);
-  }
-});
+//                 const playnumbers = createPlaynumbersArray(
+//                   location.maximumNumber
+//                 );
+//                 const playzoneData = {
+//                   lotlocation: location._id,
+//                   lottime: time._id,
+//                   lotdate: newLotDate._id,
+//                   playnumbers,
+//                 };
+//                 await Playzone.create(playzoneData);
+
+//                 console.log(
+//                   `Added Playzone for location ${location.lotlocation} at time ${time.lottime} on date ${newLotDate.lotdate}`
+//                 );
+//               }
+//             }
+//           }
+//         }
+//       }
+//     }
+//   } catch (error) {
+//     console.error("Error running automation script:", error);
+//   }
+// });
 
 app.listen(process.env.PORT, () => {
   console.log(

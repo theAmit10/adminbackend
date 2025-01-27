@@ -398,6 +398,75 @@ const getAllResultAccordingToLocation = asyncError(async (req, res, next) => {
   });
 });
 
+const getResultAccordingToLocationTY = asyncError(async (req, res, next) => {
+  const { locationid, year, month } = req.query;
+
+  // Validate the year and month
+  if (!year || !month) {
+    return res.status(400).json({
+      success: false,
+      message: "Year and month are required.",
+    });
+  }
+
+  // Convert month name to number
+  const monthMap = {
+    january: 1,
+    february: 2,
+    march: 3,
+    april: 4,
+    may: 5,
+    june: 6,
+    july: 7,
+    august: 8,
+    september: 9,
+    october: 10,
+    november: 11,
+    december: 12,
+  };
+
+  const monthNumber = monthMap[month.toLowerCase()];
+  if (!monthNumber) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid month provided.",
+    });
+  }
+
+  // Define start and end dates for filtering
+  const startDate = new Date(
+    `${year}-${monthNumber.toString().padStart(2, "0")}-01T00:00:00.000Z`
+  );
+
+  const endMonth = monthNumber === 12 ? 1 : monthNumber + 1;
+  const endYear = monthNumber === 12 ? parseInt(year) + 1 : year;
+  const endDate = new Date(
+    `${endYear}-${endMonth.toString().padStart(2, "0")}-01T00:00:00.000Z`
+  );
+
+  // Fetch results within the specified year, month, and location
+  let results = await Result.find({
+    lotlocation: locationid, // Filter by location ID
+    createdAt: {
+      $gte: startDate,
+      $lt: endDate,
+    },
+  })
+    .populate("lotdate")
+    .populate("lottime")
+    .populate("lotlocation")
+    .sort({ createdAt: -1 });
+
+  // Sort the filtered results by _id in descending order (as before)
+  results.sort((a, b) => (a._id < b._id ? 1 : -1));
+
+  // Return the same response format
+  res.status(200).json({
+    success: true,
+    results,
+  });
+});
+
 // const getAllResultAccordingToLocation = asyncError(
 //   async (req, res, next) => {
 //     const { locationid } = req.query;
@@ -808,6 +877,7 @@ const createResult = asyncError(async (req, res, next) => {
       lotdate: lotdate,
       lottime: lottime,
       lotlocation: lotlocation,
+      walletName: wallet.walletName,
     });
 
     // Add playbet history to the user's playbetHistory array
@@ -880,6 +950,7 @@ const createResult = asyncError(async (req, res, next) => {
     userId: playnumberEntry?.users[0]?.userId || "1000",
     payzoneId: playzone._id,
     paymentProcessType: "Credit",
+    walletName: req.user.walletOne.walletName,
   });
 
   // Save the AppBalanceSheet document
@@ -1137,29 +1208,34 @@ const getAllLotDate = asyncError(async (req, res, next) => {
 //   async (req, res, next) => {
 //     const { lottimeId, lotlocationId } = req.query;
 
+//     // Fetch and sort LotDate based on the actual lotdate field in descending order
 //     let lotdates = await LotDate.find({})
-//       .populate("lottime")
-//       .sort({ "lottime.lotdate": -1 }); // Sort based on lotdate in descending order
+//       .populate({
+//         path: "lottime",
+//         populate: {
+//           path: "lotlocation",
+//         },
+//       })
+//       .sort({ lotdate: -1 }); // Sort based on lotdate in descending order (newest first)
 
+//     // Apply filtering based on lottimeId and lotlocationId if provided
 //     if (lottimeId && lotlocationId) {
-//       // Filter lotdates array based on both lottimeId and lotlocationId
 //       lotdates = lotdates.filter(
 //         (item) =>
 //           item.lottime._id.toString() === lottimeId &&
-//           item.lottime.lotlocation.toString() === lotlocationId
+//           item.lottime.lotlocation._id.toString() === lotlocationId
 //       );
 //     } else if (lottimeId) {
-//       // Filter lotdates array based on lottimeId
 //       lotdates = lotdates.filter(
 //         (item) => item.lottime._id.toString() === lottimeId
 //       );
 //     } else if (lotlocationId) {
-//       // Filter lotdates array based on lotlocationId
 //       lotdates = lotdates.filter(
-//         (item) => item.lottime.lotlocation.toString() === lotlocationId
+//         (item) => item.lottime.lotlocation._id.toString() === lotlocationId
 //       );
 //     }
 
+//     // Send the filtered and sorted results
 //     res.status(200).json({
 //       success: true,
 //       lotdates,
@@ -1171,7 +1247,7 @@ const getAllLotDateAccordindLocationAndTime = asyncError(
   async (req, res, next) => {
     const { lottimeId, lotlocationId } = req.query;
 
-    // Fetch and sort LotDate based on the actual lotdate field in descending order
+    // Fetch and sort LotDate based on the createdAt field in descending order (newest first)
     let lotdates = await LotDate.find({})
       .populate({
         path: "lottime",
@@ -1179,7 +1255,7 @@ const getAllLotDateAccordindLocationAndTime = asyncError(
           path: "lotlocation",
         },
       })
-      .sort({ lotdate: -1 }); // Sort based on lotdate in descending order (newest first)
+      .sort({ createdAt: -1 }); // Sort by createdAt (newest first)
 
     // Apply filtering based on lottimeId and lotlocationId if provided
     if (lottimeId && lotlocationId) {
@@ -1477,7 +1553,7 @@ const updateTime = asyncError(async (req, res, next) => {
 // ####################
 
 const addLotLocatin = asyncError(async (req, res, next) => {
-  const { lotlocation, maximumRange, maximumNumber, maximumReturn } = req.body;
+  const { lotlocation, maximumRange, maximumNumber,maximumReturn, bettinglimit } = req.body;
 
   if (!lotlocation)
     return next(new ErrorHandler("enter lotlocation missing", 404));
@@ -1486,6 +1562,7 @@ const addLotLocatin = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("enter maximum number", 404));
   if (!maximumReturn)
     return next(new ErrorHandler("enter maximum return", 404));
+  if (!bettinglimit) return next(new ErrorHandler("enter betting limit", 404));
 
   await LotLocation.create(req.body);
 
@@ -1568,9 +1645,11 @@ const updateLocation = asyncError(async (req, res, next) => {
     maximumRange,
     maximumReturn,
     automation,
+    bettinglimit
   } = req.body;
 
   console.log("Request body:", req.body); // Log the request body to check incoming data
+  
 
   const llocation = await LotLocation.findById(req.params.id);
 
@@ -1583,6 +1662,7 @@ const updateLocation = asyncError(async (req, res, next) => {
     llocation.locationDescription = locationDescription;
   if (maximumRange !== undefined) llocation.maximumRange = maximumRange;
   if (maximumNumber !== undefined) llocation.maximumNumber = maximumNumber;
+  if (bettinglimit  !== undefined) llocation.bettinglimit = bettinglimit;
 
   // Update automation and automationUpdatedAt if automation is changed
   if (automation !== undefined) {
@@ -1780,7 +1860,7 @@ const addBankPayment = asyncError(async (req, res, next) => {
   if (!ifsccode) return next(new ErrorHandler("IFSC code is missing", 404));
   if (!accountnumber)
     return next(new ErrorHandler("Account number is missing", 404));
-  if (!swiftcode) return next(new ErrorHandler("Swift code is missing", 404));
+  // if (!swiftcode) return next(new ErrorHandler("Swift code is missing", 404));
 
   await BankPaymentType.create(req.body);
 
@@ -3417,6 +3497,41 @@ const createCurrency = asyncError(async (req, res, next) => {
   });
 });
 
+const updateCurrencyIcon = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Check if currency with given ID exists
+  const currency = await Currency.findById(id);
+  if (!currency) {
+    return next(new ErrorHandler("Currency not found", 404));
+  }
+
+  // Check if a new file is provided
+  if (!req.file) {
+    return next(new ErrorHandler("New country icon is missing", 404));
+  }
+
+  // Remove the existing icon if it exists
+  const previousIconPath = path.join(
+    __dirname,
+    "../public/uploads/currency",
+    currency.countryicon
+  );
+  if (currency.countryicon && fs.existsSync(previousIconPath)) {
+    fs.unlinkSync(previousIconPath); // Deletes the previous file
+  }
+
+  // Update currency with the new icon filename
+  currency.countryicon = req.file.filename;
+  await currency.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Currency icon updated successfully",
+    currency,
+  });
+});
+
 // Get all currencies
 const getAllCurrencies = asyncError(async (req, res, next) => {
   const currencies = await Currency.find();
@@ -3427,39 +3542,88 @@ const getAllCurrencies = asyncError(async (req, res, next) => {
   });
 });
 
-// Update a currency
 const updateCurrency = asyncError(async (req, res, next) => {
   const { id } = req.params;
   const {
     countryname,
-    countryicon,
     countrycurrencysymbol,
     countrycurrencyvaluecomparedtoinr,
   } = req.body;
 
-  const updatedCurrency = await Currency.findByIdAndUpdate(
-    id,
-    {
-      countryname,
-      countryicon,
-      countrycurrencysymbol,
-      countrycurrencyvaluecomparedtoinr,
-    },
-    { new: true }
-  );
-
-  if (!updatedCurrency) {
-    return res.status(404).json({
-      success: false,
-      message: "Currency not found",
-    });
+  // Find the existing currency
+  const currency = await Currency.findById(id);
+  if (!currency) {
+    return next(new ErrorHandler("Currency not found", 404));
   }
+
+  // Update the fields if provided
+  if (countryname) currency.countryname = countryname;
+  if (countrycurrencysymbol)
+    currency.countrycurrencysymbol = countrycurrencysymbol;
+  if (countrycurrencyvaluecomparedtoinr)
+    currency.countrycurrencyvaluecomparedtoinr =
+      countrycurrencyvaluecomparedtoinr;
+
+  // Check if a new file is provided for country icon
+  if (req.file) {
+    const previousIconPath = path.join(
+      __dirname,
+      "../public/uploads/currency",
+      currency.countryicon
+    );
+
+    // Remove the old icon if it exists
+    if (currency.countryicon && fs.existsSync(previousIconPath)) {
+      fs.unlinkSync(previousIconPath);
+    }
+
+    // Update the icon with the new filename
+    currency.countryicon = req.file.filename;
+  }
+
+  // Save the updated currency document
+  await currency.save();
 
   res.status(200).json({
     success: true,
-    currency: updatedCurrency,
+    message: "Currency updated successfully",
+    currency,
   });
 });
+
+// Update a currency
+// const updateCurrency = asyncError(async (req, res, next) => {
+//   const { id } = req.params;
+//   const {
+//     countryname,
+//     countryicon,
+//     countrycurrencysymbol,
+//     countrycurrencyvaluecomparedtoinr,
+//   } = req.body;
+
+//   const updatedCurrency = await Currency.findByIdAndUpdate(
+//     id,
+//     {
+//       countryname,
+//       countryicon,
+//       countrycurrencysymbol,
+//       countrycurrencyvaluecomparedtoinr,
+//     },
+//     { new: true }
+//   );
+
+//   if (!updatedCurrency) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "Currency not found",
+//     });
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     currency: updatedCurrency,
+//   });
+// });
 
 // // Delete a currency
 // const deleteCurrency = asyncError(async (req, res, next) => {
@@ -3552,37 +3716,15 @@ const deleteCurrency = asyncError(async (req, res, next) => {
 
 // GET ALL THE BALANCE SHEET
 
-const getAppBalanceSheet = asyncError(async (req, res, next) => {
-  const balancesheet = await AppBalanceSheet.find()
-    .populate({
-      path: "paybetId",
-      populate: {
-        path: "lotlocation",
-        model: "LotLocation", // Ensure this model name matches your Mongoose schema
-      },
-    })
-    .populate("payzoneId")
-    .populate("transactionId")
-    .sort({ createdAt: -1 })
-    .lean(); // Using lean for efficient queries and manual population
-
-  // Manually populate usercurrency if it's an ObjectId
-  for (const sheet of balancesheet) {
-    if (mongoose.Types.ObjectId.isValid(sheet.usercurrency)) {
-      const currency = await Currency.findById(sheet.usercurrency);
-      sheet.usercurrency = currency; // Replace the ID with the populated object
-    }
-  }
-
-  res.status(200).json({
-    success: true,
-    balancesheet,
-  });
-});
-
 // const getAppBalanceSheet = asyncError(async (req, res, next) => {
 //   const balancesheet = await AppBalanceSheet.find()
-//     .populate("paybetId")
+//     .populate({
+//       path: "paybetId",
+//       populate: {
+//         path: "lotlocation",
+//         model: "LotLocation", // Ensure this model name matches your Mongoose schema
+//       },
+//     })
 //     .populate("payzoneId")
 //     .populate("transactionId")
 //     .sort({ createdAt: -1 })
@@ -3601,6 +3743,52 @@ const getAppBalanceSheet = asyncError(async (req, res, next) => {
 //     balancesheet,
 //   });
 // });
+
+const getAppBalanceSheet = asyncError(async (req, res, next) => {
+  // Extract pagination parameters from query (with defaults)
+  const page = parseInt(req.query.page, 10) || 1; // Default page is 1
+  const limit = parseInt(req.query.limit, 10) || 20; // Default limit is 20 records per page
+  const skip = (page - 1) * limit; // Calculate how many records to skip
+
+  // Fetch the balance sheet data with pagination, sorting, and population
+  const balancesheet = await AppBalanceSheet.find()
+    .populate({
+      path: "paybetId",
+      populate: {
+        path: "lotlocation",
+        model: "LotLocation",
+      },
+    })
+    .populate("payzoneId")
+    .populate("transactionId")
+    .sort({ createdAt: -1 })
+    .skip(skip) // Skip records for pagination
+    .limit(limit) // Limit the number of records
+    .lean(); // Use lean for more efficient queries
+
+  // Manually populate usercurrency if it's an ObjectId
+  for (const sheet of balancesheet) {
+    if (mongoose.Types.ObjectId.isValid(sheet.usercurrency)) {
+      const currency = await Currency.findById(sheet.usercurrency);
+      sheet.usercurrency = currency; // Replace the ID with the populated object
+    }
+  }
+
+  // Get the total count of documents (without pagination)
+  const totalRecords = await AppBalanceSheet.countDocuments();
+
+  // Send response with paginated data and metadata
+  res.status(200).json({
+    success: true,
+    balancesheet,
+    pagination: {
+      totalRecords,
+      currentPage: page,
+      totalPages: Math.ceil(totalRecords / limit),
+      limit,
+    },
+  });
+});
 
 const updateAppLinks = asyncError(async (req, res, next) => {
   const { androidLink, iosLink } = req.body;
@@ -3742,6 +3930,8 @@ module.exports = {
   getSingleUserPlaybetHistory,
   getAllResultsByLocationWithTimesMonthYear,
   getAllTopWinner,
+  getResultAccordingToLocationTY,
+  updateCurrencyIcon,
 };
 
 // const asyncError = require("../middlewares/error.js").asyncError;

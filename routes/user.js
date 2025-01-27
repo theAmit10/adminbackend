@@ -46,10 +46,13 @@ const {
   getAllSubadmin,
   updateRole,
   getUserNotifications,
-  markUserNotificationsAsSeen
+  markUserNotificationsAsSeen,
+  updateSubadminFeatures,
+  updateUserPassword,
+  deleteUser
   
 } = require("../controllers/user.js");
-const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
+const {isAuthenticated, verifyToken, isAdmin} = require("../middlewares/auth.js");
 const {singleUpload}  = require("../middlewares/multer.js");
 const {singleUploadForPromotion}  = require("../middlewares/promotionmiddlerware.js");
 const { singleUploadForDeposit } = require("../middlewares/depositmiddleware.js");
@@ -90,11 +93,17 @@ router.route("/forgetpassword").post(forgetPassword).put(resetPassword);
 // 
 
 // FOR ADMIN WORK
-router.get("/alluser", isAuthenticated, getAllUser);
+router.get("/alluser", isAuthenticated,isAdmin, getAllUser);
 router.put("/updateuserid/:userId", isAuthenticated, updateAnyUserUserId);
 router.post("/sendnotification",isAuthenticated,sendNotificationToAllUser);
 router.post("/sendnotificationsingle",isAuthenticated,sendNotificationToSingleUser);
 router.get("/notification/:userId", isAuthenticated, singleUserNotification);
+router.put('/updatesubadmin/:userId', isAuthenticated,updateSubadminFeatures);
+
+
+router.delete("/deleteuser/:userId", isAuthenticated,deleteUser);
+router.patch("/updateuserpassword/:userId/password",isAuthenticated, updateUserPassword); 
+
 router.get('/:userId/notifications',  isAuthenticated,getUserNotifications);
 router.put('/:userId/notifications/seen',  isAuthenticated,markUserNotificationsAsSeen);
 

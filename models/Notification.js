@@ -29,11 +29,8 @@ const notificationSchema = new mongoose.Schema({
   seennow: {
     type: Boolean,
     default: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
   }
-});
+
+}, { timestamps: true });
 
 module.exports = mongoose.model("Notification", notificationSchema);

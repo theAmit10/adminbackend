@@ -10,10 +10,6 @@ const schema = new mongoose.Schema({
         ref: "LotTime",
         required: [true, "Please enter time id"]
     },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("LotDate", schema);

@@ -45,10 +45,9 @@ const schema = new mongoose.Schema({
     ref: "LotLocation",
     required: [true, "Please enter Location id"],
   },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  walletName: {
+    type: String,
+  }
+}, { timestamps: true });
 
 module.exports = mongoose.model("Playbet", schema);

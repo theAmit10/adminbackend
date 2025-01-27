@@ -20,11 +20,7 @@ const schema = new mongoose.Schema({
     countrycurrencyvaluecomparedtoinr: {
         type: Number,
         required: [true, "Please enter country currency value compared to INR"]
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now,
     }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("Currency", schema);

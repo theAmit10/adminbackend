@@ -101,7 +101,8 @@ const verifyToken = async (req, res, next) => {
 };
 
 const isAdmin = asyncError(async (req, res, next) => {
-  if (req.user.role !== "admin") {
+  const { role } = req.user;
+  if (role !== "admin" && role !== "subadmin") {
     return next(new ErrorHandler("Only Admin allowed", 401));
   }
   next();

@@ -18,6 +18,7 @@ const AppBalanceSheet = require("../models/AppBalanceSheet.js");
 const cookieOptions = require("../utils/features.js");
 const Currency = require("../models/currency.js");
 const mongoose = require("mongoose");
+const bcrypt = require('bcryptjs');
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -131,7 +132,7 @@ const getUserDetails = asyncError(async (req, res, next) => {
 const updateWalletOne = asyncError(async (req, res, next) => {
   try {
     const { walletId } = req.params;
-    const { balance, walletName, visibility } = req.body;
+    const { balance, walletName, visibility,paymentUpdateNote } = req.body;
 
     // Validate input
     if (!balance || isNaN(balance)) {
@@ -193,6 +194,8 @@ const updateWalletOne = asyncError(async (req, res, next) => {
         transactionType: "AdminUpdate",
         paymentStatus: "Completed",
         currency: user.country._id.toString(),
+        walletName: wallet.walletName,
+        paymentUpdateNote: paymentUpdateNote,
       });
 
       user.transactionHistory.push(transaction._id);
@@ -242,6 +245,7 @@ const updateWalletOne = asyncError(async (req, res, next) => {
         transactionId: transaction._id,
         paymentProcessType: paymentType,
         walletName: wallet.walletName,
+        paymentUpdateNote: paymentUpdateNote
       });
 
       // Save the AppBalanceSheet document
@@ -273,7 +277,7 @@ const updateWalletOne = asyncError(async (req, res, next) => {
 const updateWalletTwo = asyncError(async (req, res, next) => {
   try {
     const { walletId } = req.params;
-    const { balance, walletName, visibility } = req.body;
+    const { balance, walletName, visibility, paymentUpdateNote } = req.body;
 
     // Validate input
     if (!balance || isNaN(balance)) {
@@ -335,6 +339,8 @@ const updateWalletTwo = asyncError(async (req, res, next) => {
         transactionType: "AdminUpdate",
         paymentStatus: "Completed",
         currency: user.country._id.toString(),
+        walletName: wallet.walletName,
+        paymentUpdateNote: paymentUpdateNote,
       });
 
       user.transactionHistory.push(transaction._id);
@@ -528,7 +534,7 @@ const forgetPassword = asyncError(async (req, res, next) => {
 
   // Adding to the user otp
   user.otp = otp;
-  user.otp_expire = new Date(Date.now + otp_expire);
+  user.otp_expire = new Date(Date.now() + otp_expire);
 
   // console.log("OTP CODE :: " + otp);
 
@@ -561,7 +567,7 @@ const resetPassword = asyncError(async (req, res, next) => {
   const user = await User.findOne({
     otp,
     otp_expire: {
-      $gt: Date.now,
+      $gt: Date.now(),
     },
   });
 
@@ -936,6 +942,138 @@ const updateAnyUserUserId = asyncError(async (req, res, next) => {
   }
 });
 
+
+
+// Controller to update subadmin features for a user by userId
+
+
+const updateSubadminFeatures = asyncError(async (req, res, next) => {
+  const userId = req.params.userId; // Extract userId from request parameters
+  const newFeatures = req.body; // Extract the features object from the request body
+
+  // Validate userId
+  if (!userId) {
+    return res.status(400).json({ success: false, message: "Invalid user id" });
+  }
+
+  // Validate the features object
+  if (!newFeatures || typeof newFeatures !== "object") {
+    return res.status(400).json({ success: false, message: "Features object is missing or invalid" });
+  }
+
+  // Find the user by userId
+  const user = await User.findOne({ userId });
+  
+  // Check if user exists
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found." });
+  }
+
+  // Update the subadminFeatures of the user
+  user.subadminfeature = { ...user.subadminfeature.toObject(), ...newFeatures }; // Merge existing features with new ones
+
+  // Save the updated user document
+  await user.save();
+
+  return res.status(200).json({ success: true, message: "Subadmin features updated successfully.", subadminFeatures: user.subadminfeature });
+});
+
+
+// Controller to delete a user by userId
+const deleteUser = asyncError(async (req, res, next) => {
+  const userId = req.params.userId; // Extract userId from request parameters
+
+  // Validate userId
+  if (!userId) {
+    return res.status(400).json({ success: false, message: "Invalid user id" });
+  }
+
+  // Find the user by userId and delete
+  const user = await User.findOneAndDelete({ userId });
+
+  // Check if user was found and deleted
+  if (!user) {
+    return res.status(404).json({ success: false, message: "User not found." });
+  }
+
+  // Respond with a success message
+  return res.status(200).json({ success: true, message: "User deleted successfully." });
+});
+
+// Controller to update user password
+// const updateUserPassword = async (req, res, next) => {
+//   const { userId } = req.params; // Extract userId from request parameters
+//   const { newPassword } = req.body; // Extract newPassword from request body
+
+//   // Validate input
+//   if (!userId || !newPassword) {
+//     return res.status(400).json({ success: false, message: "User ID and new password are required." });
+//   }
+
+//   try {
+//     // Find the user by userId
+//     const user = await User.findOne({ userId });
+
+//     // Check if user exists
+//     if (!user) {
+//       return res.status(404).json({ success: false, message: "User not found." });
+//     }
+
+//     // Hash the new password
+//     user.password = await bcrypt.hash(newPassword, 10);
+
+//     // Save the updated user document
+//     await user.save();
+
+//     // Respond with success message
+//     return res.status(200).json({ success: true, message: "Password updated successfully." });
+//   } catch (error) {
+//     // Handle any errors that occur during the process
+//     return next(new ErrorHandler(error.message, 500));
+//   }
+// };
+
+
+
+// Controller function to update password
+const updateUserPassword = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const { newPassword } = req.body;
+
+    // Find the user by userId
+    const user = await User.findOne({ userId }).select("+password");
+
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+
+    // Update the user's password (pre-save hook will hash the password)
+    user.password = newPassword;
+
+    // Save the user to trigger the pre-save hook for password hashing
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    return next(new ErrorHandler(error.message, 500));
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
 // For Admin
 
 // ####################
@@ -1081,32 +1219,42 @@ async function removeUnregisteredToken(token) {
 //   }
 // });
 
+
+
 // const sendNotificationToAllUser = asyncError(async (req, res, next) => {
+//   const { title, description } = req.body;
+
+//   // Validate title and description
+//   if (!title) return next(new ErrorHandler("Enter Notification title", 400));
+//   if (!description)
+//     return next(new ErrorHandler("Enter Notification Description", 400));
+
 //   try {
+//     // Create a new notification in the database
+//     const notification = new Notification({
+//       title,
+//       description,
+//     });
+//     await notification.save();
+
 //     // Fetch users with non-null devicetoken
 //     const users = await User.find({ devicetoken: { $ne: null } })
 //       .populate("walletOne")
 //       .populate("walletTwo")
 //       .sort({ createdAt: -1 });
 
-//     const { title, description } = req.body;
-
-//     console.log("Noti title :: " + title);
-//     console.log("Noti Description :: " + description);
-
-//     if (!title) return next(new ErrorHandler("Enter Notification title", 400));
-//     if (!description)
-//       return next(new ErrorHandler("Enter Notification Description", 400));
-
 //     const tokens = users.map((user) => user.devicetoken).filter(Boolean);
 
 //     console.log("tokens.length :: " + tokens.length);
 //     console.log("tokens :: " + JSON.stringify(tokens));
 
-//     if (tokens.length === 0)
-//       return next(
-//         new ErrorHandler("No user found with valid device token", 400)
-//       );
+//     if (tokens.length === 0) {
+//       return res.status(200).json({
+//         success: true,
+//         message:
+//           "No valid device tokens found. Notifications created in database.",
+//       });
+//     }
 
 //     const failedTokens = [];
 
@@ -1135,24 +1283,17 @@ async function removeUnregisteredToken(token) {
 //       }
 //     }
 
-//     if (failedTokens.length === tokens.length) {
-//       // If all tokens failed to receive notification
-//       return next(
-//         new ErrorHandler("Failed to send notification to all users", 500)
-//       );
-//     }
+//     // Update all users' notification lists
+//     await User.updateMany(
+//       { devicetoken: { $ne: null } }, // Match users with a device token
+//       { $push: { notifications: notification._id } } // Add the notification ID to their notifications array
+//     );
 
-//     // Save notification to database
-//     const notification = new Notification({
-//       title: title,
-//       description: description,
-//     });
-//     await notification.save();
-
-//     console.log("Notifications sent to all users successfully");
 //     res.status(200).json({
 //       success: true,
-//       message: "Notification sent successfully",
+//       message: "Notification processed successfully",
+//       notification,
+//       failedTokens,
 //     });
 //   } catch (error) {
 //     console.error(error);
@@ -1176,17 +1317,22 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
     });
     await notification.save();
 
-    // Fetch users with non-null devicetoken
-    const users = await User.find({ devicetoken: { $ne: null } })
-      .populate("walletOne")
-      .populate("walletTwo")
-      .sort({ createdAt: -1 });
+    // Fetch users whose role is 'user' and have a valid devicetoken
+    const users = await User.find({
+      role: 'user', // Ensure users with role 'user'
+      devicetoken: { $ne: null } // Only users with non-null devicetokens
+    })
+    .populate("walletOne")
+    .populate("walletTwo")
+    .sort({ createdAt: -1 });
 
+    // Extract valid device tokens
     const tokens = users.map((user) => user.devicetoken).filter(Boolean);
 
     console.log("tokens.length :: " + tokens.length);
     console.log("tokens :: " + JSON.stringify(tokens));
 
+    // If no valid tokens are found, return early
     if (tokens.length === 0) {
       return res.status(200).json({
         success: true,
@@ -1199,6 +1345,7 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
 
     for (const token of tokens) {
       try {
+        // Send FCM notification to each valid token
         await firebase.messaging().send({
           token,
           notification: {
@@ -1207,13 +1354,11 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
           },
         });
       } catch (error) {
+        // Handle unregistered token error
         if (error.code === "messaging/registration-token-not-registered") {
-          // Handle unregistered token error
           console.log("Unregistered token:", error.errorInfo.message);
-          // Capture the token that caused the error
           const unregisteredToken = error.errorInfo.message.split(" ")[0];
-          // Remove the unregistered token from your database
-          await removeUnregisteredToken(unregisteredToken);
+          await removeUnregisteredToken(unregisteredToken); // Remove unregistered token from DB
         } else {
           console.log("Error sending notification to token:", token);
           console.error(error);
@@ -1222,10 +1367,10 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
       }
     }
 
-    // Update all users' notification lists
+    // Add the notification ID to the notification array of all users (whether they received the FCM or not)
     await User.updateMany(
-      { devicetoken: { $ne: null } }, // Match users with a device token
-      { $push: { notifications: notification._id } } // Add the notification ID to their notifications array
+      { role: 'user' }, // Ensure only users with role 'user'
+      { $push: { notifications: notification._id } } // Add notification ID to their notifications array
     );
 
     res.status(200).json({
@@ -1239,6 +1384,7 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
     next(new ErrorHandler("Internal server error", 500));
   }
 });
+
 
 const getUserNotifications = asyncError(async (req, res, next) => {
   const { userId } = req.params;
@@ -1694,32 +1840,24 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
       // // Save the updated wallets
       // await walletOne.save();
       // await walletTwo.save();
+      
+
+      const transaction = await Transaction.create({
+        amount,
+        convertedAmount: amount,
+        paymentType: "Credit",
+        username: user.name,
+        userId: user.userId,
+        transactionType: "Transfer",
+        paymentStatus: "Completed",
+        currency: user.country._id.toString(),
+        walletName: walletTwo.walletName,
+      });
+
+      user.transactionHistory.push(transaction._id);
+      await user.save();
 
       // FOR BALANCE SHEET
-
-      // Create AppBalanceSheet entry
-      // Calculate gameBalance as the total sum of all walletTwo balances  + totalAmount
-
-      // const walletTwoBalances = await WalletTwo.find({});
-      // const gameBalance =
-      //   walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
-      //   amount;
-      // const walletTwoBalances = await WalletTwo.find({});
-      // const gameBalance =
-      //   walletTwoBalances.reduce(
-      //     (sum, wallet) => sum + parseFloat(wallet.balance),
-      //     0
-      //   ) + parseFloat(amount);
-
-      // // Calculate walletOneBalances as the total sum of all walletOne balances - totalAmount
-      // const walletOneBalances = await WalletOne.find({});
-      // const withdrawalBalance =
-      //   walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
-      //   amount;
-
-      // // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
-      // const totalBalance =
-      //   parseFloat(withdrawalBalance) + parseFloat(gameBalance);
 
       // Fetch all WalletTwo balances and populate currencyId
       const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
@@ -2048,18 +2186,49 @@ const getAllTransaction = asyncError(async (req, res, next) => {
 });
 
 // Get all Deposit transactions
+// const getAllDeposit = asyncError(async (req, res, next) => {
+//   const deposits = await Transaction.find({ transactionType: "Deposit" })
+//     .populate("currency")
+//     .sort({
+//       createdAt: -1,
+//     });
+
+//   res.status(200).json({
+//     success: true,
+//     deposits,
+//   });
+// });
+
 const getAllDeposit = asyncError(async (req, res, next) => {
+  // Get page and limit from query params or set default values
+  const page = parseInt(req.query.page) || 1; // Default page is 1
+  const limit = parseInt(req.query.limit) || 20; // Default limit is 10
+
+  // Calculate the number of documents to skip for pagination
+  const skip = (page - 1) * limit;
+
+  // Fetch deposits with pagination
   const deposits = await Transaction.find({ transactionType: "Deposit" })
     .populate("currency")
-    .sort({
-      createdAt: -1,
-    });
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  // Get the total number of documents (for calculating total pages)
+  const totalDeposits = await Transaction.countDocuments({
+    transactionType: "Deposit",
+  });
 
   res.status(200).json({
     success: true,
     deposits,
+    page,
+    limit,
+    totalPages: Math.ceil(totalDeposits / limit),
+    totalDeposits,
   });
 });
+
 
 // UPDATE PAYMENT STATUS
 const updateDepositStatus = asyncError(async (req, res, next) => {
@@ -2454,6 +2623,7 @@ const addWithdraw = asyncError(async (req, res, next) => {
     cryptoWalletAddress,
     networkType,
     skrillContact,
+    swiftcode
   } = req.body;
 
   const user = await User.findOne({ userId: userid });
@@ -2499,6 +2669,7 @@ const addWithdraw = asyncError(async (req, res, next) => {
     networkType,
     skrillContact,
     currency: user.country._id.toString(),
+    swiftcode
   });
 
   user.transactionHistory.push(transaction._id);
@@ -2512,18 +2683,51 @@ const addWithdraw = asyncError(async (req, res, next) => {
 });
 
 // Get all withdraw transactions
+// const getAllWithdrawals = asyncError(async (req, res, next) => {
+//   const withdrawals = await Transaction.find({
+//     transactionType: "Withdraw",
+//   })
+//     .populate("currency")
+//     .sort({ createdAt: -1 });
+
+//   res.status(200).json({
+//     success: true,
+//     withdrawals,
+//   });
+// });
+
 const getAllWithdrawals = asyncError(async (req, res, next) => {
+  // Get page and limit from query params or set default values
+  const page = parseInt(req.query.page) || 1; // Default page is 1
+  const limit = parseInt(req.query.limit) || 20; // Default limit is 10
+
+  // Calculate the number of documents to skip for pagination
+  const skip = (page - 1) * limit;
+
+  // Fetch withdrawals with pagination
   const withdrawals = await Transaction.find({
     transactionType: "Withdraw",
   })
     .populate("currency")
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 })
+    .skip(skip)  // Skip previous pages
+    .limit(limit);  // Limit the results to the page size
+
+  // Get the total number of withdrawal transactions (for calculating total pages)
+  const totalWithdrawals = await Transaction.countDocuments({
+    transactionType: "Withdraw",
+  });
 
   res.status(200).json({
     success: true,
     withdrawals,
+    page,
+    limit,
+    totalPages: Math.ceil(totalWithdrawals / limit), // Total number of pages
+    totalWithdrawals,  // Total number of withdrawal records
   });
 });
+
 
 module.exports = {
   login,
@@ -2573,6 +2777,9 @@ module.exports = {
   updateRole,
   getUserNotifications,
   markUserNotificationsAsSeen,
+  updateSubadminFeatures,
+  updateUserPassword,
+  deleteUser
 };
 
 // const { asyncError } = require("../middlewares/error.js");

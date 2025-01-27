@@ -17,7 +17,6 @@ const schema = new mongoose.Schema({
     },
     swiftcode: {
         type: String,
-        required: [true, "Please enter swift code"]
     },
     paymentnote: {
         type: String,

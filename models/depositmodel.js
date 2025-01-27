@@ -36,12 +36,8 @@ const schema = new mongoose.Schema({
         type: String,
         enum: ["Pending", "Completed","Cancelled"],
         default: "Pending",
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now,
     }
-});
+}, { timestamps: true });
 
 
 

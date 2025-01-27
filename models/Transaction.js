@@ -48,7 +48,7 @@ const transactionSchema = new mongoose.Schema({
   },
   transactionType: {
     type: String,
-    enum: ["Deposit", "Withdraw","AdminUpdate"],
+    enum: ["Deposit", "Withdraw","AdminUpdate","Transfer"],
     required: true
   },
   paymentStatus: {
@@ -56,10 +56,16 @@ const transactionSchema = new mongoose.Schema({
     enum: ["Pending", "Completed", "Cancelled"],
     default: "Pending",
   },
+  walletName: {
+    type: String,
+  },
   paymentUpdateNote: {
     type: String,
   },
   paymentupdatereceipt: {
+    type: String,
+  },
+  swiftcode: {
     type: String,
   },
   // Fields for Bank payment type

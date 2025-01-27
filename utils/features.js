@@ -64,8 +64,8 @@ const sendEmail = async (subject, to, text) => {
     const transporter = createTransport({
         service: 'gmail',
         auth: {
-            user: 'thelionworlds@gmail.com',
-            pass: 'rbcp fpgo lsiu tpun',
+            user: 'theworldplay1927@gmail.com',
+            pass: 'crdu umgu wela qnyk',
         },
     });
 

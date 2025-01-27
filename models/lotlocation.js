@@ -25,6 +25,10 @@ const schema = new mongoose.Schema({
         type: String,
         required: [true, "Please enter maximum return range"]
     },
+    bettinglimit: {
+        type: String,
+        required: [true, "Please enter maximum betting limit"]
+    },
     automation: {
         type: String,
         enum: ["automatic", "manual"],
@@ -34,10 +38,6 @@ const schema = new mongoose.Schema({
         type: Date,
         default: Date.now, // Default value is the current date and time
     },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    }
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("LotLocation", schema);

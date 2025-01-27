@@ -9,6 +9,6 @@ const schema = new mongoose.Schema({
         type: Boolean,
         default: true,
     },
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("Promotion", schema);

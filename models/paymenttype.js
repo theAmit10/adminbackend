@@ -6,11 +6,8 @@ const schema = new mongoose.Schema({
         required: [true, "Please enter payment name"]
     },
     paymentId: Number,
-    createdAt: {
-        type: Date,
-        default: Date.now,
-    }
-});
+  
+}, { timestamps: true });
 
 // Pre-save hook to auto-increment paymentId
 schema.pre('save', async function (next) {

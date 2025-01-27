@@ -6,6 +6,6 @@ const schema = new mongoose.Schema({
     balance: { type: Number, default: 0 },
     visibility: Boolean,
     currencyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Currency' },
-});
+}, { timestamps: true });
 
 module.exports = mongoose.model("WalletOne", schema);

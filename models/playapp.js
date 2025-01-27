@@ -72,11 +72,8 @@ const playzoneSchema = new mongoose.Schema({
     required: [true, "Please enter Date ID"]
   },
   playnumbers: [playNumberSchema],
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
+ 
+}, { timestamps: true });
 
 module.exports = mongoose.model("Playzone", playzoneSchema);
 
