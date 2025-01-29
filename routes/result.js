@@ -1,5 +1,8 @@
 const express = require("express");
-const { isAdmin, isAuthenticated } = require("../middlewares/auth.js");
+const {
+  isAdmin,
+  isAuthenticated
+} = require("../middlewares/auth.js");
 const {
   addLotDate,
   addLotLocatin,
@@ -64,68 +67,35 @@ const {
   getSingleUserPlaybetHistory,
   getAllResultsByLocationWithTimesMonthYear,
   getAllTopWinner,
-  getResultAccordingToLocationTY,
-  updateCurrencyIcon,
+  getResultAccordingToLocationTY
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
-const {
-  singleUploadForCurrency,
-} = require("../middlewares/currencymiddleware.js");
-const {
-  singleUploadForUPIQrCode,
-} = require("../middlewares/upiqrcodemiddleware.js");
-const {
-  singleUploadForCryptoQrCode,
-} = require("../middlewares/cryptoqrcodemiddleware.js");
+const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
+const { singleUploadForUPIQrCode } = require("../middlewares/upiqrcodemiddleware.js");
+const { singleUploadForCryptoQrCode } = require("../middlewares/cryptoqrcodemiddleware.js");
+
 
 const router = express.Router();
 
 // All Routes
 router.get("/allresult", isAuthenticated, getAllResult);
-router
-  .route("/single/:id")
-  .get(isAuthenticated, getResultDetails)
-  .put(isAuthenticated, updateResult);
+router.route("/single/:id").get(isAuthenticated, getResultDetails).put(isAuthenticated, updateResult);
 router.post("/createresult", isAuthenticated, createResult);
-router.get(
-  "/searchresult",
-  isAuthenticated,
-  getAllResultAccordingToDateTimeLocation
-);
-router.get(
-  "/allresultlocation",
-  isAuthenticated,
-  getAllResultAccordingToLocation
-);
-router.get(
-  "/allresultwithtime",
-  isAuthenticated,
-  getAllResultsByLocationWithTimes
-);
-router.get(
-  "/allresultlocmonyear",
-  isAuthenticated,
-  getAllResultsByLocationWithTimesMonthYear
-);
-router.get("/resultlmy", isAuthenticated, getResultAccordingToLocationTY);
-router.get(
-  "/allresultwithdate",
-  isAuthenticated,
-  getAllResultsByLocationWithDates
-);
+router.get("/searchresult", isAuthenticated, getAllResultAccordingToDateTimeLocation);
+router.get("/allresultlocation", isAuthenticated, getAllResultAccordingToLocation);
+router.get("/allresultwithtime", isAuthenticated, getAllResultsByLocationWithTimes);
+router.get("/allresultlocmonyear", isAuthenticated, getAllResultsByLocationWithTimesMonthYear);
+ router.get("/allresultwithdate", isAuthenticated, getAllResultsByLocationWithDates);
 router.get("/nextresult", isAuthenticated, getNextResult);
 router.delete("/removeresult/:id", isAuthenticated, deleteResult);
+router.get("/resultlmy", isAuthenticated, getResultAccordingToLocationTY);
 
 // for LotDates
 router.post("/addlotdate", isAuthenticated, addLotDate);
 router.get("/alllotdate", isAuthenticated, getAllLotDate);
 router.delete("/removelotdate/:id", isAuthenticated, deleteLotDate);
 router.put("/updatelotdate/:id", isAuthenticated, updateDate);
-router.get(
-  "/searchdate",
-  isAuthenticated,
-  getAllLotDateAccordindLocationAndTime
-);
+router.get("/searchdate", isAuthenticated, getAllLotDateAccordindLocationAndTime);
 
 // for LotTimes
 router.post("/addlottime", isAuthenticated, addLotTime);
@@ -137,13 +107,10 @@ router.get("/searchtime", isAuthenticated, getAllLotTimeAccordindLocation);
 // for LotLocation
 router.post("/addlotlocation", isAuthenticated, addLotLocatin);
 router.get("/alllotlocation", isAuthenticated, getAllLotLocation);
-router.get(
-  "/alllotlocationwithtime",
-  isAuthenticated,
-  getAllLotLocationWithTimes
-);
+router.get("/alllotlocationwithtime", isAuthenticated, getAllLotLocationWithTimes);
 router.delete("/removelotlocation/:id", isAuthenticated, deleteLotLocation);
 router.put("/updatelotlocation/:id", isAuthenticated, updateLocation);
+
 
 // FOR PAYMENT
 router.post("/addpayment", isAuthenticated, addPayment);
@@ -151,12 +118,7 @@ router.get("/allpaymets", isAuthenticated, getAllPayments);
 router.delete("/removepayment/:id", isAuthenticated, deletePayment);
 
 // FOR  UPI PAYMENT
-router.post(
-  "/addupipayment",
-  isAuthenticated,
-  singleUploadForUPIQrCode,
-  addUpiPayment
-);
+router.post("/addupipayment", isAuthenticated, singleUploadForUPIQrCode, addUpiPayment);
 router.get("/allupipaymets", isAuthenticated, getAllUPIPayments);
 router.delete("/removeupipayment/:id", isAuthenticated, deleteUPIPayment);
 
@@ -171,14 +133,10 @@ router.get("/allpaypalpaymets", isAuthenticated, getAllPaypalPayments);
 router.delete("/removepaypalpayment/:id", isAuthenticated, deletePaypalPayment);
 
 // FOR  CRYPTO PAYMENT
-router.post(
-  "/addcryptopayment",
-  isAuthenticated,
-  singleUploadForCryptoQrCode,
-  addCryptoPayment
-);
+router.post("/addcryptopayment", isAuthenticated,singleUploadForCryptoQrCode, addCryptoPayment);
 router.get("/allcryptopaymets", isAuthenticated, getAllCryptoPayments);
 router.delete("/removecryptopayment/:id", isAuthenticated, deleteCryptoPayment);
+
 
 // FOR  SKRILL PAYMENT
 router.post("/addskrillpayment", isAuthenticated, addSkrillPayment);
@@ -190,35 +148,24 @@ router.post("/addplay", isAuthenticated, addPlayzone);
 router.get("/allplay", isAuthenticated, getAllPlay);
 router.delete("/removeplayzone/:id", isAuthenticated, deletePlayzone);
 
-// TO GET A SINGLE PLAY
-router.get("/playzone/singleplay", isAuthenticated, getSinglePlayzone);
+// TO GET A SINGLE PLAY 
+router.get('/playzone/singleplay',isAuthenticated, getSinglePlayzone);
 router.get("/allplaysingleuser", isAuthenticated, getUserPlayHistory);
 
-router.put(
-  "/playzone/:id/playnumber/:playnumber",
-  isAuthenticated,
-  updatePlaynumber
-);
-router.post(
-  "/playzone/:id/playnumber/:playnumber/users",
-  isAuthenticated,
-  addUserToPlaynumber
-);
+router.put("/playzone/:id/playnumber/:playnumber",isAuthenticated, updatePlaynumber);
+router.post("/playzone/:id/playnumber/:playnumber/users",isAuthenticated, addUserToPlaynumber);
+
 
 // ADDING GAME BETTING
-router.post("/playbet/addplybet", isAuthenticated, addPlaybet);
-router.get("/singleuser/playbets", isAuthenticated, getUserPlaybets);
-router.get(
-  "/singleuserplayhistory/:userid",
-  isAuthenticated,
-  getSingleUserPlaybetHistory
-);
+router.post('/playbet/addplybet',isAuthenticated, addPlaybet);
+router.get('/singleuser/playbets', isAuthenticated, getUserPlaybets);
+router.get('/singleuserplayhistory/:userid', isAuthenticated, getSingleUserPlaybetHistory);
 
 // FOR CURRECY
 // Create a new currency
-router.post("/addcurrency", singleUploadForCurrency, createCurrency);
+router.post('/addcurrency',singleUploadForCurrency, createCurrency);
 // Get all currencies
-router.get("/allcurrencies", getAllCurrencies);
+router.get('/allcurrencies',  getAllCurrencies);
 // Update a currency
 router.put(
   "/updatecurrency/:id",
@@ -226,14 +173,9 @@ router.put(
   singleUploadForCurrency,
   updateCurrency
 );
-router.put(
-  "/currency/:id/icon",
-  isAuthenticated,
-  singleUploadForCurrency,
-  updateCurrencyIcon
-);
+// router.put('/updatecurrency/:id', isAuthenticated, updateCurrency);
 // Delete a currency
-router.delete("/removecurrency/:id", isAuthenticated, deleteCurrency);
+router.delete('/removecurrency/:id', isAuthenticated, deleteCurrency);
 
 // GET APP BALANCE SHEET
 router.get("/balancesheet", isAuthenticated, getAppBalanceSheet);
@@ -242,10 +184,19 @@ router.get("/topwinner", isAuthenticated, getAllTopWinner);
 
 // FOR APP LINK
 router.post("/createapplink", isAuthenticated, updateAppLinks);
-router.get("/getapplink", isAuthenticated, getAppLinks);
+router.get("/getapplink", getAppLinks);
 router.delete("/deleteapplink", isAuthenticated, deleteAppLinks);
 
+
+
+
+
+
+
 module.exports = router;
+
+
+
 
 // const express = require("express");
 // const {

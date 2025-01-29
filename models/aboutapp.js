@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 
+
 const schema = new mongoose.Schema({
     lotlocation: {
         type: String,
@@ -16,3 +17,4 @@ const schema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model("AboutApp", schema);
+

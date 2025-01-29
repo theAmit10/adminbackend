@@ -1745,48 +1745,150 @@ const updateAllWalletNameTwo = asyncError(async (req, res, next) => {
 // TRANSFER AMOUNT FROM WALLET ONE TO WALLET TWO
 // Update Wallet Two
 
-// const transferAmountFromWalletOneToWalletTwo = asyncError(async (req, res, next) => {
-//   try {
-//     const { userid, amount } = req.body;
 
-//     // Validate input
-//     if (!amount || isNaN(amount) || amount <= 0) {
-//       return res.status(400).json({ success: false, message: "Invalid amount value" });
+// const transferAmountFromWalletOneToWalletTwo = asyncError(
+//   async (req, res, next) => {
+//     try {
+//       const { userid, amount } = req.body;
+
+//       // Validate input
+//       if (!amount || isNaN(amount) || amount <= 0) {
+//         return res
+//           .status(400)
+//           .json({ success: false, message: "Invalid amount value" });
+//       }
+
+//       // Find the user
+//       const user = await User.findById(userid)
+//         .populate("walletOne")
+//         .populate("walletTwo");
+//       if (!user) {
+//         return res
+//           .status(404)
+//           .json({ success: false, message: "User not found" });
+//       }
+
+//       const walletOne = user.walletOne;
+//       const walletTwo = user.walletTwo;
+
+//       // Check if walletOne has sufficient balance
+//       if (walletOne.balance < amount) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Insufficient balance in walletOne",
+//         });
+//       }
+
+//       const currency = await Currency.findById(user.country._id);
+//       if (!currency) {
+//         return next(new ErrorHandler("Currency not found", 404));
+//       }
+
+//       const currencyconverter = parseFloat(
+//         currency.countrycurrencyvaluecomparedtoinr
+//       );
+
+//       // Perform the transfer, ensuring balance is treated as a number
+
+//       // walletOne.balance = parseFloat(walletOne.balance) - parseFloat(amount);
+//       // walletTwo.balance = parseFloat(walletTwo.balance) + parseFloat(amount);
+//       walletOne.balance = Number(walletOne.balance) - Number(amount);
+//       walletTwo.balance = Number(walletTwo.balance) + Number(amount);
+
+//       // // Save the updated wallets
+//       // await walletOne.save();
+//       // await walletTwo.save();
+
+//       // FOR BALANCE SHEET
+
+//       // Create AppBalanceSheet entry
+//       // Calculate gameBalance as the total sum of all walletTwo balances  + totalAmount
+
+//       // const walletTwoBalances = await WalletTwo.find({});
+//       // const gameBalance =
+//       //   walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
+//       //   amount;
+//       // const walletTwoBalances = await WalletTwo.find({});
+//       // const gameBalance =
+//       //   walletTwoBalances.reduce(
+//       //     (sum, wallet) => sum + parseFloat(wallet.balance),
+//       //     0
+//       //   ) + parseFloat(amount);
+
+//       // // Calculate walletOneBalances as the total sum of all walletOne balances - totalAmount
+//       // const walletOneBalances = await WalletOne.find({});
+//       // const withdrawalBalance =
+//       //   walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
+//       //   amount;
+
+//       // // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
+//       // const totalBalance =
+//       //   parseFloat(withdrawalBalance) + parseFloat(gameBalance);
+
+//       // Fetch all WalletTwo balances and populate currencyId
+//       const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+//       let gameBalance = 0;
+
+//       walletTwoBalances.forEach((wallet) => {
+//         const walletCurrencyConverter = parseFloat(
+//           wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//         );
+//         gameBalance += wallet.balance * walletCurrencyConverter;
+//       });
+
+//       // Fetch all WalletOne balances and populate currencyId
+//       const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+//       let withdrawalBalance = 0;
+
+//       walletOneBalances.forEach((wallet) => {
+//         const walletCurrencyConverter = parseFloat(
+//           wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//         );
+//         withdrawalBalance += wallet.balance * walletCurrencyConverter;
+//       });
+
+//       // Add the additional amount with currency conversion
+//       // withdrawalBalance += parseFloat(playnumberEntry.distributiveamount);
+
+//       // Calculate total balance as the sum of walletOne and walletTwo balances
+//       const totalBalance = withdrawalBalance + gameBalance;
+
+//       // Create a new AppBalanceSheet document
+//       const appBalanceSheet = new AppBalanceSheet({
+//         amount: parseFloat(amount * currencyconverter),
+//         withdrawalbalance: withdrawalBalance,
+//         gamebalance: gameBalance,
+//         totalbalance: totalBalance,
+//         usercurrency: user.country._id.toString(),
+//         activityType: "Transfer",
+//         userId: user.userId,
+//         paymentProcessType: "Exchange",
+//       });
+
+//       // Save the AppBalanceSheet document
+//       await appBalanceSheet.save();
+//       console.log("AppBalanceSheet Created Successfully");
+
+//       // END BALANCE SHEET
+
+//       // Save the updated wallets
+//       await walletOne.save();
+//       await walletTwo.save();
+
+//       res.status(200).json({
+//         success: true,
+//         message: "Transfer successful",
+//         walletOne: { balance: walletOne.balance },
+//         walletTwo: { balance: walletTwo.balance },
+//       });
+//     } catch (error) {
+//       console.error("Error transferring amount:", error);
+//       res
+//         .status(500)
+//         .json({ success: false, message: "Internal server error" });
 //     }
-
-//     // Find the user
-//     const user = await User.findById(userid).populate('walletOne').populate('walletTwo');
-//     if (!user) {
-//       return res.status(404).json({ success: false, message: "User not found" });
-//     }
-
-//     const walletOne = user.walletOne;
-//     const walletTwo = user.walletTwo;
-
-//     // Check if walletOne has sufficient balance
-//     if (walletOne.balance < amount) {
-//       return res.status(400).json({ success: false, message: "Insufficient balance in walletOne" });
-//     }
-
-//     // Perform the transfer
-//     walletOne.balance -= amount;
-//     walletTwo.balance += amount;
-
-//     // Save the updated wallets
-//     await walletOne.save();
-//     await walletTwo.save();
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Transfer successful",
-//       walletOne: { balance: walletOne.balance },
-//       walletTwo: { balance: walletTwo.balance },
-//     });
-//   } catch (error) {
-//     console.error("Error transferring amount:", error);
-//     res.status(500).json({ success: false, message: "Internal server error" });
 //   }
-// });
+// );
 
 const transferAmountFromWalletOneToWalletTwo = asyncError(
   async (req, res, next) => {
@@ -2186,19 +2288,6 @@ const getAllTransaction = asyncError(async (req, res, next) => {
 });
 
 // Get all Deposit transactions
-// const getAllDeposit = asyncError(async (req, res, next) => {
-//   const deposits = await Transaction.find({ transactionType: "Deposit" })
-//     .populate("currency")
-//     .sort({
-//       createdAt: -1,
-//     });
-
-//   res.status(200).json({
-//     success: true,
-//     deposits,
-//   });
-// });
-
 const getAllDeposit = asyncError(async (req, res, next) => {
   // Get page and limit from query params or set default values
   const page = parseInt(req.query.page) || 1; // Default page is 1
@@ -2228,7 +2317,18 @@ const getAllDeposit = asyncError(async (req, res, next) => {
     totalDeposits,
   });
 });
+// const getAllDeposit = asyncError(async (req, res, next) => {
+//   const deposits = await Transaction.find({ transactionType: "Deposit" })
+//     .populate("currency")
+//     .sort({
+//       createdAt: -1,
+//     });
 
+//   res.status(200).json({
+//     success: true,
+//     deposits,
+//   });
+// });
 
 // UPDATE PAYMENT STATUS
 const updateDepositStatus = asyncError(async (req, res, next) => {
@@ -2727,7 +2827,6 @@ const getAllWithdrawals = asyncError(async (req, res, next) => {
     totalWithdrawals,  // Total number of withdrawal records
   });
 });
-
 
 module.exports = {
   login,

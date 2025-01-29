@@ -52,7 +52,7 @@ const {
   deleteUser
   
 } = require("../controllers/user.js");
-const {isAuthenticated, verifyToken, isAdmin} = require("../middlewares/auth.js");
+const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
 const {singleUpload}  = require("../middlewares/multer.js");
 const {singleUploadForPromotion}  = require("../middlewares/promotionmiddlerware.js");
 const { singleUploadForDeposit } = require("../middlewares/depositmiddleware.js");
@@ -93,7 +93,7 @@ router.route("/forgetpassword").post(forgetPassword).put(resetPassword);
 // 
 
 // FOR ADMIN WORK
-router.get("/alluser", isAuthenticated,isAdmin, getAllUser);
+router.get("/alluser", isAuthenticated, getAllUser);
 router.put("/updateuserid/:userId", isAuthenticated, updateAnyUserUserId);
 router.post("/sendnotification",isAuthenticated,sendNotificationToAllUser);
 router.post("/sendnotificationsingle",isAuthenticated,sendNotificationToSingleUser);

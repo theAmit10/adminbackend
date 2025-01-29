@@ -36,7 +36,7 @@ app.use(cookieParser());
 app.use(
   cors({
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    methods: ["GET", "POST", "PUT", "DELETE","PATCH"],
     origin: [
       process.env.FRONTEND_URL_1,
       process.env.FRONTEND_URL_2,
@@ -150,24 +150,16 @@ function addLeadingZero(value) {
   return stringValue;
 }
 
-// Schedule the task to run every 24 hours 0 0 * * *
+
 const getCurrentDate = () => {
-  const today = new Date();
-  const day = String(today.getDate()).padStart(2, "0");
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const year = today.getFullYear();
-  return `${day}-${month}-${year}`;
+  return moment.tz('Asia/Kolkata').format('DD-MM-YYYY');
 };
 
 const getNextDate = () => {
-  const today = new Date();
-  today.setDate(today.getDate() + 1); // This will correctly handle month/year transitions
-  const day = String(today.getDate()).padStart(2, "0");
-  const month = String(today.getMonth() + 1).padStart(2, "0");
-  const year = today.getFullYear();
-  return `${day}-${month}-${year}`;
+  return moment.tz('Asia/Kolkata').add(1, 'days').format('DD-MM-YYYY');
 };
 
+// COMMENTING CRON JOB FOR NOW 
 // cron.schedule("*/2 * * * *", async () => {
 //   console.log("Running scheduled task to add LotDates and Playzones");
 //   try {
@@ -234,8 +226,6 @@ const getNextDate = () => {
 //     console.error("Error running scheduled task:", error);
 //   }
 // });
-
-
 
 // cron.schedule("*/5 * * * *", async () => {
 //   console.log("Running automation script every ONE minutes...");
