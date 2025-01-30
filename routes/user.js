@@ -49,7 +49,15 @@ const {
   markUserNotificationsAsSeen,
   updateSubadminFeatures,
   updateUserPassword,
-  deleteUser
+  deleteUser,
+  makeUserPartner,
+  getAllPartners,
+  getAllSubpartners,
+  getPartnerByUserId,
+  getPartnerUserList,
+  makeUserSubPartner,
+  getPartnerPartnerList,
+  updateSubPartnerStatus
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -140,6 +148,16 @@ router.get("/getallwithdraw",isAuthenticated, getAllWithdrawals);
 
 // TO TRANSFER BALANCE FROM WALLET ONE TO WALLET TWO
 router.put('/balancetransfer',isAuthenticated, transferAmountFromWalletOneToWalletTwo);
+
+// FOR PARTER MODULE
+router.post("/createpartner",isAuthenticated, makeUserPartner);
+router.post("/createsubpartner",isAuthenticated, makeUserSubPartner);
+router.put("/updatesubpartner",isAuthenticated, updateSubPartnerStatus);
+router.get("/getallpartner",isAuthenticated, getAllPartners);
+router.get("/getallsubpartner",isAuthenticated, getAllSubpartners);
+router.get("/getpartnerbyuserid/:userId",isAuthenticated, getPartnerByUserId);
+router.get("/getpartneruserlist/:userId",isAuthenticated, getPartnerUserList);
+router.get("/getpartnerpartnerlist/:userId",isAuthenticated, getPartnerPartnerList);
 
 
 module.exports = router;
