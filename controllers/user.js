@@ -20,6 +20,7 @@ const Currency = require("../models/currency.js");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const PartnerModule = require("../models/PartnerModule.js");
+const ProfitDeduction = require("../models/ProfitDeduction.js");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -2991,7 +2992,6 @@ const makeUserPartner = asyncError(async (req, res, next) => {
   });
 });
 
-
 const makeUserSubPartner = asyncError(async (req, res, next) => {
   const { userId, parentId } = req.body; // Get userId and parentId from the request body
 
@@ -3010,7 +3010,9 @@ const makeUserSubPartner = asyncError(async (req, res, next) => {
   // Check if the user is already a subpartner (in the userList of the parent)
   const isSubPartner = parent.userList.includes(user._id);
   if (!isSubPartner) {
-    return next(new ErrorHandler("User is not part of the parent partner's userList", 400));
+    return next(
+      new ErrorHandler("User is not part of the parent partner's userList", 400)
+    );
   }
 
   // Create a PartnerModule for the user as a subpartner
@@ -3049,15 +3051,15 @@ const makeUserSubPartner = asyncError(async (req, res, next) => {
 });
 
 const updateSubPartnerStatus = asyncError(async (req, res, next) => {
-  const { userId, partnerStatus} = req.body; // Get userId and parentId from the request body
+  const { userId, partnerStatus } = req.body; // Get userId and parentId from the request body
 
   if (!userId) {
     return next(new ErrorHandler("Enter userid", 404));
   }
-  if (partnerStatus === undefined) {  // Check explicitly for undefined
+  if (partnerStatus === undefined) {
+    // Check explicitly for undefined
     return next(new ErrorHandler("Partner status not found", 404));
   }
-
 
   // Find the user by userId
   const user = await User.findOne({ userId });
@@ -3077,10 +3079,11 @@ const updateSubPartnerStatus = asyncError(async (req, res, next) => {
   });
 });
 
-
 const getAllPartners = asyncError(async (req, res, next) => {
   // Find all PartnerModule documents where partnerType is "partner" and sort by createdAt in descending order
-  const partners = await PartnerModule.find({ partnerType: "partner" }).sort({ createdAt: -1 });
+  const partners = await PartnerModule.find({ partnerType: "partner" }).sort({
+    createdAt: -1,
+  });
 
   if (!partners || partners.length === 0) {
     return next(new ErrorHandler("No partners found", 404));
@@ -3093,10 +3096,11 @@ const getAllPartners = asyncError(async (req, res, next) => {
   });
 });
 
-
 const getAllSubpartners = asyncError(async (req, res, next) => {
   // Find all PartnerModule documents where partnerType is "subpartner"
-  const subpartners = await PartnerModule.find({ partnerType: "subpartner" }).sort({ createdAt: -1 });
+  const subpartners = await PartnerModule.find({
+    partnerType: "subpartner",
+  }).sort({ createdAt: -1 });
 
   if (!subpartners || subpartners.length === 0) {
     return next(new ErrorHandler("No subpartners found", 404));
@@ -3130,11 +3134,10 @@ const getPartnerUserList = asyncError(async (req, res, next) => {
   const { userId } = req.params;
 
   // Find the PartnerModule entry for the given userId and populate the userList
-  const partner = await PartnerModule.findOne({ userId })
-    .populate({
-      path: "userList",
-      options: { sort: { _id: -1 } }, // Sorting by _id in descending order
-    });
+  const partner = await PartnerModule.findOne({ userId }).populate({
+    path: "userList",
+    options: { sort: { _id: -1 } }, // Sorting by _id in descending order
+  });
 
   if (!partner) {
     return next(new ErrorHandler("Partner not found", 404));
@@ -3151,11 +3154,10 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
   const { userId } = req.params;
 
   // Find the PartnerModule entry for the given userId and populate the userList
-  const partner = await PartnerModule.findOne({ userId })
-    .populate({
-      path: "partnerList",
-      options: { sort: { _id: -1 } }, // Sorting by _id in descending order
-    });
+  const partner = await PartnerModule.findOne({ userId }).populate({
+    path: "partnerList",
+    options: { sort: { _id: -1 } }, // Sorting by _id in descending order
+  });
 
   if (!partner) {
     return next(new ErrorHandler("Partner not found", 404));
@@ -3167,6 +3169,279 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
     userList: partner.partnerList, // Populated user list in descending order
   });
 });
+
+const increasePartnerProfit = asyncError(async (req, res, next) => {
+  const { partnerId, profitPercentage } = req.body;
+
+  // Validate required fields
+  if (!partnerId || profitPercentage === undefined) {
+    return next(new ErrorHandler("All fields are required", 400));
+  }
+
+  // Ensure profitPercentage is a valid number and positive
+  if (typeof profitPercentage !== "number" || profitPercentage <= 0) {
+    return next(
+      new ErrorHandler("Profit percentage must be a positive number", 400)
+    );
+  }
+
+  // Find the partner using partnerId
+  const partner = await PartnerModule.findOne({ userId: partnerId });
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  partner.profitPercentage += profitPercentage;
+  await partner.save();
+
+  res.status(201).json({
+    success: true,
+    message: "Profit increase successfully",
+  });
+});
+
+const createProfitDeduction = asyncError(async (req, res, next) => {
+  const { userId, partnerId, profitPercentage, reason } = req.body;
+
+  // Validate required fields
+  if (!userId || !partnerId || !profitPercentage || !reason) {
+    return next(new ErrorHandler("All fields are required", 400));
+  }
+
+   // Find the partner using partnerId
+   const partnerUser = await PartnerModule.findOne({ userId: userId });
+   if (!partnerUser) {
+     return next(new ErrorHandler("Partner not found", 404));
+   }
+
+  // Find the partner using partnerId
+  const partner = await PartnerModule.findOne({ userId: partnerId });
+  if (!partner) {
+    return next(new ErrorHandler("Parent Partner not found", 404));
+  }
+
+  // Create the ProfitDeduction entry
+  const profitDeduction = await ProfitDeduction.create({
+    userId,
+    partnerId,
+    name: partnerUser.name, // Using partner's name
+    profitPercentage,
+    reason,
+    status: "Pending", // Default status
+  });
+
+  // Add the ProfitDeduction _id to the partner's profitDeduction array
+  partner.profitDeduction.push(profitDeduction._id);
+  await partner.save();
+
+  res.status(201).json({
+    success: true,
+    message: "Profit Deduction created successfully",
+    profitDeduction,
+  });
+});
+
+const getAllProfitDeductions = asyncError(async (req, res, next) => {
+  try {
+    // Fetch all profit deductions sorted by newest first
+    const profitDeductions = await ProfitDeduction.find().sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: profitDeductions.length,
+      profitDeductions,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+const getPartnerProfitDeductions = asyncError(async (req, res, next) => {
+  const { userId } = req.params;
+
+  // Validate userId
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Find the partner associated with the given userId
+  const partner = await PartnerModule.findOne({ userId }).populate({
+    path: "profitDeduction",
+    options: { sort: { createdAt: -1 } }, // Sort by newest first
+  });
+
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    profitDeductions: partner.profitDeduction,
+  });
+});
+
+
+const updateProfitDeductionStatus = asyncError(async (req, res, next) => {
+  const { id, status } = req.body;
+
+  // Validate inputs
+  if (!id || !status) {
+    return next(new ErrorHandler("ID and status are required", 400));
+  }
+
+  // Ensure status is valid
+  if (!["Pending", "Completed", "Cancelled"].includes(status)) {
+    return next(new ErrorHandler("Invalid status value", 400));
+  }
+
+  // Find the ProfitDeduction entry by ID
+  const profitDeduction = await ProfitDeduction.findById(id);
+  if (!profitDeduction) {
+    return next(new ErrorHandler("Profit deduction entry not found", 404));
+  }
+
+  // If status is "Cancelled", just update the status
+  if (status === "Cancelled") {
+    profitDeduction.status = "Cancelled";
+    await profitDeduction.save();
+    return res.status(200).json({
+      success: true,
+      message: "Profit deduction cancelled successfully",
+    });
+  }
+
+  // If status is "Completed", deduct the profit from the partner
+  if (status === "Completed") {
+    const { userId, profitPercentage } = profitDeduction;
+
+    // Find the partner associated with the userId
+    const partner = await PartnerModule.findOne({ userId });
+    if (!partner) {
+      return next(new ErrorHandler("Associated partner not found", 404));
+    }
+
+    // Ensure the deduction doesn't make profitPercentage negative
+    if (partner.profitPercentage < profitPercentage) {
+      return next(new ErrorHandler("Insufficient profit percentage to deduct", 400));
+    }
+
+    // Deduct the profit percentage
+    partner.profitPercentage -= profitPercentage;
+    await partner.save();
+
+    // Update the status of the profit deduction
+    profitDeduction.status = "Completed";
+    await profitDeduction.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Profit deduction completed successfully",
+    });
+  }
+});
+
+const updateProfitDeductionStatusAndAmount = asyncError(async (req, res, next) => {
+  const { id, status, profitPercentage  } = req.body;
+
+  // Validate inputs
+  if (!id || !status || !profitPercentage) {
+    return next(new ErrorHandler("ID , status and profit percentage are required", 400));
+  }
+
+  // Ensure status is valid
+  if (!["Pending", "Completed", "Cancelled"].includes(status)) {
+    return next(new ErrorHandler("Invalid status value", 400));
+  }
+
+  // Find the ProfitDeduction entry by ID
+  const profitDeduction = await ProfitDeduction.findById(id);
+  if (!profitDeduction) {
+    return next(new ErrorHandler("Profit deduction entry not found", 404));
+  }
+
+  // If status is "Cancelled", just update the status
+  if (status === "Cancelled") {
+    profitDeduction.status = "Cancelled";
+    await profitDeduction.save();
+    return res.status(200).json({
+      success: true,
+      message: "Profit deduction cancelled successfully",
+    });
+  }
+
+  // If status is "Completed", deduct the profit from the partner
+  if (status === "Completed") {
+    const { userId } = profitDeduction;
+
+    // Find the partner associated with the userId
+    const partner = await PartnerModule.findOne({ userId });
+    if (!partner) {
+      return next(new ErrorHandler("Associated partner not found", 404));
+    }
+
+    // Ensure the deduction doesn't make profitPercentage negative
+    // if (partner.profitPercentage < profitPercentage) {
+    //   return next(new ErrorHandler("Insufficient profit percentage to deduct", 400));
+    // }
+
+    // Deduct the profit percentage
+    partner.profitPercentage = profitPercentage;
+    await partner.save();
+
+    // Update the status of the profit deduction
+    profitDeduction.status = "Completed";
+    await profitDeduction.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Profit deduction completed successfully",
+    });
+  }
+});
+
+const updatePartnerPermissions = asyncError(async (req, res, next) => {
+  const { userId, playHistoryPermission, transactionHistoryPermission } = req.body;
+
+  // Validate userId
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Check if at least one of the permissions is provided
+  if (playHistoryPermission === undefined && transactionHistoryPermission === undefined) {
+    return next(new ErrorHandler("At least one permission field is required", 400));
+  }
+
+  // Find the partner by userId
+  const partner = await PartnerModule.findOne({ userId });
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  // Update permissions if provided
+  if (playHistoryPermission !== undefined) {
+    partner.playHistoryPermission = playHistoryPermission;
+  }
+  if (transactionHistoryPermission !== undefined) {
+    partner.transactionHistoryPermission = transactionHistoryPermission;
+  }
+
+  // Save the updated partner
+  await partner.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Partner permissions updated successfully",
+    partner,
+  });
+});
+
+
+
+
+
+
 
 
 module.exports = {
@@ -3227,5 +3502,12 @@ module.exports = {
   getPartnerUserList,
   makeUserSubPartner,
   getPartnerPartnerList,
-  updateSubPartnerStatus
+  updateSubPartnerStatus,
+  createProfitDeduction,
+  increasePartnerProfit,
+  getAllProfitDeductions,
+  getPartnerProfitDeductions,
+  updateProfitDeductionStatus,
+  updatePartnerPermissions,
+  updateProfitDeductionStatusAndAmount
 };
