@@ -1877,8 +1877,35 @@ const deleteUPIPayment = asyncError(async (req, res, next) => {
 // Bank PAYMENT
 // ##############################
 
+// const addBankPayment = asyncError(async (req, res, next) => {
+//   const {
+//     bankname,
+//     accountholdername,
+//     ifsccode,
+//     accountnumber,
+//     swiftcode,
+//     paymentnote,
+//   } = req.body;
+
+//   if (!bankname) return next(new ErrorHandler("Bank name is missing", 404));
+//   if (!accountholdername)
+//     return next(new ErrorHandler("Account holder name is missing", 404));
+//   if (!ifsccode) return next(new ErrorHandler("IFSC code is missing", 404));
+//   if (!accountnumber)
+//     return next(new ErrorHandler("Account number is missing", 404));
+//   //   if (!swiftcode) return next(new ErrorHandler("Swift code is missing", 404));
+
+//   await BankPaymentType.create(req.body);
+
+//   res.status(201).json({
+//     success: true,
+//     message: "Bank Added Successfully",
+//   });
+// });
+
 const addBankPayment = asyncError(async (req, res, next) => {
   const {
+    userId,
     bankname,
     accountholdername,
     ifsccode,
@@ -1887,21 +1914,41 @@ const addBankPayment = asyncError(async (req, res, next) => {
     paymentnote,
   } = req.body;
 
-  if (!bankname) return next(new ErrorHandler("Bank name is missing", 404));
+  // Validations
+  if (!bankname) return next(new ErrorHandler("Bank name is missing", 400));
   if (!accountholdername)
-    return next(new ErrorHandler("Account holder name is missing", 404));
-  if (!ifsccode) return next(new ErrorHandler("IFSC code is missing", 404));
+    return next(new ErrorHandler("Account holder name is missing", 400));
+  if (!ifsccode) return next(new ErrorHandler("IFSC code is missing", 400));
   if (!accountnumber)
-    return next(new ErrorHandler("Account number is missing", 404));
-  //   if (!swiftcode) return next(new ErrorHandler("Swift code is missing", 404));
+    return next(new ErrorHandler("Account number is missing", 400));
 
-  await BankPaymentType.create(req.body);
+  // Create a new BankPaymentType
+  const newBank = await BankPaymentType.create(req.body);
+
+  if (userId) {
+    // Fetch the PartnerModule by userId
+    const partner = await PartnerModule.findOne({ userId }).populate("rechargeModule");
+
+    if (!partner) {
+      return next(new ErrorHandler("Partner not found", 404));
+    }
+
+    if (!partner.rechargeModule) {
+      return next(new ErrorHandler("Recharge Module not found", 404));
+    }
+
+    // Push the new bank ID into the rechargeModule's bankList array
+    partner.rechargeModule.bankList.push(newBank._id);
+    await partner.rechargeModule.save();
+  }
 
   res.status(201).json({
     success: true,
     message: "Bank Added Successfully",
+    bank: newBank,
   });
 });
+
 
 const getAllBankPayments = asyncError(async (req, res, next) => {
   const payments = await BankPaymentType.find();
@@ -1911,6 +1958,9 @@ const getAllBankPayments = asyncError(async (req, res, next) => {
     payments,
   });
 });
+
+
+
 
 const deleteBankPayment = asyncError(async (req, res, next) => {
   const { id } = req.params;
@@ -3860,6 +3910,25 @@ const getSinglePartnerPerformance = asyncError(async (req, res) => {
   });
 });
 
+const getUserBankPayments = asyncError(async (req, res, next) => {
+  const { userId } = req.params;
+
+  // Find all bank payments where userId matches
+  const bankPayments = await BankPaymentType.find({ userId }).sort({
+    createdAt: -1,
+  });
+
+  if (!bankPayments.length) {
+    return next(new ErrorHandler("No bank payments found for this user", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    count: bankPayments.length,
+    payments: bankPayments,
+  });
+});
+
 module.exports = {
   createCurrency,
   getAllCurrencies,
@@ -3927,4 +3996,5 @@ module.exports = {
   getResultAccordingToLocationTY,
   addPartnerPerformance,
   getSinglePartnerPerformance,
+  getUserBankPayments
 };

@@ -22,6 +22,9 @@ const schema = new mongoose.Schema({
         type: String,
     },
     paymentId: Number,
+    userId: { type: Number, default: 1000 },
+    activationStatus: { type: Boolean, default: false },
+ 
 },{ timestamps: true });
 
 // Pre-save hook to auto-increment paymentId

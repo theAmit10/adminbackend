@@ -68,7 +68,8 @@ const {
   getAllResultsByLocationWithTimesMonthYear,
   getAllTopWinner,
   getResultAccordingToLocationTY,
-  getSinglePartnerPerformance
+  getSinglePartnerPerformance,
+  getUserBankPayments
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -126,6 +127,7 @@ router.delete("/removeupipayment/:id", isAuthenticated, deleteUPIPayment);
 // FOR  BANK PAYMENT
 router.post("/addbankpayment", isAuthenticated, addBankPayment);
 router.get("/allbankpaymets", isAuthenticated, getAllBankPayments);
+router.get("/getuserbankpaymets/:userId", isAuthenticated, getUserBankPayments);
 router.delete("/removebankpayment/:id", isAuthenticated, deleteBankPayment);
 
 // FOR  PAYPAL PAYMENT

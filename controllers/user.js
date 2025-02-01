@@ -21,6 +21,7 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const PartnerModule = require("../models/PartnerModule.js");
 const ProfitDeduction = require("../models/ProfitDeduction.js");
+const RechargeModule = require("../models/RechargeModule.js");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -3697,6 +3698,124 @@ const removeTopPartner = asyncError(async (req, res, next) => {
   });
 });
 
+// Recharge Module
+
+const updateRechargeStatus = async (req, res) => {
+  try {
+    const { userId, rechargeStatus } = req.body;
+
+    if (typeof rechargeStatus !== "boolean") {
+      return res.status(400).json({ message: "Invalid rechargeStatus value" });
+    }
+
+    const partner = await PartnerModule.findOneAndUpdate(
+      { userId },
+      { rechargeStatus },
+      { new: true, runValidators: true }
+    );
+
+    if (!partner) {
+      return res.status(404).json({ message: "Partner not found" });
+    }
+
+    res.status(200).json({ message: "Recharge status updated successfully", partner });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+const getAllRecharge = asyncError(async (req, res, next) => {
+  try {
+    // Fetch all profit deductions sorted by newest first
+    const rechargeModule = await RechargeModule.find().sort({
+      createdAt: -1,
+    });
+
+    res.status(200).json({
+      success: true,
+      count: rechargeModule.length,
+      rechargeModule,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const getRechargeById = asyncError(async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Fetch the recharge module by ID
+    const rechargeModule = await RechargeModule.findById(id);
+
+    if (!rechargeModule) {
+      return res.status(404).json({
+        success: false,
+        message: "Recharge module not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      rechargeModule,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+const updateRechargePermission = asyncError(async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body; // Expecting one or more fields to update
+
+    // Ensure only the allowed fields are updated
+    const allowedFields = [
+      "upiPermission",
+      "bankPermission",
+      "paypalPermission",
+      "cryptoPermission",
+      "skrillPermission",
+      "otherPaymentPermission",
+    ];
+
+    const updateFields = Object.keys(updateData);
+
+    // Check if the request contains only allowed fields
+    const isValidUpdate = updateFields.every((field) =>
+      allowedFields.includes(field)
+    );
+
+    if (!isValidUpdate) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid update fields",
+      });
+    }
+
+    // Find the recharge module by ID and update
+    const rechargeModule = await RechargeModule.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!rechargeModule) {
+      return res.status(404).json({
+        success: false,
+        message: "Recharge module not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Recharge module updated successfully",
+      rechargeModule,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 
 
@@ -3769,5 +3888,9 @@ module.exports = {
   promoteSubPartnerToTopPartner,
   removeUserFromPartnerList,
   addUserToUserList,
-  removeTopPartner
+  removeTopPartner,
+  updateRechargeStatus,
+  getAllRecharge,
+  getRechargeById,
+  updateRechargePermission
 };

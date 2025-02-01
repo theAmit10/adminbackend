@@ -68,7 +68,11 @@ const {
   promoteSubPartnerToTopPartner,
   removeUserFromPartnerList,
   addUserToUserList,
-  removeTopPartner
+  removeTopPartner,
+  updateRechargeStatus,
+  getAllRecharge,
+  getRechargeById,
+  updateRechargePermission
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -180,6 +184,12 @@ router.put("/promotesubpartnertopartner",isAuthenticated, promoteSubPartnerToTop
 router.put("/removeuserfromuserlist",isAuthenticated, removeUserFromPartnerList);
 router.put("/addusertouserlist",isAuthenticated,addUserToUserList );
 router.put("/removetoppartner",isAuthenticated,removeTopPartner );
+
+// RECHARGE MODULE
+router.put("/updaterechargestatus",isAuthenticated,updateRechargeStatus );
+router.get("/getallrecharge",isAuthenticated,getAllRecharge );
+router.get("/getrechargebyid/:id",isAuthenticated,getRechargeById );
+router.put("/updaterechargepermission/:id",isAuthenticated,updateRechargePermission );
 
 
 module.exports = router;
