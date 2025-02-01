@@ -67,7 +67,8 @@ const {
   getSingleUserPlaybetHistory,
   getAllResultsByLocationWithTimesMonthYear,
   getAllTopWinner,
-  getResultAccordingToLocationTY
+  getResultAccordingToLocationTY,
+  getSinglePartnerPerformance
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -188,9 +189,8 @@ router.get("/getapplink", getAppLinks);
 router.delete("/deleteapplink", isAuthenticated, deleteAppLinks);
 
 
-
-
-
+// FOR GETTING PARTNER PERFORMANCE
+router.get("/singlepartnerperformance", getSinglePartnerPerformance);
 
 
 module.exports = router;

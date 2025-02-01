@@ -12,7 +12,7 @@ const partnerModuleSchema = new mongoose.Schema({
   topParentId: { type: Number, default: 1000 },
   playHistoryPermission: { type: Boolean, default: false },
   transactionHistoryPermission: { type: Boolean, default: false },
-  partnerType: { type: String, enum: ["partner", "subpartner"], default: "partner" },
+  partnerType: { type: String, enum: ["partner", "subpartner","user"], default: "partner" },
   rechargeStatus: { type: Boolean, default: false },
   rechargeModule: {
     type: mongoose.Schema.Types.ObjectId,

@@ -64,7 +64,11 @@ const {
   getPartnerProfitDeductions,
   updateProfitDeductionStatus,
   updatePartnerPermissions,
-  updateProfitDeductionStatusAndAmount
+  updateProfitDeductionStatusAndAmount,
+  promoteSubPartnerToTopPartner,
+  removeUserFromPartnerList,
+  addUserToUserList,
+  removeTopPartner
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -172,6 +176,10 @@ router.get("/getprofitdeduction/:userId",isAuthenticated, getPartnerProfitDeduct
 router.put("/updateprofitdeduction",isAuthenticated, updateProfitDeductionStatus);
 router.put("/updateprofitdeductionwithamount",isAuthenticated, updateProfitDeductionStatusAndAmount);
 router.put("/updatepartnerpermission",isAuthenticated, updatePartnerPermissions);
+router.put("/promotesubpartnertopartner",isAuthenticated, promoteSubPartnerToTopPartner);
+router.put("/removeuserfromuserlist",isAuthenticated, removeUserFromPartnerList);
+router.put("/addusertouserlist",isAuthenticated,addUserToUserList );
+router.put("/removetoppartner",isAuthenticated,removeTopPartner );
 
 
 module.exports = router;

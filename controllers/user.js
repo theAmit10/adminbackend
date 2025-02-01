@@ -3208,11 +3208,11 @@ const createProfitDeduction = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("All fields are required", 400));
   }
 
-   // Find the partner using partnerId
-   const partnerUser = await PartnerModule.findOne({ userId: userId });
-   if (!partnerUser) {
-     return next(new ErrorHandler("Partner not found", 404));
-   }
+  // Find the partner using partnerId
+  const partnerUser = await PartnerModule.findOne({ userId: userId });
+  if (!partnerUser) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
 
   // Find the partner using partnerId
   const partner = await PartnerModule.findOne({ userId: partnerId });
@@ -3244,7 +3244,9 @@ const createProfitDeduction = asyncError(async (req, res, next) => {
 const getAllProfitDeductions = asyncError(async (req, res, next) => {
   try {
     // Fetch all profit deductions sorted by newest first
-    const profitDeductions = await ProfitDeduction.find().sort({ createdAt: -1 });
+    const profitDeductions = await ProfitDeduction.find().sort({
+      createdAt: -1,
+    });
 
     res.status(200).json({
       success: true,
@@ -3255,7 +3257,6 @@ const getAllProfitDeductions = asyncError(async (req, res, next) => {
     next(error);
   }
 });
-
 
 const getPartnerProfitDeductions = asyncError(async (req, res, next) => {
   const { userId } = req.params;
@@ -3280,7 +3281,6 @@ const getPartnerProfitDeductions = asyncError(async (req, res, next) => {
     profitDeductions: partner.profitDeduction,
   });
 });
-
 
 const updateProfitDeductionStatus = asyncError(async (req, res, next) => {
   const { id, status } = req.body;
@@ -3323,7 +3323,9 @@ const updateProfitDeductionStatus = asyncError(async (req, res, next) => {
 
     // Ensure the deduction doesn't make profitPercentage negative
     if (partner.profitPercentage < profitPercentage) {
-      return next(new ErrorHandler("Insufficient profit percentage to deduct", 400));
+      return next(
+        new ErrorHandler("Insufficient profit percentage to deduct", 400)
+      );
     }
 
     // Deduct the profit percentage
@@ -3341,67 +3343,72 @@ const updateProfitDeductionStatus = asyncError(async (req, res, next) => {
   }
 });
 
-const updateProfitDeductionStatusAndAmount = asyncError(async (req, res, next) => {
-  const { id, status, profitPercentage  } = req.body;
+const updateProfitDeductionStatusAndAmount = asyncError(
+  async (req, res, next) => {
+    const { id, status, profitPercentage } = req.body;
 
-  // Validate inputs
-  if (!id || !status || !profitPercentage) {
-    return next(new ErrorHandler("ID , status and profit percentage are required", 400));
-  }
-
-  // Ensure status is valid
-  if (!["Pending", "Completed", "Cancelled"].includes(status)) {
-    return next(new ErrorHandler("Invalid status value", 400));
-  }
-
-  // Find the ProfitDeduction entry by ID
-  const profitDeduction = await ProfitDeduction.findById(id);
-  if (!profitDeduction) {
-    return next(new ErrorHandler("Profit deduction entry not found", 404));
-  }
-
-  // If status is "Cancelled", just update the status
-  if (status === "Cancelled") {
-    profitDeduction.status = "Cancelled";
-    await profitDeduction.save();
-    return res.status(200).json({
-      success: true,
-      message: "Profit deduction cancelled successfully",
-    });
-  }
-
-  // If status is "Completed", deduct the profit from the partner
-  if (status === "Completed") {
-    const { userId } = profitDeduction;
-
-    // Find the partner associated with the userId
-    const partner = await PartnerModule.findOne({ userId });
-    if (!partner) {
-      return next(new ErrorHandler("Associated partner not found", 404));
+    // Validate inputs
+    if (!id || !status || !profitPercentage) {
+      return next(
+        new ErrorHandler("ID , status and profit percentage are required", 400)
+      );
     }
 
-    // Ensure the deduction doesn't make profitPercentage negative
-    // if (partner.profitPercentage < profitPercentage) {
-    //   return next(new ErrorHandler("Insufficient profit percentage to deduct", 400));
-    // }
+    // Ensure status is valid
+    if (!["Pending", "Completed", "Cancelled"].includes(status)) {
+      return next(new ErrorHandler("Invalid status value", 400));
+    }
 
-    // Deduct the profit percentage
-    partner.profitPercentage = profitPercentage;
-    await partner.save();
+    // Find the ProfitDeduction entry by ID
+    const profitDeduction = await ProfitDeduction.findById(id);
+    if (!profitDeduction) {
+      return next(new ErrorHandler("Profit deduction entry not found", 404));
+    }
 
-    // Update the status of the profit deduction
-    profitDeduction.status = "Completed";
-    await profitDeduction.save();
+    // If status is "Cancelled", just update the status
+    if (status === "Cancelled") {
+      profitDeduction.status = "Cancelled";
+      await profitDeduction.save();
+      return res.status(200).json({
+        success: true,
+        message: "Profit deduction cancelled successfully",
+      });
+    }
 
-    return res.status(200).json({
-      success: true,
-      message: "Profit deduction completed successfully",
-    });
+    // If status is "Completed", deduct the profit from the partner
+    if (status === "Completed") {
+      const { userId } = profitDeduction;
+
+      // Find the partner associated with the userId
+      const partner = await PartnerModule.findOne({ userId });
+      if (!partner) {
+        return next(new ErrorHandler("Associated partner not found", 404));
+      }
+
+      // Ensure the deduction doesn't make profitPercentage negative
+      // if (partner.profitPercentage < profitPercentage) {
+      //   return next(new ErrorHandler("Insufficient profit percentage to deduct", 400));
+      // }
+
+      // Deduct the profit percentage
+      partner.profitPercentage = profitPercentage;
+      await partner.save();
+
+      // Update the status of the profit deduction
+      profitDeduction.status = "Completed";
+      await profitDeduction.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Profit deduction completed successfully",
+      });
+    }
   }
-});
+);
 
 const updatePartnerPermissions = asyncError(async (req, res, next) => {
-  const { userId, playHistoryPermission, transactionHistoryPermission } = req.body;
+  const { userId, playHistoryPermission, transactionHistoryPermission } =
+    req.body;
 
   // Validate userId
   if (!userId) {
@@ -3409,8 +3416,13 @@ const updatePartnerPermissions = asyncError(async (req, res, next) => {
   }
 
   // Check if at least one of the permissions is provided
-  if (playHistoryPermission === undefined && transactionHistoryPermission === undefined) {
-    return next(new ErrorHandler("At least one permission field is required", 400));
+  if (
+    playHistoryPermission === undefined &&
+    transactionHistoryPermission === undefined
+  ) {
+    return next(
+      new ErrorHandler("At least one permission field is required", 400)
+    );
   }
 
   // Find the partner by userId
@@ -3437,9 +3449,253 @@ const updatePartnerPermissions = asyncError(async (req, res, next) => {
   });
 });
 
+// PROMOTE PARTNER TO TOP PARTNER
+
+const promoteSubPartnerToTopPartner = asyncError(async (req, res, next) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Find the partner using userId
+  const partner = await PartnerModule.findOne({ userId })
+    .populate("userList")
+    .populate("partnerList");
+
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  // Get the parent partner ID of the current partner
+  const parentPartnerId = partner.parentPartnerId;
+
+  // Find the parent partner and remove this partner from their lists
+  if (parentPartnerId !== 1000) {
+    const parentPartner = await PartnerModule.findOne({ userId: parentPartnerId });
+
+    if (parentPartner) {
+      // Remove the partner's _id from parentPartner's userList and partnerList
+      parentPartner.userList = parentPartner.userList.filter(
+        (user) => user.toString() !== partner._id.toString()
+      );
+      parentPartner.partnerList = parentPartner.partnerList.filter(
+        (partnerItem) => partnerItem.toString() !== partner._id.toString()
+      );
+
+      // Save the updated parent partner
+      await parentPartner.save();
+    }
+  }
+
+  // Promote the partner to a top-level partner
+  partner.parentPartnerId = 1000;
+  partner.parentParentPartnerId = 1000;
+  partner.topParentId = 1000;
+  partner.partnerType = "partner";
+  await partner.save();
+
+  // Update all users in the userList
+  await Promise.all(
+    partner.userList.map((user) =>
+      User.findByIdAndUpdate(user._id, {
+        parentParentPartnerId: 1000,
+        topParentId: 1000,
+      })
+    )
+  );
+
+  // Update all partners in the partnerList
+  await Promise.all(
+    partner.partnerList.map(async (subPartner) => {
+      await PartnerModule.findByIdAndUpdate(subPartner._id, {
+        parentParentPartnerId: 1000,
+        topParentId: 1000,
+      });
+
+      // Fetch sub-partner with populated userList
+      const subPartnerData = await PartnerModule.findById(subPartner._id).populate("userList");
+
+      // Update all users inside sub-partner's userList
+      await Promise.all(
+        subPartnerData.userList.map((user) =>
+          User.findByIdAndUpdate(user._id, {
+            topParentId: 1000,
+          })
+        )
+      );
+    })
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "Sub-partner promoted to top-level partner successfully",
+  });
+});
+
+// REMOVE ANY USER FROM THE USERLIST OF THE PARTNER
+
+const removeUserFromPartnerList = asyncError(async (req, res, next) => {
+  const { id, partnerId } = req.body;
+
+  if (!id || !partnerId) {
+    return next(new ErrorHandler("User ID and Partner ID are required", 400));
+  }
+
+  // Find the partner using partnerId
+  const partner = await PartnerModule.findOne({ userId: partnerId });
+
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  // Find the user using id
+  const user = await User.findById(id);
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+
+  // Update the user's hierarchy
+  user.parentPartnerId = 1000;
+  user.parentParentPartnerId = 1000;
+  user.topParentId = 1000;
+  await user.save();
+
+  // Remove the user from the partner's userList
+  partner.userList = partner.userList.filter((userItem) => userItem.toString() !== id.toString());
+  await partner.save();
+
+  res.status(200).json({
+    success: true,
+    message: "User removed from partner's userList and hierarchy updated successfully",
+  });
+});
+
+// ADD USER TO THE USERLIST OF THE PARTNER
+
+const addUserToUserList = asyncError(async (req, res, next) => {
+  const { id, partnerId } = req.body;
+
+  if (!id || !partnerId) {
+    return next(new ErrorHandler("User ID and Partner ID are required", 400));
+  }
+
+  // Find the partner using partnerId
+  const partner = await PartnerModule.findOne({ userId: partnerId });
+
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  // Find the user using id
+  const user = await User.findById(id);
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+
+  // Update the user's hierarchy
+  user.parentPartnerId = partner.userId;
+  user.parentParentPartnerId = partner.parentPartnerId;
+  user.topParentId = partner.parentParentPartnerId;
+  await user.save();
+
+  // Add the user to the partner's userList (if not already present)
+  if (!partner.userList.includes(id)) {
+    partner.userList.push(id);
+    await partner.save();
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "User added to partner's userList and hierarchy updated successfully",
+  });
+});
 
 
+// REMOVE TOP PARTNER 
 
+const removeTopPartner = asyncError(async (req, res, next) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Find the partner using userId
+  const partner = await PartnerModule.findOne({ userId })
+    .populate("userList")
+    .populate("partnerList");
+
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  // Update the partner type to "user"
+  partner.partnerType = "user";
+
+  // Process the userList
+  for (const user of partner.userList) {
+    await User.findByIdAndUpdate(user._id, {
+      parentPartnerId: 1000,
+      parentParentPartnerId: 1000,
+      topParentId: 1000,
+    });
+  }
+  partner.userList = []; // Remove all users from userList
+
+  // Process the partnerList
+  for (const subPartner of partner.partnerList) {
+    await PartnerModule.findByIdAndUpdate(subPartner._id, {
+      parentPartnerId: 1000,
+      parentParentPartnerId: 1000,
+      topParentId: 1000,
+      partnerType: "partner",
+    });
+
+    // Update each sub-partner's userList
+    const subPartnerData = await PartnerModule.findById(
+      subPartner._id
+    ).populate("userList");
+
+    for (const user of subPartnerData.userList) {
+      await User.findByIdAndUpdate(user._id, {
+        parentParentPartnerId: 1000,
+        topParentId: 1000,
+      });
+    }
+
+    // Update each sub-partner's partnerList
+    const nestedPartnerData = await PartnerModule.findById(
+      subPartner._id
+    ).populate("partnerList");
+
+    for (const nestedPartner of nestedPartnerData.partnerList) {
+      await PartnerModule.findByIdAndUpdate(nestedPartner._id, {
+        parentParentPartnerId: 1000,
+        topParentId: 1000,
+      });
+
+      // Update each nested partner's userList
+      const nestedUserList = await PartnerModule.findById(
+        nestedPartner._id
+      ).populate("userList");
+
+      for (const nestedUser of nestedUserList.userList) {
+        await User.findByIdAndUpdate(nestedUser._id, {
+          topParentId: 1000,
+        });
+      }
+    }
+  }
+  partner.partnerList = []; // Remove all partners from partnerList
+
+  await partner.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Top partner removed and hierarchy updated successfully",
+  });
+});
 
 
 
@@ -3509,5 +3765,9 @@ module.exports = {
   getPartnerProfitDeductions,
   updateProfitDeductionStatus,
   updatePartnerPermissions,
-  updateProfitDeductionStatusAndAmount
+  updateProfitDeductionStatusAndAmount,
+  promoteSubPartnerToTopPartner,
+  removeUserFromPartnerList,
+  addUserToUserList,
+  removeTopPartner
 };
