@@ -72,7 +72,9 @@ const {
   updateRechargeStatus,
   getAllRecharge,
   getRechargeById,
-  updateRechargePermission
+  updateRechargePermission,
+  getSinglePartnerRecharges,
+  getAllRechargeTransactions
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -188,8 +190,12 @@ router.put("/removetoppartner",isAuthenticated,removeTopPartner );
 // RECHARGE MODULE
 router.put("/updaterechargestatus",isAuthenticated,updateRechargeStatus );
 router.get("/getallrecharge",isAuthenticated,getAllRecharge );
+
+router.get("/getsinglepartnerrecharge/:userId",isAuthenticated,getSinglePartnerRecharges);
 router.get("/getrechargebyid/:id",isAuthenticated,getRechargeById );
 router.put("/updaterechargepermission/:id",isAuthenticated,updateRechargePermission );
+
+router.get("/getalluserrecharge",isAuthenticated,getAllRechargeTransactions );
 
 
 module.exports = router;

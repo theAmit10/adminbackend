@@ -13,6 +13,7 @@ const rechargeModuleSchema = new mongoose.Schema({
   skrillList: [{ type: mongoose.Schema.Types.ObjectId, ref: "SkrillPaymentType" }],
   cryptoList: [{ type: mongoose.Schema.Types.ObjectId, ref: "CryptoPaymentType" }],
   paypalList: [{ type: mongoose.Schema.Types.ObjectId, ref: "PaypalPaymentType" }],
+  rechargeList: [{ type: mongoose.Schema.Types.ObjectId, ref: "Transaction" }],
 });
 
 module.exports = mongoose.model("RechargeModule", rechargeModuleSchema);

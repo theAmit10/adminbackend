@@ -2150,67 +2150,6 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
 // DEPOSIT
 // ##########################################
 
-// Add Deposit
-// const addDeposit = asyncError(async (req, res, next) => {
-//   const {
-//     amount,
-//     transactionid,
-//     remark,
-//     paymenttype,
-//     paymenttypeid,
-//     username,
-//     userid,
-//     paymentstatus,
-//   } = req.body;
-
-//   // Validate user existence
-//   const user = await User.findOne({ contact: userid });
-//   if (!user) {
-//     return next(new ErrorHandler("User not found", 404));
-//   }
-
-//   // Validate required fields
-//   if (!amount) return next(new ErrorHandler("Amount missing", 400));
-//   if (!transactionid) return next(new ErrorHandler("Transaction ID missing", 400));
-//   if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
-//   if (!paymenttypeid) return next(new ErrorHandler("Payment type ID missing", 400));
-//   if (!username) return next(new ErrorHandler("Username missing", 400));
-
-//   // Check if a file is provided in the request
-//   if (!req.file) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Please upload receipt screenshot",
-//     });
-//   }
-
-//   const { filename } = req.file;
-//   const receipt = filename;
-
-//   // Create a new transaction
-//   const transaction = await Transaction.create({
-//     amount,
-//     transactionId: transactionid,
-//     receipt,
-//     remark,
-//     paymentType: paymenttype,
-//     paymentTypeId: paymenttypeid,
-//     username,
-//     userId: userid,
-//     transactionType: "Deposit",
-//     paymentStatus: paymentstatus || "Pending",
-//   });
-
-//   // Update user's transaction history
-//   user.transactionHistory.push(transaction._id);
-//   await user.save();
-
-//   res.status(200).json({
-//     success: true,
-//     message: "Deposit request sent successfully",
-//     transaction,
-//   });
-// });
 
 // const addDeposit = asyncError(async (req, res, next) => {
 //   const {
@@ -2222,49 +2161,65 @@ const transferAmountFromWalletOneToWalletTwo = asyncError(
 //     paymentstatus,
 //     transactionid,
 //     paymenttypeid,
-//     transactionType
 //   } = req.body;
 
-//   // Validate user existence
-//   const user = await User.findOne({ contact: userid });
+//   const user = await User.findOne({ userId: userid });
 //   if (!user) {
 //     return next(new ErrorHandler("User not found", 404));
 //   }
 
-//   // Validate required fields
 //   if (!amount) return next(new ErrorHandler("Amount missing", 400));
-//   if (!transactionid) return next(new ErrorHandler("Transaction ID missing", 400));
+//   if (!transactionid)
+//     return next(new ErrorHandler("Transaction ID missing", 400));
 //   if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
-//   if (!paymenttypeid) return next(new ErrorHandler("Payment type ID missing", 400));
+//   if (!paymenttypeid)
+//     return next(new ErrorHandler("Payment type ID missing", 400));
 //   if (!username) return next(new ErrorHandler("Username missing", 400));
-//   if (!transactionType) return next(new ErrorHandler("Transaction Type missing", 400));
 
-//   // Check if a file is provided in the request
-//   if (!req.file) {
-//     return res.status(400).json({
-//       success: false,
-//       message: "Please upload receipt screenshot",
-//     });
+//   // I have just add the below line just to check
+//   if (!req.file) return next(new ErrorHandler("Please add screenshot", 400));
+
+//   // NOW GETTING THE CALCULATED AMOUNT
+
+//   const currency = await Currency.findById(user.country._id);
+//   if (!currency) {
+//     return next(new ErrorHandler("Currency not found", 404));
 //   }
 
-//   const { filename } = req.file;
-//   const receipt = filename;
+//   const currencyconverter = parseFloat(
+//     currency.countrycurrencyvaluecomparedtoinr
+//   );
 
-//   // Create a new transaction
+//   const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter);
+//   console.log("convertedAmount :: " + convertedAmount);
+
+//   let transactiontype = "";
+
+//   // FOR CHECKING DEPOSIT OR RECHARGE TRANSACTION
+//   const numericRechargeId = Number(user.rechargePaymentId);
+
+//   if(numericRechargeId === 1000)
+//   {
+//     transactiontype = "Deposit";
+//   }else{
+//     transactiontype = "Recharge";
+//   }
+
 //   const transaction = await Transaction.create({
 //     amount,
+//     convertedAmount,
 //     transactionId: transactionid,
-//     receipt,
 //     remark,
 //     paymentType: paymenttype,
 //     paymentTypeId: paymenttypeid,
 //     username,
 //     userId: userid,
-//     transactionType: transactionType,
+//     transactionType: transactiontype || "Deposit",
 //     paymentStatus: paymentstatus || "Pending",
+//     currency: user.country._id.toString(),
+//     receipt: req.file ? req.file.filename : undefined,
 //   });
 
-//   // Update user's transaction history
 //   user.transactionHistory.push(transaction._id);
 //   await user.save();
 
@@ -2287,11 +2242,13 @@ const addDeposit = asyncError(async (req, res, next) => {
     paymenttypeid,
   } = req.body;
 
+  // Step 1: Fetch user details
   const user = await User.findOne({ userId: userid });
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
   }
 
+  // Step 2: Validate required fields
   if (!amount) return next(new ErrorHandler("Amount missing", 400));
   if (!transactionid)
     return next(new ErrorHandler("Transaction ID missing", 400));
@@ -2299,12 +2256,9 @@ const addDeposit = asyncError(async (req, res, next) => {
   if (!paymenttypeid)
     return next(new ErrorHandler("Payment type ID missing", 400));
   if (!username) return next(new ErrorHandler("Username missing", 400));
-
-  // I have just add the below line just to check
   if (!req.file) return next(new ErrorHandler("Please add screenshot", 400));
 
-  // NOW GETTING THE CALCULATED AMOUNT
-
+  // Step 3: Fetch currency and calculate converted amount
   const currency = await Currency.findById(user.country._id);
   if (!currency) {
     return next(new ErrorHandler("Currency not found", 404));
@@ -2317,6 +2271,18 @@ const addDeposit = asyncError(async (req, res, next) => {
   const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter);
   console.log("convertedAmount :: " + convertedAmount);
 
+  let transactiontype = "";
+
+  // Step 4: Determine transaction type
+  const numericRechargeId = Number(user.rechargePaymentId);
+
+  if (numericRechargeId === 1000) {
+    transactiontype = "Deposit";
+  } else {
+    transactiontype = "Recharge";
+  }
+
+  // Step 5: Create a transaction
   const transaction = await Transaction.create({
     amount,
     convertedAmount,
@@ -2326,15 +2292,34 @@ const addDeposit = asyncError(async (req, res, next) => {
     paymentTypeId: paymenttypeid,
     username,
     userId: userid,
-    transactionType: "Deposit",
+    transactionType: transactiontype || "Deposit",
     paymentStatus: paymentstatus || "Pending",
     currency: user.country._id.toString(),
     receipt: req.file ? req.file.filename : undefined,
   });
 
+  // Step 6: Add transaction ID to user's transaction history
   user.transactionHistory.push(transaction._id);
   await user.save();
 
+  // Step 7: If numericRechargeId !== 1000, update rechargeModule
+  if (numericRechargeId !== 1000) {
+    const partner = await PartnerModule.findOne({ userId: numericRechargeId }).populate("rechargeModule");
+
+    if (!partner || !partner.rechargeModule) {
+      return next(new ErrorHandler("Recharge Module not found", 404));
+    }
+
+    const rechargeModule = partner.rechargeModule;
+
+    // Push the transaction ID to rechargeList
+    rechargeModule.rechargeList.push(transaction._id);
+
+    // Save the updated rechargeModule
+    await rechargeModule.save();
+  }
+
+  // Step 8: Return success response
   res.status(200).json({
     success: true,
     message: "Deposit request sent successfully",
@@ -2342,18 +2327,7 @@ const addDeposit = asyncError(async (req, res, next) => {
   });
 });
 
-// const getUserTransactions = asyncError(async (req, res, next) => {
-//   const { userid } = req.query;
 
-//   const transactions = await Transaction.find({ userId: userid }).sort({
-//     createdAt: -1,
-//   });
-
-//   res.status(200).json({
-//     success: true,
-//     transactions,
-//   });
-// });
 
 const getUserTransactions = asyncError(async (req, res, next) => {
   const { userid } = req.query;
@@ -3821,8 +3795,69 @@ const updateRechargePermission = asyncError(async (req, res, next) => {
 });
 
 
+// GET PARTNER RECHARGE LIST
+
+const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
+  const { userId } = req.params;
+
+  // Step 1: Find the user by userId
+  const user = await User.findOne({ userId });
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+
+  // Step 2: Check if rechargePaymentId !== 1000
+  if (user.rechargePaymentId === 1000) {
+    return next(new ErrorHandler("User does not have a partner recharge module", 400));
+  }
+  console.log(user.rechargePaymentId)
+
+  // Step 3: Find the partner using rechargePaymentId
+  const partner = await PartnerModule.findOne({ userId: user.rechargePaymentId });
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  console.log(partner.rechargeModule)
+  
+
+  // Step 4: Find the rechargeModule from RechargeModule
+  const rechargeModule = await RechargeModule.findById(partner.rechargeModule).populate({
+    path: "rechargeList",
+    options: { sort: { createdAt: -1 } }, // Sort in descending order
+  });
+
+  if (!rechargeModule) {
+    return next(new ErrorHandler("Recharge Module not found", 404));
+  }
+
+  // Step 5: Return populated rechargeList
+  res.status(200).json({
+    success: true,
+    recharges: rechargeModule.rechargeList,
+  });
+});
+
+const getAllRechargeTransactions = asyncError(async (req, res, next) => {
+  // Fetch all transactions where transactionType is "Recharge"
+  const transactions = await Transaction.find({ transactionType: "Recharge" }).sort({ createdAt: -1 });
+
+  if (!transactions || transactions.length === 0) {
+    return next(new ErrorHandler("No recharge transactions found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    transactions,
+  });
+});
+
+
+
 
 module.exports = {
+  getAllRechargeTransactions,
+  getSinglePartnerRecharges,
   login,
   register,
   getMyProfile,

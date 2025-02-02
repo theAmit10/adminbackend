@@ -16,19 +16,19 @@ const transactionSchema = new mongoose.Schema({
   transactionId: {
     type: String,
     required: function() {
-      return this.transactionType === "Deposit";
+      return this.transactionType === "Deposit" || this.transactionType === "Recharge";
     },
   },
   paymentTypeId: {
     type: String,
     required: function() {
-      return this.transactionType === "Deposit";
+      return this.transactionType === "Deposit" || this.transactionType === "Recharge";
     },
   },
   receipt: {
     type: String,
     required: function() {
-      return this.transactionType === "Deposit";
+      return this.transactionType === "Deposit" || this.transactionType === "Recharge";
     },
   },
   remark: {
@@ -48,7 +48,7 @@ const transactionSchema = new mongoose.Schema({
   },
   transactionType: {
     type: String,
-    enum: ["Deposit", "Withdraw","AdminUpdate","Transfer"],
+    enum: ["Deposit", "Withdraw","AdminUpdate","Transfer","Recharge"],
     required: true
   },
   paymentStatus: {
