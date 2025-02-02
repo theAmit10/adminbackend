@@ -85,7 +85,17 @@ const {
   updateSkrillPaymentStatus,
   updateSkrillActivationStatus,
   getPartnerSkrillList,
-  getUserSkrillPayments
+  getUserSkrillPayments,
+  deleteSingleCrypto,
+  updateCryptoPaymentStatus,
+  updateCryptoActivationStatus,
+  getPartnerCryptoList,
+  getUserCryptoPayments,
+  deleteSingleUpi,
+  updateUpiPaymentStatus,
+  updateUpiActivationStatus,
+  getPartnerUpiList,
+  getUserUpiPayments
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -140,6 +150,12 @@ router.post("/addupipayment", isAuthenticated, singleUploadForUPIQrCode, addUpiP
 router.get("/allupipaymets", isAuthenticated, getAllUPIPayments);
 router.delete("/removeupipayment/:id", isAuthenticated, deleteUPIPayment);
 
+router.get("/getuserupipaymets/:userId", isAuthenticated, getUserUpiPayments);
+router.get("/getpartnerupilist/:id", isAuthenticated, getPartnerUpiList);
+router.put("/updateupistatus/:id", isAuthenticated, updateUpiActivationStatus);
+router.put("/updateupipaymentstatus/:id", isAuthenticated, updateUpiPaymentStatus);
+router.delete("/deletesingleupi/:id", isAuthenticated, deleteSingleUpi);
+
 // FOR  BANK PAYMENT
 router.post("/addbankpayment", isAuthenticated, addBankPayment);
 router.get("/allbankpaymets", isAuthenticated, getAllBankPayments);
@@ -166,6 +182,12 @@ router.delete("/deletesinglepaypal/:id", isAuthenticated, deleteSinglePaypal);
 router.post("/addcryptopayment", isAuthenticated,singleUploadForCryptoQrCode, addCryptoPayment);
 router.get("/allcryptopaymets", isAuthenticated, getAllCryptoPayments);
 router.delete("/removecryptopayment/:id", isAuthenticated, deleteCryptoPayment);
+
+router.get("/getusercryptopaymets/:userId", isAuthenticated, getUserCryptoPayments);
+router.get("/getpartnercryptolist/:id", isAuthenticated, getPartnerCryptoList);
+router.put("/updatecryptostatus/:id", isAuthenticated, updateCryptoActivationStatus);
+router.put("/updatecryptopaymentstatus/:id", isAuthenticated, updateCryptoPaymentStatus);
+router.delete("/deletesinglecrypto/:id", isAuthenticated, deleteSingleCrypto);
 
 
 // FOR  SKRILL PAYMENT
