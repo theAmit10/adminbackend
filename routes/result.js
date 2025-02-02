@@ -73,7 +73,19 @@ const {
   updateBankActivationStatus,
   getPartnerBankList,
   deleteSingleBank,
-  updateBankPaymentStatus
+  updateBankPaymentStatus,
+  updateShowPartnerRechargeToUserAndPartner,
+  deactivateShowPartnerRechargeToUserAndPartner,
+  getUserPaypalPayments,
+  getPartnerPaypalList,
+  updatePaypalActivationStatus,
+  updatePaypalPaymentStatus,
+  deleteSinglePaypal,
+  deleteSingleSkrill,
+  updateSkrillPaymentStatus,
+  updateSkrillActivationStatus,
+  getPartnerSkrillList,
+  getUserSkrillPayments
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -135,13 +147,20 @@ router.get("/getuserbankpaymets/:userId", isAuthenticated, getUserBankPayments);
 router.get("/getpartnerbanklist/:id", isAuthenticated, getPartnerBankList);
 router.put("/updatebankstatus/:id", isAuthenticated, updateBankActivationStatus);
 router.put("/updatebankpaymentstatus/:id", isAuthenticated, updateBankPaymentStatus);
-router.delete("/removebankpayment/:id", isAuthenticated, deleteBankPayment);
+
 router.delete("/deletesinglebank/:id", isAuthenticated, deleteSingleBank);
+router.delete("/removebankpayment/:id", isAuthenticated, deleteBankPayment);
 
 // FOR  PAYPAL PAYMENT
 router.post("/addpaypalpayment", isAuthenticated, addPaypalPayment);
 router.get("/allpaypalpaymets", isAuthenticated, getAllPaypalPayments);
 router.delete("/removepaypalpayment/:id", isAuthenticated, deletePaypalPayment);
+
+router.get("/getuserpaypalpaymets/:userId", isAuthenticated, getUserPaypalPayments);
+router.get("/getpartnerpaypallist/:id", isAuthenticated, getPartnerPaypalList);
+router.put("/updatepaypalstatus/:id", isAuthenticated, updatePaypalActivationStatus);
+router.put("/updatepaypalpaymentstatus/:id", isAuthenticated, updatePaypalPaymentStatus);
+router.delete("/deletesinglepaypal/:id", isAuthenticated, deleteSinglePaypal);
 
 // FOR  CRYPTO PAYMENT
 router.post("/addcryptopayment", isAuthenticated,singleUploadForCryptoQrCode, addCryptoPayment);
@@ -153,6 +172,12 @@ router.delete("/removecryptopayment/:id", isAuthenticated, deleteCryptoPayment);
 router.post("/addskrillpayment", isAuthenticated, addSkrillPayment);
 router.get("/allskrillpaymets", isAuthenticated, getAllSkrillPayments);
 router.delete("/removeskrillpayment/:id", isAuthenticated, deleteSkrillPayment);
+
+router.get("/getuserskrillpaymets/:userId", isAuthenticated, getUserSkrillPayments);
+router.get("/getpartnerskrilllist/:id", isAuthenticated, getPartnerSkrillList);
+router.put("/updateskrillstatus/:id", isAuthenticated, updateSkrillActivationStatus);
+router.put("/updateskrillpaymentstatus/:id", isAuthenticated, updateSkrillPaymentStatus);
+router.delete("/deletesingleskrill/:id", isAuthenticated, deleteSingleSkrill);
 
 // FOR PLAYZONE
 router.post("/addplay", isAuthenticated, addPlayzone);
@@ -201,6 +226,8 @@ router.delete("/deleteapplink", isAuthenticated, deleteAppLinks);
 
 // FOR GETTING PARTNER PERFORMANCE
 router.get("/singlepartnerperformance", getSinglePartnerPerformance);
+router.put("/updaterechargetouserandpartner", isAuthenticated, updateShowPartnerRechargeToUserAndPartner);
+router.put("/deactivatedrechargetouserandpartner", isAuthenticated, deactivateShowPartnerRechargeToUserAndPartner);
 
 
 module.exports = router;

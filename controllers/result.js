@@ -1829,7 +1829,7 @@ const deletePayment = asyncError(async (req, res, next) => {
 // ##############################
 
 const addUpiPayment = asyncError(async (req, res, next) => {
-  const { upiholdername, upiid, paymentnote } = req.body;
+  const { upiholdername, upiid, paymentnote, userId } = req.body;
 
   if (!upiholdername)
     return next(new ErrorHandler("UPI holder name is missing", 404));
@@ -1837,12 +1837,31 @@ const addUpiPayment = asyncError(async (req, res, next) => {
 
   if (!req.file) return next(new ErrorHandler("UPI QR Code is missing", 404));
 
-  await UpiPaymentType.create({
+  const newUpi = await UpiPaymentType.create({
     upiholdername,
     upiid,
     qrcode: req.file ? req.file.filename : undefined,
     paymentnote,
   });
+
+  if (userId) {
+    // Fetch the PartnerModule by userId
+    const partner = await PartnerModule.findOne({ userId }).populate(
+      "rechargeModule"
+    );
+
+    if (!partner) {
+      return next(new ErrorHandler("Partner not found", 404));
+    }
+
+    if (!partner.rechargeModule) {
+      return next(new ErrorHandler("Recharge Module not found", 404));
+    }
+
+    // Push the new bank ID into the rechargeModule's upiList array
+    partner.rechargeModule.upiList.push(newUpi._id);
+    await partner.rechargeModule.save();
+  }
 
   res.status(201).json({
     success: true,
@@ -1928,7 +1947,9 @@ const addBankPayment = asyncError(async (req, res, next) => {
 
   if (userId) {
     // Fetch the PartnerModule by userId
-    const partner = await PartnerModule.findOne({ userId }).populate("rechargeModule");
+    const partner = await PartnerModule.findOne({ userId }).populate(
+      "rechargeModule"
+    );
 
     if (!partner) {
       return next(new ErrorHandler("Partner not found", 404));
@@ -1950,7 +1971,6 @@ const addBankPayment = asyncError(async (req, res, next) => {
   });
 });
 
-
 const getAllBankPayments = asyncError(async (req, res, next) => {
   const payments = await BankPaymentType.find();
 
@@ -1959,9 +1979,6 @@ const getAllBankPayments = asyncError(async (req, res, next) => {
     payments,
   });
 });
-
-
-
 
 const deleteBankPayment = asyncError(async (req, res, next) => {
   const { id } = req.params;
@@ -1983,12 +2000,31 @@ const deleteBankPayment = asyncError(async (req, res, next) => {
 // ##############################
 
 const addPaypalPayment = asyncError(async (req, res, next) => {
-  const { emailaddress, paymentnote } = req.body;
+  const { emailaddress, paymentnote, userId } = req.body;
 
   if (!emailaddress)
     return next(new ErrorHandler("Email address is missing", 404));
 
-  await PaypalPaymentType.create(req.body);
+  const newpaypal = await PaypalPaymentType.create(req.body);
+
+  if (userId) {
+    // Fetch the PartnerModule by userId
+    const partner = await PartnerModule.findOne({ userId }).populate(
+      "rechargeModule"
+    );
+
+    if (!partner) {
+      return next(new ErrorHandler("Partner not found", 404));
+    }
+
+    if (!partner.rechargeModule) {
+      return next(new ErrorHandler("Recharge Module not found", 404));
+    }
+
+    // Push the new bank ID into the rechargeModule's paypalList array
+    partner.rechargeModule.paypalList.push(newpaypal._id);
+    await partner.rechargeModule.save();
+  }
 
   res.status(201).json({
     success: true,
@@ -2076,14 +2112,33 @@ const deleteCryptoPayment = asyncError(async (req, res, next) => {
 // ##############################
 
 const addSkrillPayment = asyncError(async (req, res, next) => {
-  const { address, paymentnote } = req.body;
+  const { address, paymentnote, userId } = req.body;
 
   if (!address)
     return next(
       new ErrorHandler("Email address or phone number is missing", 404)
     );
 
-  await SkrillPaymentType.create(req.body);
+  const newBank = await SkrillPaymentType.create(req.body);
+
+  if (userId) {
+    // Fetch the PartnerModule by userId
+    const partner = await PartnerModule.findOne({ userId }).populate(
+      "rechargeModule"
+    );
+
+    if (!partner) {
+      return next(new ErrorHandler("Partner not found", 404));
+    }
+
+    if (!partner.rechargeModule) {
+      return next(new ErrorHandler("Recharge Module not found", 404));
+    }
+
+    // Push the new bank ID into the rechargeModule's bankList array
+    partner.rechargeModule.skrillList.push(newBank._id);
+    await partner.rechargeModule.save();
+  }
 
   res.status(201).json({
     success: true,
@@ -3193,7 +3248,9 @@ const addPlaybet = asyncError(async (req, res, next) => {
 
       const currentuserId = req.user.userId;
       const currentnewAmount = parseFloat(totalAmount);
-      const currentnewConvertedAmount = parseFloat(totalAmount * currencyconverter);
+      const currentnewConvertedAmount = parseFloat(
+        totalAmount * currencyconverter
+      );
 
       partnerData.users.push({
         userId: currentuserId,
@@ -3202,20 +3259,21 @@ const addPlaybet = asyncError(async (req, res, next) => {
         convertedAmount: currentnewConvertedAmount,
         currency: user.country._id.toString(),
       });
-  
+
       // Push the new partner data into the performance array
       partnerPerformance.performances.push(partnerData);
-    }else{
-
+    } else {
       const currentuserId = req.user.userId;
       const currentnewAmount = parseFloat(totalAmount);
-      const currentnewConvertedAmount = parseFloat(totalAmount * currencyconverter);
-  
+      const currentnewConvertedAmount = parseFloat(
+        totalAmount * currencyconverter
+      );
+
       // Check if the user already exists in partnerData.users
       const existingUser = partnerData.users.find(
         (user) => user.userId.toString() === currentuserId.toString()
       );
-  
+
       if (existingUser) {
         // Update the existing user's amount and convertedAmount
         existingUser.amount += currentnewAmount;
@@ -3230,7 +3288,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
           currency: user.country._id.toString(),
         });
       }
-
     }
 
     // Step 5: Push user data into the users array
@@ -3911,24 +3968,173 @@ const getSinglePartnerPerformance = asyncError(async (req, res) => {
   });
 });
 
-// const getUserBankPayments = asyncError(async (req, res, next) => {
-//   const { userId } = req.params;
+// ACTIVATE RECHARGE PAYMENT MODULE SO THAT USER CAN SEE DATA
+const updateShowPartnerRechargeToUserAndPartner = asyncError(
+  async (req, res, next) => {
+    const { userId, id } = req.body;
 
-//   // Find all bank payments where userId matches
-//   const bankPayments = await BankPaymentType.find({ userId }).sort({
-//     createdAt: -1,
-//   });
+    if (!userId) {
+      return next(new ErrorHandler("userId is required", 400));
+    }
 
-//   if (!bankPayments.length) {
-//     return next(new ErrorHandler("No bank payments found for this user", 404));
-//   }
+    try {
+      // 2️⃣ Find the partner using userId
+      const partner = await PartnerModule.findOne({ userId }).populate(
+        "userList partnerList"
+      );
+      if (!partner) {
+        return next(new ErrorHandler("Partner not found", 404));
+      }
 
-//   res.status(200).json({
-//     success: true,
-//     count: bankPayments.length,
-//     payments: bankPayments,
-//   });
-// });
+      // 3️⃣ Update rechargePaymentId for each user in userList
+      await Promise.all(
+        partner.userList.map(async (user) => {
+          await User.findByIdAndUpdate(user._id, {
+            rechargePaymentId: partner.userId,
+          });
+        })
+      );
+
+      // 4️⃣ Recursively update rechargePaymentId for all partners and their users
+      const updateRechargePaymentId = async (partners) => {
+        for (const p of partners) {
+          await PartnerModule.findByIdAndUpdate(p._id, {
+            rechargePaymentId: partner.userId,
+          });
+
+          // Update rechargePaymentId for each user in the partner's userList
+          await Promise.all(
+            p.userList.map(async (user) => {
+              await User.findByIdAndUpdate(user._id, {
+                rechargePaymentId: partner.userId,
+              });
+            })
+          );
+
+          // If the partner has a partnerList, update them recursively
+          if (p.partnerList.length > 0) {
+            await updateRechargePaymentId(p.partnerList);
+          }
+        }
+      };
+
+      // Start recursive update for partnerList
+      await updateRechargePaymentId(partner.partnerList);
+
+      // 5️⃣ Finally, update the activationStatus of the bank payment
+      const updatedDocument = await RechargeModule.findByIdAndUpdate(
+        id,
+        { activationStatus: true },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedDocument) {
+        return next(
+          new ErrorHandler("Failed to update activation status", 500)
+        );
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Activation status updated successfully",
+      });
+    } catch (error) {
+      console.error(error);
+      return next(
+        new ErrorHandler(
+          "An error occurred while updating activation status",
+          500
+        )
+      );
+    }
+  }
+);
+
+// DEACTIVATE RECHARGE PAYMENT MODULE SO THAT USER CAN SEE DATA
+const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
+  async (req, res, next) => {
+    const { userId, id } = req.body;
+
+    const adminId = 1000;
+
+    if (!userId) {
+      return next(new ErrorHandler("userId is required", 400));
+    }
+
+    try {
+      // 2️⃣ Find the partner using userId
+      const partner = await PartnerModule.findOne({ userId }).populate(
+        "userList partnerList"
+      );
+      if (!partner) {
+        return next(new ErrorHandler("Partner not found", 404));
+      }
+
+      // 3️⃣ Update rechargePaymentId for each user in userList
+      await Promise.all(
+        partner.userList.map(async (user) => {
+          await User.findByIdAndUpdate(user._id, {
+            rechargePaymentId: adminId,
+          });
+        })
+      );
+
+      // 4️⃣ Recursively update rechargePaymentId for all partners and their users
+      const updateRechargePaymentId = async (partners) => {
+        for (const p of partners) {
+          await PartnerModule.findByIdAndUpdate(p._id, {
+            rechargePaymentId: adminId,
+          });
+
+          // Update rechargePaymentId for each user in the partner's userList
+          await Promise.all(
+            p.userList.map(async (user) => {
+              await User.findByIdAndUpdate(user._id, {
+                rechargePaymentId: adminId,
+              });
+            })
+          );
+
+          // If the partner has a partnerList, update them recursively
+          if (p.partnerList.length > 0) {
+            await updateRechargePaymentId(p.partnerList);
+          }
+        }
+      };
+
+      // Start recursive update for partnerList
+      await updateRechargePaymentId(partner.partnerList);
+
+      // 5️⃣ Finally, update the activationStatus of the bank payment
+      const updatedDocument = await RechargeModule.findByIdAndUpdate(
+        id,
+        { activationStatus: false },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedDocument) {
+        return next(
+          new ErrorHandler("Failed to update activation status", 500)
+        );
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Activation status updated successfully",
+      });
+    } catch (error) {
+      console.error(error);
+      return next(
+        new ErrorHandler(
+          "An error occurred while updating activation status",
+          500
+        )
+      );
+    }
+  }
+);
+
+// FOR BANK RECHARGE
 
 const getUserBankPayments = asyncError(async (req, res, next) => {
   const { userId } = req.params;
@@ -3939,14 +4145,21 @@ const getUserBankPayments = asyncError(async (req, res, next) => {
   try {
     if (numericUserId === 1000) {
       // Fetch all payments for userId 1000
-      bankPayments = await BankPaymentType.find({ userId: 1000 }).sort({ createdAt: -1 });
+      bankPayments = await BankPaymentType.find({ userId: 1000 }).sort({
+        createdAt: -1,
+      });
     } else {
       // Fetch payments for the specified userId with activationStatus: true
-      bankPayments = await BankPaymentType.find({ userId: numericUserId, activationStatus: true }).sort({ createdAt: -1 });
+      bankPayments = await BankPaymentType.find({
+        userId: numericUserId,
+        activationStatus: true,
+      }).sort({ createdAt: -1 });
 
       if (bankPayments.length === 0) {
         // If no active payments found, fetch all payments for userId 1000
-        bankPayments = await BankPaymentType.find({ userId: 1000 }).sort({ createdAt: -1 });
+        bankPayments = await BankPaymentType.find({ userId: 1000 }).sort({
+          createdAt: -1,
+        });
       }
     }
 
@@ -3956,16 +4169,17 @@ const getUserBankPayments = asyncError(async (req, res, next) => {
       payments: bankPayments,
     });
   } catch (error) {
-    return next(new ErrorHandler("An error occurred while fetching bank payments", 500));
+    return next(
+      new ErrorHandler("An error occurred while fetching bank payments", 500)
+    );
   }
 });
-
 
 const updateBankActivationStatus = asyncError(async (req, res, next) => {
   const { id } = req.params;
   const { activationStatus } = req.body;
 
-  if (typeof activationStatus !== 'boolean') {
+  if (typeof activationStatus !== "boolean") {
     return next(new ErrorHandler("activationStatus must be a boolean", 400));
   }
 
@@ -3975,44 +4189,8 @@ const updateBankActivationStatus = asyncError(async (req, res, next) => {
     if (!bankPayment) {
       return next(new ErrorHandler("Bank Payment not found", 404));
     }
-    const userId = bankPayment.userId;
 
-    // 2️⃣ Find the partner using userId
-    const partner = await PartnerModule.findOne({ userId }).populate("userList partnerList");
-    if (!partner) {
-      return next(new ErrorHandler("Partner not found", 404));
-    }
-
-    // 3️⃣ Update rechargePaymentId for each user in userList
-    await Promise.all(
-      partner.userList.map(async (user) => {
-        await User.findByIdAndUpdate(user._id, { rechargePaymentId: partner.userId });
-      })
-    );
-
-    // 4️⃣ Recursively update rechargePaymentId for all partners and their users
-    const updateRechargePaymentId = async (partners) => {
-      for (const p of partners) {
-        await PartnerModule.findByIdAndUpdate(p._id, { rechargePaymentId: partner.userId });
-
-        // Update rechargePaymentId for each user in the partner's userList
-        await Promise.all(
-          p.userList.map(async (user) => {
-            await User.findByIdAndUpdate(user._id, { rechargePaymentId: partner.userId });
-          })
-        );
-
-        // If the partner has a partnerList, update them recursively
-        if (p.partnerList.length > 0) {
-          await updateRechargePaymentId(p.partnerList);
-        }
-      }
-    };
-
-    // Start recursive update for partnerList
-    await updateRechargePaymentId(partner.partnerList);
-
-    // 5️⃣ Finally, update the activationStatus of the bank payment
+    //  Finally, update the activationStatus of the bank payment
     const updatedDocument = await BankPaymentType.findByIdAndUpdate(
       id,
       { activationStatus, paymentStatus: "Approved" },
@@ -4025,15 +4203,19 @@ const updateBankActivationStatus = asyncError(async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: "Activation status updated successfully and rechargePaymentId updated.",
+      message: "Activation status updated successfully",
       data: updatedDocument,
     });
   } catch (error) {
     console.error(error);
-    return next(new ErrorHandler("An error occurred while updating activation status", 500));
+    return next(
+      new ErrorHandler(
+        "An error occurred while updating activation status",
+        500
+      )
+    );
   }
 });
-
 
 const getPartnerBankList = asyncError(async (req, res, next) => {
   const { id } = req.params;
@@ -4082,7 +4264,9 @@ const deleteSingleBank = asyncError(async (req, res, next) => {
   const rechargeModule = partner.rechargeModule;
 
   // Step 4: Remove the bank data from the bankList inside rechargeModule
-  const updatedBankList = rechargeModule.bankList.filter(bank => bank._id.toString() !== id);
+  const updatedBankList = rechargeModule.bankList.filter(
+    (bank) => bank._id.toString() !== id
+  );
 
   // Update the rechargeModule with the new bankList
   rechargeModule.bankList = updatedBankList;
@@ -4123,11 +4307,361 @@ const updateBankPaymentStatus = asyncError(async (req, res, next) => {
   });
 });
 
+// FOR PAYPAL RECHARGE
 
+const getUserPaypalPayments = asyncError(async (req, res, next) => {
+  const { userId } = req.params;
+  const numericUserId = Number(userId); // Convert userId to a number
+
+  let paypalPayments = [];
+
+  try {
+    if (numericUserId === 1000) {
+      // Fetch all payments for userId 1000
+      paypalPayments = await PaypalPaymentType.find({ userId: 1000 }).sort({
+        createdAt: -1,
+      });
+    } else {
+      // Fetch payments for the specified userId with activationStatus: true
+      paypalPayments = await PaypalPaymentType.find({
+        userId: numericUserId,
+        activationStatus: true,
+      }).sort({ createdAt: -1 });
+
+      if (paypalPayments.length === 0) {
+        // If no active payments found, fetch all payments for userId 1000
+        paypalPayments = await PaypalPaymentType.find({ userId: 1000 }).sort({
+          createdAt: -1,
+        });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      count: paypalPayments.length,
+      payments: paypalPayments,
+    });
+  } catch (error) {
+    return next(
+      new ErrorHandler("An error occurred while fetching bank payments", 500)
+    );
+  }
+});
+
+const updatePaypalActivationStatus = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+  const { activationStatus } = req.body;
+
+  if (typeof activationStatus !== "boolean") {
+    return next(new ErrorHandler("activationStatus must be a boolean", 400));
+  }
+
+  try {
+    // 1️⃣ Find the bank payment and get userId
+    const paypalPayment = await PaypalPaymentType.findById(id);
+    if (!paypalPayment) {
+      return next(new ErrorHandler("Paypal Payment not found", 404));
+    }
+
+    //  Finally, update the activationStatus of the bank payment
+    const updatedDocument = await PaypalPaymentType.findByIdAndUpdate(
+      id,
+      { activationStatus, paymentStatus: "Approved" },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedDocument) {
+      return next(new ErrorHandler("Failed to update activation status", 500));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Activation status updated successfully",
+      data: updatedDocument,
+    });
+  } catch (error) {
+    console.error(error);
+    return next(
+      new ErrorHandler(
+        "An error occurred while updating activation status",
+        500
+      )
+    );
+  }
+});
+
+const getPartnerPaypalList = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Find the recharge module by ID and populate the bankList
+  const rechargeModule = await RechargeModule.findById(id).populate({
+    path: "paypalList",
+    options: { sort: { createdAt: -1 } }, // Sort by descending order
+  });
+
+  if (!rechargeModule) {
+    return next(new ErrorHandler("Recharge Module not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    paypalList: rechargeModule.paypalList,
+  });
+});
+
+const deleteSinglePaypal = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Step 1: Get the bank data using the id from the params
+  const paypalData = await PaypalPaymentType.findById(id);
+  if (!paypalData) {
+    return next(new ErrorHandler("Paypal Data not found", 404));
+  }
+
+  // Step 2: Get the userId from the bank data
+  const { userId } = paypalData;
+
+  // Step 3: Get the partner data using userId and populate the rechargeModule
+  const partner = await PartnerModule.findOne({ userId }).populate({
+    path: "rechargeModule",
+    populate: {
+      path: "paypalList", // Populate the bankList
+    },
+  });
+
+  if (!partner || !partner.rechargeModule) {
+    return next(new ErrorHandler("Partner or Recharge Module not found", 404));
+  }
+
+  const rechargeModule = partner.rechargeModule;
+
+  // Step 4: Remove the bank data from the bankList inside rechargeModule
+  const updatedPaypalList = rechargeModule.paypalList.filter(
+    (bank) => bank._id.toString() !== id
+  );
+
+  // Update the rechargeModule with the new bankList
+  rechargeModule.paypalList = updatedPaypalList;
+  await rechargeModule.save();
+
+  // Step 5: Delete the bank data from PaypalPaymentType
+  await PaypalPaymentType.findByIdAndDelete(id);
+
+  // Return success response
+  res.status(200).json({
+    success: true,
+    message: "Paypal Data successfully deleted and updated in Recharge Module",
+  });
+});
+
+const updatePaypalPaymentStatus = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+  const { paymentStatus } = req.body;
+
+  // Step 1: Find the BankPaymentType entry by ID
+  const bankData = await PaypalPaymentType.findById(id);
+  if (!bankData) {
+    return next(new ErrorHandler("Bank Payment Type not found", 404));
+  }
+
+  // Step 2: Update the paymentStatus
+  bankData.paymentStatus = paymentStatus;
+
+  // Step 3: Save the updated document
+  await bankData.save();
+
+  // Return success response
+  res.status(200).json({
+    success: true,
+    message: "Payment status updated successfully",
+    updatedData: bankData,
+  });
+});
+
+// FOR SKRILL RECHARGE
+
+const getUserSkrillPayments = asyncError(async (req, res, next) => {
+  const { userId } = req.params;
+  const numericUserId = Number(userId); // Convert userId to a number
+
+  let skrillPayments = [];
+
+  try {
+    if (numericUserId === 1000) {
+      // Fetch all payments for userId 1000
+      skrillPayments = await SkrillPaymentType.find({ userId: 1000 }).sort({
+        createdAt: -1,
+      });
+    } else {
+      // Fetch payments for the specified userId with activationStatus: true
+      skrillPayments = await SkrillPaymentType.find({
+        userId: numericUserId,
+        activationStatus: true,
+      }).sort({ createdAt: -1 });
+
+      if (skrillPayments.length === 0) {
+        // If no active payments found, fetch all payments for userId 1000
+        skrillPayments = await SkrillPaymentType.find({ userId: 1000 }).sort({
+          createdAt: -1,
+        });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      count: skrillPayments.length,
+      payments: skrillPayments,
+    });
+  } catch (error) {
+    return next(
+      new ErrorHandler("An error occurred while fetching bank payments", 500)
+    );
+  }
+});
+
+const updateSkrillActivationStatus = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+  const { activationStatus } = req.body;
+
+  if (typeof activationStatus !== "boolean") {
+    return next(new ErrorHandler("activationStatus must be a boolean", 400));
+  }
+
+  try {
+    // 1️⃣ Find the bank payment and get userId
+    const skrillPayment = await SkrillPaymentType.findById(id);
+    if (!skrillPayment) {
+      return next(new ErrorHandler("Skrill Payment not found", 404));
+    }
+
+    //  Finally, update the activationStatus of the bank payment
+    const updatedDocument = await SkrillPaymentType.findByIdAndUpdate(
+      id,
+      { activationStatus, paymentStatus: "Approved" },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedDocument) {
+      return next(new ErrorHandler("Failed to update activation status", 500));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Activation status updated successfully",
+      data: updatedDocument,
+    });
+  } catch (error) {
+    console.error(error);
+    return next(
+      new ErrorHandler(
+        "An error occurred while updating activation status",
+        500
+      )
+    );
+  }
+});
+
+const getPartnerSkrillList = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Find the recharge module by ID and populate the bankList
+  const rechargeModule = await RechargeModule.findById(id).populate({
+    path: "skrillList",
+    options: { sort: { createdAt: -1 } }, // Sort by descending order
+  });
+
+  if (!rechargeModule) {
+    return next(new ErrorHandler("Recharge Module not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    paypalList: rechargeModule.skrillList,
+  });
+});
+
+const deleteSingleSkrill = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Step 1: Get the bank data using the id from the params
+  const skrillData = await SkrillPaymentType.findById(id);
+  if (!skrillData) {
+    return next(new ErrorHandler("Skrill Data not found", 404));
+  }
+
+  // Step 2: Get the userId from the bank data
+  const { userId } = skrillData;
+
+  // Step 3: Get the partner data using userId and populate the rechargeModule
+  const partner = await PartnerModule.findOne({ userId }).populate({
+    path: "rechargeModule",
+    populate: {
+      path: "skrillList", // Populate the bankList
+    },
+  });
+
+  if (!partner || !partner.rechargeModule) {
+    return next(new ErrorHandler("Partner or Recharge Module not found", 404));
+  }
+
+  const rechargeModule = partner.rechargeModule;
+
+  // Step 4: Remove the bank data from the bankList inside rechargeModule
+  const updatedSkrillList = rechargeModule.skrillList.filter(
+    (bank) => bank._id.toString() !== id
+  );
+
+  // Update the rechargeModule with the new bankList
+  rechargeModule.skrillList = updatedSkrillList;
+  await rechargeModule.save();
+
+  // Step 5: Delete the bank data from PaypalPaymentType
+  await SkrillPaymentType.findByIdAndDelete(id);
+
+  // Return success response
+  res.status(200).json({
+    success: true,
+    message: "Skrill Data successfully deleted and updated in Recharge Module",
+  });
+});
+
+const updateSkrillPaymentStatus = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+  const { paymentStatus } = req.body;
+
+  // Step 1: Find the BankPaymentType entry by ID
+  const bankData = await SkrillPaymentType.findById(id);
+  if (!bankData) {
+    return next(new ErrorHandler("Skrill Payment Type not found", 404));
+  }
+
+  // Step 2: Update the paymentStatus
+  bankData.paymentStatus = paymentStatus;
+
+  // Step 3: Save the updated document
+  await bankData.save();
+
+  // Return success response
+  res.status(200).json({
+    success: true,
+    message: "Payment status updated successfully",
+    updatedData: bankData,
+  });
+});
 
 
 
 module.exports = {
+  updateSkrillPaymentStatus,
+  deleteSingleSkrill,
+  getPartnerSkrillList,
+  getUserSkrillPayments,
+  updateSkrillActivationStatus,
+  getUserPaypalPayments,
+  updatePaypalActivationStatus,
+  getPartnerPaypalList,
+  deleteSinglePaypal,
+  updatePaypalPaymentStatus,
   createCurrency,
   getAllCurrencies,
   updateCurrency,
@@ -4198,5 +4732,7 @@ module.exports = {
   updateBankActivationStatus,
   getPartnerBankList,
   deleteSingleBank,
-  updateBankPaymentStatus
+  updateBankPaymentStatus,
+  updateShowPartnerRechargeToUserAndPartner,
+  deactivateShowPartnerRechargeToUserAndPartner,
 };

@@ -6,6 +6,7 @@ const rechargeModuleSchema = new mongoose.Schema({
   paypalPermission: { type: Boolean, default: false },
   cryptoPermission: { type: Boolean, default: false },
   skrillPermission: { type: Boolean, default: false },
+  activationStatus: { type: Boolean, default: false },
   otherPaymentPermission: { type: Boolean, default: false },
   upiList: [{ type: mongoose.Schema.Types.ObjectId, ref: "UpiPaymentType" }],
   bankList: [{ type: mongoose.Schema.Types.ObjectId, ref: "BankPaymentType" }],
