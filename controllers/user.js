@@ -178,6 +178,7 @@ const register = asyncError(async (req, res, next) => {
   let parentPartnerId = 1000;
   let parentParentPartnerId = 1000;
   let topParentId = 1000;
+  let rechargePaymentId = 1000;
 
   // Check if parentId is provided and valid
   let partner = null;
@@ -193,6 +194,7 @@ const register = asyncError(async (req, res, next) => {
     parentPartnerId = partner.userId;
     parentParentPartnerId = partner.parentPartnerId;
     topParentId = partner.parentParentPartnerId;
+    rechargePaymentId = partner.rechargePaymentId;
   }
 
   const contact = userId;
@@ -210,6 +212,7 @@ const register = asyncError(async (req, res, next) => {
     parentPartnerId,
     parentParentPartnerId,
     topParentId,
+    rechargePaymentId,
   });
 
   // If parentId is valid, add the user to the parent partner's userList

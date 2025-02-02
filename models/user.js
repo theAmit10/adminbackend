@@ -84,6 +84,7 @@ const schema = new mongoose.Schema({
   otp: Number,
   otp_expire: Date,
   userId: Number,
+  rechargePaymentId: { type: Number, default: 1000 },
   parentPartnerId: { type: Number, default: 1000 },
   parentParentPartnerId: { type: Number, default: 1000 },
   topParentId: { type: Number, default: 1000 },

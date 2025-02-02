@@ -24,6 +24,11 @@ const schema = new mongoose.Schema({
     paymentId: Number,
     userId: { type: Number, default: 1000 },
     activationStatus: { type: Boolean, default: false },
+    paymentStatus: {
+        type: String,
+        enum: ["Pending", "Approved", "Cancelled"],
+        default: "Pending",
+      },
  
 },{ timestamps: true });
 

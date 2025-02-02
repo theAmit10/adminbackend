@@ -69,7 +69,11 @@ const {
   getAllTopWinner,
   getResultAccordingToLocationTY,
   getSinglePartnerPerformance,
-  getUserBankPayments
+  getUserBankPayments,
+  updateBankActivationStatus,
+  getPartnerBankList,
+  deleteSingleBank,
+  updateBankPaymentStatus
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -128,7 +132,11 @@ router.delete("/removeupipayment/:id", isAuthenticated, deleteUPIPayment);
 router.post("/addbankpayment", isAuthenticated, addBankPayment);
 router.get("/allbankpaymets", isAuthenticated, getAllBankPayments);
 router.get("/getuserbankpaymets/:userId", isAuthenticated, getUserBankPayments);
+router.get("/getpartnerbanklist/:id", isAuthenticated, getPartnerBankList);
+router.put("/updatebankstatus/:id", isAuthenticated, updateBankActivationStatus);
+router.put("/updatebankpaymentstatus/:id", isAuthenticated, updateBankPaymentStatus);
 router.delete("/removebankpayment/:id", isAuthenticated, deleteBankPayment);
+router.delete("/deletesinglebank/:id", isAuthenticated, deleteSingleBank);
 
 // FOR  PAYPAL PAYMENT
 router.post("/addpaypalpayment", isAuthenticated, addPaypalPayment);
