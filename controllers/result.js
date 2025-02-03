@@ -1551,6 +1551,29 @@ const updateTime = asyncError(async (req, res, next) => {
   });
 });
 
+const updateLiveResultAndTimerForTime = asyncError(async (req, res, next) => {
+  const { liveresultlink, liveresulttimer } = req.body;
+
+  if (!liveresultlink) {
+    return next(new ErrorHandler("Please add live result link", 404));
+  }
+  
+
+  const ltime = await LotTime.findById(req.params.id);
+
+  if (!ltime) return next(new ErrorHandler("Time not found", 404));
+
+  if (liveresultlink) ltime.liveresultlink = liveresultlink;
+  if (liveresulttimer) ltime.liveresulttimer = liveresulttimer;
+
+  await ltime.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Time Updated Successfully",
+  });
+});
+
 // ####################
 // LOT LOCATION
 // ####################
@@ -5010,8 +5033,8 @@ const updateCryptoPaymentStatus = asyncError(async (req, res, next) => {
   });
 });
 
-
 module.exports = {
+  updateLiveResultAndTimerForTime,
   getUserCryptoPayments,
   updateCryptoActivationStatus,
   getPartnerCryptoList,

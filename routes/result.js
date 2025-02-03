@@ -95,7 +95,8 @@ const {
   updateUpiPaymentStatus,
   updateUpiActivationStatus,
   getPartnerUpiList,
-  getUserUpiPayments
+  getUserUpiPayments,
+  updateLiveResultAndTimerForTime
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const { singleUploadForCurrency } = require("../middlewares/currencymiddleware.js");
@@ -130,6 +131,7 @@ router.post("/addlottime", isAuthenticated, addLotTime);
 router.get("/alllottime", isAuthenticated, getAllLotTime);
 router.delete("/removelottime/:id", isAuthenticated, deleteLotTime);
 router.put("/updatelottime/:id", isAuthenticated, updateTime);
+router.put("/updateresultelink/:id", isAuthenticated, updateLiveResultAndTimerForTime);
 router.get("/searchtime", isAuthenticated, getAllLotTimeAccordindLocation);
 
 // for LotLocation
