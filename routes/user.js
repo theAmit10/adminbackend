@@ -74,7 +74,11 @@ const {
   getRechargeById,
   updateRechargePermission,
   getSinglePartnerRecharges,
-  getAllRechargeTransactions
+  getAllRechargeTransactions,
+  createPowerBallGame,
+  addMultiplier,
+  removeMultiplier,
+  updateGameDetails
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -196,6 +200,13 @@ router.get("/getrechargebyid/:id",isAuthenticated,getRechargeById );
 router.put("/updaterechargepermission/:id",isAuthenticated,updateRechargePermission );
 
 router.get("/getalluserrecharge",isAuthenticated,getAllRechargeTransactions );
+
+// PowerBall
+
+router.post("/createpowerball",isAuthenticated,createPowerBallGame);
+router.post("/addmultipler/:gameId",isAuthenticated,addMultiplier);
+router.delete("/removemultipler/:gameId",isAuthenticated,removeMultiplier);
+router.put("/updategamedetails/:gameId",isAuthenticated,updateGameDetails);
 
 
 module.exports = router;

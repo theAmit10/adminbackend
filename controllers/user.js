@@ -22,6 +22,7 @@ const bcrypt = require("bcryptjs");
 const PartnerModule = require("../models/PartnerModule.js");
 const ProfitDeduction = require("../models/ProfitDeduction.js");
 const RechargeModule = require("../models/RechargeModule.js");
+const PowerBallGame = require("../models/PowerBallGame.js");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -4243,7 +4244,110 @@ const getAllRechargeTransactions = asyncError(async (req, res, next) => {
   });
 });
 
+// POWER BALL GAME
+
+
+
+const createPowerBallGame = asyncError(async (req, res, next) => {
+  const { name, startRange, endRange, multiplier } = req.body;
+
+  // Validate required fields
+  if (!name) return next(new ErrorHandler("Name is required", 400));
+  if (startRange === undefined || endRange === undefined)
+    return next(new ErrorHandler("Start and end range are required", 400));
+
+  // Create new PowerBallGame entry
+  const newGame = await PowerBallGame.create({
+    name,
+    range: { startRange, endRange },
+    multiplier: Array.isArray(multiplier) ? multiplier : [], // If no multiplier provided, set empty array
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "PowerBallGame created successfully",
+    game: newGame,
+  });
+});
+
+
+
+// ✅ Add Multiplier to the Game
+const addMultiplier = asyncError(async (req, res, next) => {
+  const { gameId } = req.params;
+  const { value } = req.body;
+
+  if (!value) return next(new ErrorHandler("Multiplier value is required", 400));
+
+  const game = await PowerBallGame.findById(gameId);
+  if (!game) return next(new ErrorHandler("Game not found", 404));
+
+  game.multiplier.push({ value });
+  await game.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Multiplier added successfully",
+    game,
+  });
+});
+
+// ✅ Remove Multiplier from the Game
+const removeMultiplier = asyncError(async (req, res, next) => {
+  const { gameId } = req.params;
+  const { value } = req.body;
+
+  if (!value) return next(new ErrorHandler("Multiplier value is required", 400));
+
+  const game = await PowerBallGame.findById(gameId);
+  if (!game) return next(new ErrorHandler("Game not found", 404));
+
+  // Filter out the multiplier with the given value
+  game.multiplier = game.multiplier.filter((item) => item.value !== value);
+  await game.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Multiplier removed successfully",
+    game,
+  });
+});
+
+
+// ✅ Update Name, StartRange, or EndRange
+const updateGameDetails = asyncError(async (req, res, next) => {
+  const { gameId } = req.params;
+  const { name, startRange, endRange } = req.body;
+
+  const game = await PowerBallGame.findById(gameId);
+  if (!game) return next(new ErrorHandler("Game not found", 404));
+
+  // Update only if the value is provided
+  if (name !== undefined) game.name = name;
+  if (startRange !== undefined) game.range.startRange = startRange;
+  if (endRange !== undefined) game.range.endRange = endRange;
+
+  await game.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Game details updated successfully",
+    game,
+  });
+});
+
+
+
+
+
+
+
+
 module.exports = {
+  updateGameDetails,
+  addMultiplier,
+  removeMultiplier,
+  createPowerBallGame,
   getAllRechargeTransactions,
   getSinglePartnerRecharges,
   login,
