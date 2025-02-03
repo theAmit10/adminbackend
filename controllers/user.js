@@ -23,6 +23,8 @@ const PartnerModule = require("../models/PartnerModule.js");
 const ProfitDeduction = require("../models/ProfitDeduction.js");
 const RechargeModule = require("../models/RechargeModule.js");
 const PowerBallGame = require("../models/PowerBallGame.js");
+const PowerTime = require("../models/PowerTime.js");
+const PowerDate = require("../models/PowerDate.js");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -2411,7 +2413,6 @@ const getAllDeposit = asyncError(async (req, res, next) => {
   });
 });
 
-
 // UPDATE PAYMENT STATUS
 // const updateDepositStatus = asyncError(async (req, res, next) => {
 //   const {
@@ -2862,7 +2863,6 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
 
-   
     // Update wallet
     const updatedWallet = await WalletTwo.findByIdAndUpdate(
       walletId,
@@ -2872,7 +2872,6 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     console.log("User's walletOne updated successfully :: " + updatedWallet);
 
-  
     // Create notification for deposit completion
     const notification = new Notification({
       title: "Deposit Completed",
@@ -3061,7 +3060,6 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     const remainingWalletBalance = totalBalanceAmount - parseFloat(amount);
     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
 
-    
     // Fetch all WalletTwo balances and populate currencyId
     const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
     let gameBalance = 0;
@@ -4246,20 +4244,23 @@ const getAllRechargeTransactions = asyncError(async (req, res, next) => {
 
 // POWER BALL GAME
 
-
-
 const createPowerBallGame = asyncError(async (req, res, next) => {
-  const { name, startRange, endRange, multiplier } = req.body;
+  const { name, startRange, endRange, multiplier, winnerPrize } = req.body;
 
   // Validate required fields
   if (!name) return next(new ErrorHandler("Name is required", 400));
-  if (startRange === undefined || endRange === undefined)
+  if (startRange === undefined || endRange === undefined) {
     return next(new ErrorHandler("Start and end range are required", 400));
+  }
+  if (!winnerPrize) {
+    return next(new ErrorHandler("Winner prizes are required", 400));
+  }
 
   // Create new PowerBallGame entry
   const newGame = await PowerBallGame.create({
     name,
     range: { startRange, endRange },
+    winnerPrize,
     multiplier: Array.isArray(multiplier) ? multiplier : [], // If no multiplier provided, set empty array
   });
 
@@ -4270,14 +4271,13 @@ const createPowerBallGame = asyncError(async (req, res, next) => {
   });
 });
 
-
-
 // ✅ Add Multiplier to the Game
 const addMultiplier = asyncError(async (req, res, next) => {
   const { gameId } = req.params;
   const { value } = req.body;
 
-  if (!value) return next(new ErrorHandler("Multiplier value is required", 400));
+  if (!value)
+    return next(new ErrorHandler("Multiplier value is required", 400));
 
   const game = await PowerBallGame.findById(gameId);
   if (!game) return next(new ErrorHandler("Game not found", 404));
@@ -4297,7 +4297,8 @@ const removeMultiplier = asyncError(async (req, res, next) => {
   const { gameId } = req.params;
   const { value } = req.body;
 
-  if (!value) return next(new ErrorHandler("Multiplier value is required", 400));
+  if (!value)
+    return next(new ErrorHandler("Multiplier value is required", 400));
 
   const game = await PowerBallGame.findById(gameId);
   if (!game) return next(new ErrorHandler("Game not found", 404));
@@ -4312,7 +4313,6 @@ const removeMultiplier = asyncError(async (req, res, next) => {
     game,
   });
 });
-
 
 // ✅ Update Name, StartRange, or EndRange
 const updateGameDetails = asyncError(async (req, res, next) => {
@@ -4336,14 +4336,257 @@ const updateGameDetails = asyncError(async (req, res, next) => {
   });
 });
 
+// ✅ Get a Single PowerBall Game by ID
+const getPowerBallGameById = asyncError(async (req, res, next) => {
+  const { gameId } = req.params;
+
+  const game = await PowerBallGame.findById(gameId);
+  if (!game) return next(new ErrorHandler("PowerBall game not found", 404));
+
+  res.status(200).json({
+    success: true,
+    game,
+  });
+});
+
+// ✅ Get All PowerBall Games
+const getAllPowerBallGames = asyncError(async (req, res, next) => {
+  const games = await PowerBallGame.find().sort({ createdAt: -1 }); // Sorted by latest
+  res.status(200).json({
+    success: true,
+    count: games.length,
+    games,
+  });
+});
+
+// POWERBALL TIME
 
 
+// ✅ Create a New PowerTime
+const createPowerTime = asyncError(async (req, res, next) => {
+    const { powertime } = req.body;
+
+    if (!powertime) {
+        return next(new ErrorHandler("Power time is required", 400));
+    }
+
+    const newPowerTime = await PowerTime.create({ powertime });
+
+    res.status(201).json({
+        success: true,
+        message: "PowerTime created successfully",
+        powerTime: newPowerTime,
+    });
+});
+
+// ✅ Update PowerTime by ID
+const updatePowerTime = asyncError(async (req, res, next) => {
+    const { id } = req.params;
+    const { powertime } = req.body;
+
+    let powerTime = await PowerTime.findById(id);
+    if (!powerTime) {
+        return next(new ErrorHandler("PowerTime not found", 404));
+    }
+
+    powerTime.powertime = powertime || powerTime.powertime;
+    await powerTime.save();
+
+    res.status(200).json({
+        success: true,
+        message: "PowerTime updated successfully",
+        powerTime,
+    });
+});
+
+// ✅ Delete PowerTime by ID
+const deletePowerTime = asyncError(async (req, res, next) => {
+    const { id } = req.params;
+
+    const powerTime = await PowerTime.findById(id);
+    if (!powerTime) {
+        return next(new ErrorHandler("PowerTime not found", 404));
+    }
+
+    await powerTime.deleteOne();
+
+    res.status(200).json({
+        success: true,
+        message: "PowerTime deleted successfully",
+    });
+});
+
+// ✅ Get a Single PowerTime by ID
+const getSinglePowerTime = asyncError(async (req, res, next) => {
+    const { id } = req.params;
+
+    const powerTime = await PowerTime.findById(id);
+    if (!powerTime) {
+        return next(new ErrorHandler("PowerTime not found", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        powerTime,
+    });
+});
+
+// ✅ Get All PowerTimes
+const getAllPowerTimes = asyncError(async (req, res, next) => {
+    const powerTimes = await PowerTime.find().sort({ createdAt: 1 });
+
+    res.status(200).json({
+        success: true,
+        count: powerTimes.length,
+        powerTimes,
+    });
+});
+
+// POWERBALL DATE
+
+
+// ✅ Create a New PowerDate
+const createPowerDate = asyncError(async (req, res, next) => {
+    const { powerdate, powertime } = req.body;
+
+    if (!powerdate || !powertime) {
+        return next(new ErrorHandler("Power date and power time ID are required", 400));
+    }
+
+    // Check if powertime exists
+    const timeExists = await PowerTime.findById(powertime);
+    if (!timeExists) {
+        return next(new ErrorHandler("Invalid power time ID", 404));
+    }
+
+    const newPowerDate = await PowerDate.create({ powerdate, powertime });
+
+    res.status(201).json({
+        success: true,
+        message: "PowerDate created successfully",
+        powerDate: newPowerDate,
+    });
+});
+
+// ✅ Update PowerDate by ID
+const updatePowerDate = asyncError(async (req, res, next) => {
+    const { id } = req.params;
+    const { powerdate, powertime } = req.body;
+
+    let powerDate = await PowerDate.findById(id);
+    if (!powerDate) {
+        return next(new ErrorHandler("PowerDate not found", 404));
+    }
+
+    // If powertime is updated, validate it
+    if (powertime) {
+        const timeExists = await PowerTime.findById(powertime);
+        if (!timeExists) {
+            return next(new ErrorHandler("Invalid power time ID", 404));
+        }
+        powerDate.powertime = powertime;
+    }
+
+    powerDate.powerdate = powerdate || powerDate.powerdate;
+    await powerDate.save();
+
+    res.status(200).json({
+        success: true,
+        message: "PowerDate updated successfully",
+        powerDate,
+    });
+});
+
+// ✅ Delete PowerDate by ID
+const deletePowerDate = asyncError(async (req, res, next) => {
+    const { id } = req.params;
+
+    const powerDate = await PowerDate.findById(id);
+    if (!powerDate) {
+        return next(new ErrorHandler("PowerDate not found", 404));
+    }
+
+    await powerDate.deleteOne();
+
+    res.status(200).json({
+        success: true,
+        message: "PowerDate deleted successfully",
+    });
+});
+
+// ✅ Get a Single PowerDate by ID (with populated powertime)
+const getSinglePowerDate = asyncError(async (req, res, next) => {
+    const { id } = req.params;
+
+    const powerDate = await PowerDate.findById(id).populate("powertime");
+    if (!powerDate) {
+        return next(new ErrorHandler("PowerDate not found", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        powerDate,
+    });
+});
+
+// ✅ Get All PowerDates (with populated powertime)
+const getAllPowerDates = asyncError(async (req, res, next) => {
+    const powerDates = await PowerDate.find().populate("powertime").sort({ createdAt: -1 });
+
+    res.status(200).json({
+        success: true,
+        count: powerDates.length,
+        powerDates,
+    });
+});
+
+
+// ✅ Add Winner Prize to PowerBallGame
+const addWinnerPrize = asyncError(async (req, res, next) => {
+  const { gameId } = req.params;
+  const { firstprize, secondPrize, thirdprize, fourthPrize, fifthprize, sixthPrize } = req.body;
+
+  let game = await PowerBallGame.findById(gameId);
+  if (!game) {
+    return next(new ErrorHandler("PowerBallGame not found", 404));
+  }
+
+  game.winnerPrize = {
+    firstprize: firstprize || game.winnerPrize.firstprize,
+    secondPrize: secondPrize || game.winnerPrize.secondPrize,
+    thirdprize: thirdprize || game.winnerPrize.thirdprize,
+    fourthPrize: fourthPrize || game.winnerPrize.fourthPrize,
+    fifthprize: fifthprize || game.winnerPrize.fifthprize,
+    sixthPrize: sixthPrize || game.winnerPrize.sixthPrize
+  };
+
+  await game.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Winner prize updated successfully",
+    game,
+  });
+});
 
 
 
 
 
 module.exports = {
+  addWinnerPrize,
+  createPowerDate,
+  updatePowerDate,
+  deletePowerDate,
+  getSinglePowerDate,
+  getAllPowerDates,
+  createPowerTime,
+  updatePowerTime,
+  deletePowerTime,
+  getSinglePowerTime,
+  getAllPowerTimes,
+  getPowerBallGameById,
+  getAllPowerBallGames,
   updateGameDetails,
   addMultiplier,
   removeMultiplier,

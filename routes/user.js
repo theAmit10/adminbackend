@@ -78,7 +78,20 @@ const {
   createPowerBallGame,
   addMultiplier,
   removeMultiplier,
-  updateGameDetails
+  updateGameDetails,
+  getPowerBallGameById,
+  getAllPowerBallGames,
+  createPowerTime,
+  updatePowerTime,
+  getAllPowerTimes,
+  getSinglePowerTime,
+  deletePowerTime,
+  createPowerDate,
+  updatePowerDate,
+  getAllPowerDates,
+  getSinglePowerDate,
+  deletePowerDate,
+  addWinnerPrize
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -207,6 +220,23 @@ router.post("/createpowerball",isAuthenticated,createPowerBallGame);
 router.post("/addmultipler/:gameId",isAuthenticated,addMultiplier);
 router.delete("/removemultipler/:gameId",isAuthenticated,removeMultiplier);
 router.put("/updategamedetails/:gameId",isAuthenticated,updateGameDetails);
+router.put("/updatewinnerprize/:gameId",isAuthenticated,addWinnerPrize);
+router.get("/getallpowerball/",isAuthenticated,getAllPowerBallGames);
+router.get("/getpowerball/:gameId",isAuthenticated,getPowerBallGameById);
+
+// POWERBALL TIME
+router.post("/createpowertime",isAuthenticated,createPowerTime);
+router.put("/updatepowertime/:id",isAuthenticated,updatePowerTime);
+router.get("/getallpowertime/",isAuthenticated,getAllPowerTimes);
+router.get("/getpowertime/:id",isAuthenticated,getSinglePowerTime);
+router.delete("/removepowertime/:id",isAuthenticated,deletePowerTime);
+
+// POWERBALL DATE
+router.post("/createpowerdate",isAuthenticated,createPowerDate);
+router.put("/updatepowerdate/:id",isAuthenticated,updatePowerDate);
+router.get("/getallpowerdate",isAuthenticated,getAllPowerDates);
+router.get("/getpowerdate/:id",isAuthenticated,getSinglePowerDate);
+router.delete("/removepowerdate/:id",isAuthenticated,deletePowerDate);
 
 
 module.exports = router;

@@ -16,6 +16,32 @@ const PowerBallGameSchema = new mongoose.Schema(
         required: true,
       },
     },
+    winnerPrize: {
+      firstprize: {
+        type: Number,
+        required: true,
+      },
+      secondPrize: {
+        type: Number,
+        required: true,
+      },
+      thirdprize: {
+        type: Number,
+        required: true,
+      },
+      fourthPrize: {
+        type: Number,
+        required: true,
+      },
+      fifthprize: {
+        type: Number,
+        required: true,
+      },
+      sixthPrize: {
+        type: Number,
+        required: true,
+      },
+    },
     multiplier: [
       {
         value: {
