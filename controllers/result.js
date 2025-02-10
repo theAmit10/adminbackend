@@ -1557,7 +1557,6 @@ const updateLiveResultAndTimerForTime = asyncError(async (req, res, next) => {
   if (!liveresultlink) {
     return next(new ErrorHandler("Please add live result link", 404));
   }
-  
 
   const ltime = await LotTime.findById(req.params.id);
 

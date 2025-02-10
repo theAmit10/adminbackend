@@ -91,7 +91,9 @@ const {
   getAllPowerDates,
   getSinglePowerDate,
   deletePowerDate,
-  addWinnerPrize
+  addWinnerPrize,
+  createPowerballGameTickets,
+  getAllTicketsByPowerDateAndTime
   
 } = require("../controllers/user.js");
 const {isAuthenticated, verifyToken} = require("../middlewares/auth.js");
@@ -237,6 +239,10 @@ router.put("/updatepowerdate/:id",isAuthenticated,updatePowerDate);
 router.get("/getallpowerdate",isAuthenticated,getAllPowerDates);
 router.get("/getpowerdate/:id",isAuthenticated,getSinglePowerDate);
 router.delete("/removepowerdate/:id",isAuthenticated,deletePowerDate);
+
+// POWERBALL PLAY 
+router.post("/createpowerballgame",isAuthenticated,createPowerballGameTickets);
+router.get("/getalltickets",isAuthenticated,getAllTicketsByPowerDateAndTime);
 
 
 module.exports = router;

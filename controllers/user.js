@@ -25,6 +25,7 @@ const RechargeModule = require("../models/RechargeModule.js");
 const PowerBallGame = require("../models/PowerBallGame.js");
 const PowerTime = require("../models/PowerTime.js");
 const PowerDate = require("../models/PowerDate.js");
+const PowerballGameTickets = require("../models/PowerballGameTickets.js");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -3371,6 +3372,8 @@ const makeUserSubPartner = asyncError(async (req, res, next) => {
 
   // Assign the created PartnerModule to the user
   user.partnerModule = partnerModule._id;
+  user.partnerType = "subpartner";
+
   // user.partnerStatus = true; // Mark the user as a partner
 
   // Save the updated user
@@ -3524,7 +3527,7 @@ const increasePartnerProfit = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Partner not found", 404));
   }
 
-  partner.profitPercentage += profitPercentage;
+  partner.profitPercentage = profitPercentage;
   await partner.save();
 
   res.status(201).json({
@@ -4166,22 +4169,22 @@ const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
   const { userId } = req.params;
 
   // Step 1: Find the user by userId
-  const user = await User.findOne({ userId });
-  if (!user) {
-    return next(new ErrorHandler("User not found", 404));
-  }
+  // const user = await User.findOne({ userId });
+  // if (!user) {
+  //   return next(new ErrorHandler("User not found", 404));
+  // }
 
-  // Step 2: Check if rechargePaymentId !== 1000
-  if (user.rechargePaymentId === 1000) {
-    return next(
-      new ErrorHandler("User does not have a partner recharge module", 400)
-    );
-  }
-  console.log(user.rechargePaymentId);
+  // // Step 2: Check if rechargePaymentId !== 1000
+  // if (user.rechargePaymentId === 1000) {
+  //   return next(
+  //     new ErrorHandler("User does not have a partner recharge module", 400)
+  //   );
+  // }
+  // console.log(user.rechargePaymentId);
 
   // Step 3: Find the partner using rechargePaymentId
   const partner = await PartnerModule.findOne({
-    userId: user.rechargePaymentId,
+    userId,
   });
   if (!partner) {
     return next(new ErrorHandler("Partner not found", 404));
@@ -4207,6 +4210,52 @@ const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
     recharges: rechargeModule.rechargeList,
   });
 });
+
+// const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
+//   const { userId } = req.params;
+
+//   // Step 1: Find the user by userId
+//   const user = await User.findOne({ userId });
+//   if (!user) {
+//     return next(new ErrorHandler("User not found", 404));
+//   }
+
+//   // Step 2: Check if rechargePaymentId !== 1000
+//   if (user.rechargePaymentId === 1000) {
+//     return next(
+//       new ErrorHandler("User does not have a partner recharge module", 400)
+//     );
+//   }
+//   console.log(user.rechargePaymentId);
+
+//   // Step 3: Find the partner using rechargePaymentId
+//   const partner = await PartnerModule.findOne({
+//     userId: user.rechargePaymentId,
+//   });
+//   if (!partner) {
+//     return next(new ErrorHandler("Partner not found", 404));
+//   }
+
+//   console.log(partner.rechargeModule);
+
+//   // Step 4: Find the rechargeModule from RechargeModule
+//   const rechargeModule = await RechargeModule.findById(
+//     partner.rechargeModule
+//   ).populate({
+//     path: "rechargeList",
+//     options: { sort: { createdAt: -1 } }, // Sort in descending order
+//   });
+
+//   if (!rechargeModule) {
+//     return next(new ErrorHandler("Recharge Module not found", 404));
+//   }
+
+//   // Step 5: Return populated rechargeList
+//   res.status(200).json({
+//     success: true,
+//     recharges: rechargeModule.rechargeList,
+//   });
+// });
 
 const getAllRechargeTransactions = asyncError(async (req, res, next) => {
   // Get page and limit from query params or set default values
@@ -4361,190 +4410,198 @@ const getAllPowerBallGames = asyncError(async (req, res, next) => {
 
 // POWERBALL TIME
 
-
 // ✅ Create a New PowerTime
 const createPowerTime = asyncError(async (req, res, next) => {
-    const { powertime } = req.body;
+  const { powertime } = req.body;
 
-    if (!powertime) {
-        return next(new ErrorHandler("Power time is required", 400));
-    }
+  if (!powertime) {
+    return next(new ErrorHandler("Power time is required", 400));
+  }
 
-    const newPowerTime = await PowerTime.create({ powertime });
+  const newPowerTime = await PowerTime.create({ powertime });
 
-    res.status(201).json({
-        success: true,
-        message: "PowerTime created successfully",
-        powerTime: newPowerTime,
-    });
+  res.status(201).json({
+    success: true,
+    message: "PowerTime created successfully",
+    powerTime: newPowerTime,
+  });
 });
 
 // ✅ Update PowerTime by ID
 const updatePowerTime = asyncError(async (req, res, next) => {
-    const { id } = req.params;
-    const { powertime } = req.body;
+  const { id } = req.params;
+  const { powertime } = req.body;
 
-    let powerTime = await PowerTime.findById(id);
-    if (!powerTime) {
-        return next(new ErrorHandler("PowerTime not found", 404));
-    }
+  let powerTime = await PowerTime.findById(id);
+  if (!powerTime) {
+    return next(new ErrorHandler("PowerTime not found", 404));
+  }
 
-    powerTime.powertime = powertime || powerTime.powertime;
-    await powerTime.save();
+  powerTime.powertime = powertime || powerTime.powertime;
+  await powerTime.save();
 
-    res.status(200).json({
-        success: true,
-        message: "PowerTime updated successfully",
-        powerTime,
-    });
+  res.status(200).json({
+    success: true,
+    message: "PowerTime updated successfully",
+    powerTime,
+  });
 });
 
 // ✅ Delete PowerTime by ID
 const deletePowerTime = asyncError(async (req, res, next) => {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const powerTime = await PowerTime.findById(id);
-    if (!powerTime) {
-        return next(new ErrorHandler("PowerTime not found", 404));
-    }
+  const powerTime = await PowerTime.findById(id);
+  if (!powerTime) {
+    return next(new ErrorHandler("PowerTime not found", 404));
+  }
 
-    await powerTime.deleteOne();
+  await powerTime.deleteOne();
 
-    res.status(200).json({
-        success: true,
-        message: "PowerTime deleted successfully",
-    });
+  res.status(200).json({
+    success: true,
+    message: "PowerTime deleted successfully",
+  });
 });
 
 // ✅ Get a Single PowerTime by ID
 const getSinglePowerTime = asyncError(async (req, res, next) => {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const powerTime = await PowerTime.findById(id);
-    if (!powerTime) {
-        return next(new ErrorHandler("PowerTime not found", 404));
-    }
+  const powerTime = await PowerTime.findById(id);
+  if (!powerTime) {
+    return next(new ErrorHandler("PowerTime not found", 404));
+  }
 
-    res.status(200).json({
-        success: true,
-        powerTime,
-    });
+  res.status(200).json({
+    success: true,
+    powerTime,
+  });
 });
 
 // ✅ Get All PowerTimes
 const getAllPowerTimes = asyncError(async (req, res, next) => {
-    const powerTimes = await PowerTime.find().sort({ createdAt: 1 });
+  const powerTimes = await PowerTime.find().sort({ createdAt: 1 });
 
-    res.status(200).json({
-        success: true,
-        count: powerTimes.length,
-        powerTimes,
-    });
+  res.status(200).json({
+    success: true,
+    count: powerTimes.length,
+    powerTimes,
+  });
 });
 
 // POWERBALL DATE
 
-
 // ✅ Create a New PowerDate
 const createPowerDate = asyncError(async (req, res, next) => {
-    const { powerdate, powertime } = req.body;
+  const { powerdate, powertime } = req.body;
 
-    if (!powerdate || !powertime) {
-        return next(new ErrorHandler("Power date and power time ID are required", 400));
-    }
+  if (!powerdate || !powertime) {
+    return next(
+      new ErrorHandler("Power date and power time ID are required", 400)
+    );
+  }
 
-    // Check if powertime exists
-    const timeExists = await PowerTime.findById(powertime);
-    if (!timeExists) {
-        return next(new ErrorHandler("Invalid power time ID", 404));
-    }
+  // Check if powertime exists
+  const timeExists = await PowerTime.findById(powertime);
+  if (!timeExists) {
+    return next(new ErrorHandler("Invalid power time ID", 404));
+  }
 
-    const newPowerDate = await PowerDate.create({ powerdate, powertime });
+  const newPowerDate = await PowerDate.create({ powerdate, powertime });
 
-    res.status(201).json({
-        success: true,
-        message: "PowerDate created successfully",
-        powerDate: newPowerDate,
-    });
+  res.status(201).json({
+    success: true,
+    message: "PowerDate created successfully",
+    powerDate: newPowerDate,
+  });
 });
 
 // ✅ Update PowerDate by ID
 const updatePowerDate = asyncError(async (req, res, next) => {
-    const { id } = req.params;
-    const { powerdate, powertime } = req.body;
+  const { id } = req.params;
+  const { powerdate, powertime } = req.body;
 
-    let powerDate = await PowerDate.findById(id);
-    if (!powerDate) {
-        return next(new ErrorHandler("PowerDate not found", 404));
+  let powerDate = await PowerDate.findById(id);
+  if (!powerDate) {
+    return next(new ErrorHandler("PowerDate not found", 404));
+  }
+
+  // If powertime is updated, validate it
+  if (powertime) {
+    const timeExists = await PowerTime.findById(powertime);
+    if (!timeExists) {
+      return next(new ErrorHandler("Invalid power time ID", 404));
     }
+    powerDate.powertime = powertime;
+  }
 
-    // If powertime is updated, validate it
-    if (powertime) {
-        const timeExists = await PowerTime.findById(powertime);
-        if (!timeExists) {
-            return next(new ErrorHandler("Invalid power time ID", 404));
-        }
-        powerDate.powertime = powertime;
-    }
+  powerDate.powerdate = powerdate || powerDate.powerdate;
+  await powerDate.save();
 
-    powerDate.powerdate = powerdate || powerDate.powerdate;
-    await powerDate.save();
-
-    res.status(200).json({
-        success: true,
-        message: "PowerDate updated successfully",
-        powerDate,
-    });
+  res.status(200).json({
+    success: true,
+    message: "PowerDate updated successfully",
+    powerDate,
+  });
 });
 
 // ✅ Delete PowerDate by ID
 const deletePowerDate = asyncError(async (req, res, next) => {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const powerDate = await PowerDate.findById(id);
-    if (!powerDate) {
-        return next(new ErrorHandler("PowerDate not found", 404));
-    }
+  const powerDate = await PowerDate.findById(id);
+  if (!powerDate) {
+    return next(new ErrorHandler("PowerDate not found", 404));
+  }
 
-    await powerDate.deleteOne();
+  await powerDate.deleteOne();
 
-    res.status(200).json({
-        success: true,
-        message: "PowerDate deleted successfully",
-    });
+  res.status(200).json({
+    success: true,
+    message: "PowerDate deleted successfully",
+  });
 });
 
 // ✅ Get a Single PowerDate by ID (with populated powertime)
 const getSinglePowerDate = asyncError(async (req, res, next) => {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const powerDate = await PowerDate.findById(id).populate("powertime");
-    if (!powerDate) {
-        return next(new ErrorHandler("PowerDate not found", 404));
-    }
+  const powerDate = await PowerDate.findById(id).populate("powertime");
+  if (!powerDate) {
+    return next(new ErrorHandler("PowerDate not found", 404));
+  }
 
-    res.status(200).json({
-        success: true,
-        powerDate,
-    });
+  res.status(200).json({
+    success: true,
+    powerDate,
+  });
 });
 
 // ✅ Get All PowerDates (with populated powertime)
 const getAllPowerDates = asyncError(async (req, res, next) => {
-    const powerDates = await PowerDate.find().populate("powertime").sort({ createdAt: -1 });
+  const powerDates = await PowerDate.find()
+    .populate("powertime")
+    .sort({ createdAt: -1 });
 
-    res.status(200).json({
-        success: true,
-        count: powerDates.length,
-        powerDates,
-    });
+  res.status(200).json({
+    success: true,
+    count: powerDates.length,
+    powerDates,
+  });
 });
-
 
 // ✅ Add Winner Prize to PowerBallGame
 const addWinnerPrize = asyncError(async (req, res, next) => {
   const { gameId } = req.params;
-  const { firstprize, secondPrize, thirdprize, fourthPrize, fifthprize, sixthPrize } = req.body;
+  const {
+    firstprize,
+    secondPrize,
+    thirdprize,
+    fourthPrize,
+    fifthprize,
+    sixthPrize,
+  } = req.body;
 
   let game = await PowerBallGame.findById(gameId);
   if (!game) {
@@ -4557,7 +4614,7 @@ const addWinnerPrize = asyncError(async (req, res, next) => {
     thirdprize: thirdprize || game.winnerPrize.thirdprize,
     fourthPrize: fourthPrize || game.winnerPrize.fourthPrize,
     fifthprize: fifthprize || game.winnerPrize.fifthprize,
-    sixthPrize: sixthPrize || game.winnerPrize.sixthPrize
+    sixthPrize: sixthPrize || game.winnerPrize.sixthPrize,
   };
 
   await game.save();
@@ -4569,11 +4626,74 @@ const addWinnerPrize = asyncError(async (req, res, next) => {
   });
 });
 
+// TO PLAY POWERBALL GAME
 
+const createPowerballGameTickets = asyncError(async (req, res, next) => {
+  const { powerdate, powertime } = req.body;
 
+  // Validate required fields
+  if (!powerdate || !powertime) {
+    return next(new ErrorHandler("Powerdate and Powertime are required", 400));
+  }
 
+  // Create a new PowerballGameTickets entry with an empty alltickets array
+  const newEntry = await PowerballGameTickets.create({
+    powerdate,
+    powertime,
+    alltickets: [], // Initially empty
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "PowerballGameTickets entry created successfully",
+    data: newEntry,
+  });
+});
+
+const getAllTicketsByPowerDateAndTime = asyncError(async (req, res, next) => {
+  const { powerdate, powertime } = req.params;
+  let { page, limit } = req.query;
+
+  // Default values for pagination
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Find the PowerballGameTickets entry based on powerdate & powertime
+  const powerballGameTickets = await PowerballGameTickets.findOne({
+    powerdate,
+    powertime,
+  }).populate({
+    path: "alltickets",
+    options: { skip, limit }, // Apply pagination while populating
+  });
+
+  if (!powerballGameTickets) {
+    return next(
+      new ErrorHandler(
+        "No tickets found for the provided powerdate and powertime",
+        404
+      )
+    );
+  }
+
+  // Get total tickets count for pagination
+  const totalTickets = powerballGameTickets.alltickets.length;
+  const totalPages = Math.ceil(totalTickets / limit);
+
+  res.status(200).json({
+    success: true,
+    page,
+    limit,
+    totalTickets,
+    totalPages,
+    alltickets: powerballGameTickets.alltickets, // Returning paginated tickets array
+  });
+});
 
 module.exports = {
+  getAllTicketsByPowerDateAndTime,
+  createPowerballGameTickets,
   addWinnerPrize,
   createPowerDate,
   updatePowerDate,
