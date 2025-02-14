@@ -1227,17 +1227,50 @@ const getAllNotification = asyncError(async (req, res, next) => {
   });
 });
 
-const getAllUser = asyncError(async (req, res, next) => {
-  const users = await User.find({})
-    .populate("walletOne")
-    .populate("walletTwo")
-    .populate("country")
-    .sort({ createdAt: -1 });
+// const getAllUser = asyncError(async (req, res, next) => {
+//   const users = await User.find({})
+//     .populate("walletOne")
+//     .populate("walletTwo")
+//     .populate("country")
+//     .sort({ createdAt: -1 });
 
-  res.status(200).json({
-    success: true,
-    users,
-  });
+//   res.status(200).json({
+//     success: true,
+//     users,
+//   });
+// });
+
+const getAllUser = asyncError(async (req, res, next) => {
+  let { page, limit } = req.query;
+
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  try {
+    // Fetch users with pagination, sorting, and populating necessary fields
+    const users = await User.find({})
+      .skip(skip) // Skip based on page number
+      .limit(limit) // Limit the number of users per page
+      .populate("walletOne")
+      .populate("walletTwo")
+      .populate("country")
+      .sort({ createdAt: -1 });
+
+    // Get the total number of users
+    const totalUsers = await User.countDocuments();
+
+    res.status(200).json({
+      success: true,
+      users,
+      totalUsers,
+      totalPages: Math.ceil(totalUsers / limit),
+      currentPage: page,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Get Single User Notification
@@ -1512,29 +1545,75 @@ const sendNotificationToAllUser = asyncError(async (req, res, next) => {
   }
 });
 
+// const getUserNotifications = asyncError(async (req, res, next) => {
+//   const { userId } = req.params;
+
+//   // Check if the provided userId is a valid MongoDB ObjectId
+//   if (!mongoose.Types.ObjectId.isValid(userId)) {
+//     return next(new ErrorHandler("Invalid user ID", 400));
+//   }
+
+//   try {
+//     // Find the user by ID and populate the notifications array
+//     const user = await User.findById(userId).populate({
+//       path: "notifications",
+//       options: { sort: { createdAt: -1 } }, // Sort notifications by createdAt in descending order
+//     });
+
+//     if (!user) {
+//       return next(new ErrorHandler("User not found", 404));
+//     }
+
+//     // Return the populated notifications array
+//     res.status(200).json({
+//       success: true,
+//       notifications: user.notifications,
+//     });
+//   } catch (error) {
+//     next(new ErrorHandler(error.message, 500));
+//   }
+// });
 const getUserNotifications = asyncError(async (req, res, next) => {
   const { userId } = req.params;
+  const { page, limit } = req.query;
 
   // Check if the provided userId is a valid MongoDB ObjectId
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     return next(new ErrorHandler("Invalid user ID", 400));
   }
 
+  // Set default values for pagination if not provided
+  const currentPage = parseInt(page) || 1;
+  const itemsPerPage = parseInt(limit) || 10;
+  const skip = (currentPage - 1) * itemsPerPage;
+
   try {
-    // Find the user by ID and populate the notifications array
+    // Find the user by ID and populate the notifications array with pagination
     const user = await User.findById(userId).populate({
       path: "notifications",
-      options: { sort: { createdAt: -1 } }, // Sort notifications by createdAt in descending order
+      options: {
+        sort: { createdAt: -1 },
+        skip: skip,
+        limit: itemsPerPage,
+      },
     });
 
     if (!user) {
       return next(new ErrorHandler("User not found", 404));
     }
 
-    // Return the populated notifications array
+    // Get the total count of notifications for pagination
+    const totalNotifications = await User.countDocuments({
+      _id: userId,
+    });
+
+    // Return the populated notifications array with pagination info
     res.status(200).json({
       success: true,
       notifications: user.notifications,
+      totalNotifications,
+      totalPages: Math.ceil(totalNotifications / itemsPerPage),
+      currentPage,
     });
   } catch (error) {
     next(new ErrorHandler(error.message, 500));
@@ -1585,8 +1664,15 @@ const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
     const notification = await Notification.create({ title, description });
 
     // Find the user and add the notification to their notification list
-    const user = await User.findByIdAndUpdate(
-      userId,
+    // const user = await User.findByIdAndUpdate(
+    //   userId,
+    //   { $push: { notifications: notification._id } },
+    //   { new: true }
+    // );
+
+    // Find the user based on the custom userId field and update
+    const user = await User.findOneAndUpdate(
+      { userId }, // Assuming `userId` is a unique field in the User schema
       { $push: { notifications: notification._id } },
       { new: true }
     );
@@ -1624,98 +1710,28 @@ const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
     next(new ErrorHandler(error.message, 500));
   }
 });
+// const getAllUserRegisterInLastOneDay = asyncError(async (req, res, next) => {
+//   // Get the current date and time in UTC
+//   const currentDate = new Date();
+//   const currentUTCDate = new Date(currentDate.toISOString());
 
-// const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
-//   const { title, description, devicetoken, userId } = req.body;
+//   // Subtract 24 hours from the current date to get the date/time 24 hours ago
+//   const twentyFourHoursAgo = new Date(
+//     currentUTCDate.getTime() - 24 * 60 * 60 * 1000
+//   );
 
-//   // Check for required fields
-//   if (!title) return next(new ErrorHandler("Enter Notification title", 400));
-//   if (!description)
-//     return next(new ErrorHandler("Enter Notification Description", 400));
-
-//   try {
-//     // Create a new notification in the database
-//     const notification = await Notification.create({ title, description });
-
-//     // Find the user and add the notification to their notification list
-//     const user = await User.findByIdAndUpdate(
-//       userId,
-//       { $push: { notifications: notification._id } },
-//       { new: true }
-//     );
-
-//     if (!user) {
-//       return next(new ErrorHandler("User not found", 404));
-//     }
-
-//     // If a device token is provided, send the notification via Firebase
-//     if (devicetoken) {
-//       try {
-//         await firebase.messaging().send({
-//           token: devicetoken,
-//           notification: {
-//             title: title,
-//             body: description,
-//           },
-//         });
-//         console.log("Firebase notification sent");
-//       } catch (error) {
-//         console.error("Error sending Firebase notification:", error);
-//         return next(new ErrorHandler("Failed to send Firebase notification", 500));
-//       }
-//     } else {
-//       console.log("Device token not provided, skipping Firebase notification");
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       message: "Notification processed successfully",
-//       notification,
-//     });
-//   } catch (error) {
-//     next(new ErrorHandler(error.message, 500));
-//   }
-// });
-
-// const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
-//   const users = await User.find({})
+//   // Find users created within the last 24 hours
+//   const users = await User.find({ createdAt: { $gte: twentyFourHoursAgo } })
 //     .populate("walletOne")
 //     .populate("walletTwo")
+//     .populate("country")
 //     .sort({ createdAt: -1 });
-//   const { title, description, devicetoken, userId } = req.body;
-
-//   console.log("Noti title :: " + title);
-//   console.log("Noti Descrtipton :: " + description);
-
-//   if (!title) return next(new ErrorHandler("Enter Notification title", 400));
-//   if (!description)
-//     return next(new ErrorHandler("Enter Notification Description", 400));
-//   if (!devicetoken)
-//     return next(new ErrorHandler("Device token not found", 400));
-
-//   try {
-//     await firebase.messaging().send({
-//       token: devicetoken,
-//       notification: {
-//         // Notification content goes here
-//         title: title,
-//         body: description,
-//       },
-//     });
-
-//     console.log("Notification sent and saved");
-//   } catch (error) {
-//     console.log(error);
-//     next(new ErrorHandler(error, 400));
-//   }
 
 //   res.status(200).json({
 //     success: true,
-//     message: "Notification sent successfully",
+//     users,
 //   });
 // });
-
-// All user who have register in last 24 hour
 
 const getAllUserRegisterInLastOneDay = asyncError(async (req, res, next) => {
   // Get the current date and time in UTC
@@ -1727,31 +1743,97 @@ const getAllUserRegisterInLastOneDay = asyncError(async (req, res, next) => {
     currentUTCDate.getTime() - 24 * 60 * 60 * 1000
   );
 
-  // Find users created within the last 24 hours
-  const users = await User.find({ createdAt: { $gte: twentyFourHoursAgo } })
-    .populate("walletOne")
-    .populate("walletTwo")
-    .populate("country")
-    .sort({ createdAt: -1 });
+  // Get pagination parameters from the query (default to page 1 and 10 users per page)
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
 
-  res.status(200).json({
-    success: true,
-    users,
-  });
+  // Calculate the number of documents to skip based on the current page
+  const skip = (page - 1) * limit;
+
+  try {
+    // Find users created within the last 24 hours with pagination
+    const users = await User.find({ createdAt: { $gte: twentyFourHoursAgo } })
+      .populate("walletOne")
+      .populate("walletTwo")
+      .populate("country")
+      .sort({ createdAt: -1 })
+      .skip(skip) // Skip the documents for pagination
+      .limit(limit); // Limit the number of documents
+
+    // Get the total count of users (without pagination) for pagination info
+    const totalCount = await User.countDocuments({
+      createdAt: { $gte: twentyFourHoursAgo },
+    });
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.status(200).json({
+      success: true,
+      users,
+      pagination: {
+        totalCount,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
+  }
 });
 
-const getAllSubadmin = asyncError(async (req, res, next) => {
-  // Find users created within the last 24 hours
-  const users = await User.find({ role: "subadmin" })
-    .populate("walletOne")
-    .populate("walletTwo")
-    .populate("country")
-    .sort({ createdAt: -1 });
+// const getAllSubadmin = asyncError(async (req, res, next) => {
+//   // Find users created within the last 24 hours
+//   const users = await User.find({ role: "subadmin" })
+//     .populate("walletOne")
+//     .populate("walletTwo")
+//     .populate("country")
+//     .sort({ createdAt: -1 });
 
-  res.status(200).json({
-    success: true,
-    users,
-  });
+//   res.status(200).json({
+//     success: true,
+//     users,
+//   });
+// });
+
+const getAllSubadmin = asyncError(async (req, res, next) => {
+  // Get pagination parameters from the query (default to page 1 and 10 users per page)
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+
+  // Calculate the number of documents to skip based on the current page
+  const skip = (page - 1) * limit;
+
+  try {
+    // Find subadmin users with pagination
+    const users = await User.find({ role: "subadmin" })
+      .populate("walletOne")
+      .populate("walletTwo")
+      .populate("country")
+      .sort({ createdAt: -1 })
+      .skip(skip) // Skip the documents for pagination
+      .limit(limit); // Limit the number of documents
+
+    // Get the total count of subadmin users for pagination info
+    const totalCount = await User.countDocuments({ role: "subadmin" });
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / limit);
+
+    res.status(200).json({
+      success: true,
+      users,
+      pagination: {
+        totalCount,
+        totalPages,
+        currentPage: page,
+        limit,
+      },
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
+  }
 });
 
 // #############################
@@ -2332,14 +2414,65 @@ const addDeposit = asyncError(async (req, res, next) => {
   });
 });
 
+// const getUserTransactions = asyncError(async (req, res, next) => {
+//   const { userid } = req.query;
+
+//   try {
+//     // Find the user by ID and populate transactions with currency in each transaction
+//     const user = await User.findOne({ userId: userid }).populate({
+//       path: "transactionHistory",
+//       populate: { path: "currency", model: "Currency" }, // Populate currency within each transaction
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     // Get the transactions array from the user document
+//     let transactions = user.transactionHistory;
+
+//     // Ensure createdAt is treated as a date
+//     transactions = transactions.map((transaction) => ({
+//       ...transaction.toObject(), // Ensure it's a plain object
+//       createdAt: new Date(transaction.createdAt),
+//     }));
+
+//     // Reverse the order to get the oldest first
+//     transactions.reverse();
+
+//     res.status(200).json({
+//       success: true,
+//       transactions,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to retrieve transactions",
+//       error: error.message,
+//     });
+//   }
+// });
 const getUserTransactions = asyncError(async (req, res, next) => {
   const { userid } = req.query;
+  let { page, limit } = req.query;
+
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
 
   try {
     // Find the user by ID and populate transactions with currency in each transaction
     const user = await User.findOne({ userId: userid }).populate({
       path: "transactionHistory",
       populate: { path: "currency", model: "Currency" }, // Populate currency within each transaction
+      options: {
+        skip: skip, // Skip based on page number
+        limit: limit, // Limit the number of transactions per page
+      },
     });
 
     if (!user) {
@@ -2348,6 +2481,9 @@ const getUserTransactions = asyncError(async (req, res, next) => {
         message: "User not found",
       });
     }
+
+    // Get the total number of transactions for the user
+    const totalTransactions = await User.countDocuments({ userId: userid });
 
     // Get the transactions array from the user document
     let transactions = user.transactionHistory;
@@ -2361,9 +2497,13 @@ const getUserTransactions = asyncError(async (req, res, next) => {
     // Reverse the order to get the oldest first
     transactions.reverse();
 
+    // Return paginated response
     res.status(200).json({
       success: true,
       transactions,
+      totalTransactions,
+      totalPages: Math.ceil(totalTransactions / limit),
+      currentPage: page,
     });
   } catch (error) {
     res.status(500).json({
@@ -3408,6 +3548,14 @@ const updateSubPartnerStatus = asyncError(async (req, res, next) => {
   // Save the updated user
   await user.save();
 
+  const partner = await PartnerModule.findOne({ userId: userId });
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  partner.partnerStatus = partnerStatus;
+  await partner.save();
+
   res.status(200).json({
     success: true,
     message: "Partner status updated successfully",
@@ -3415,11 +3563,41 @@ const updateSubPartnerStatus = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllPartners = asyncError(async (req, res, next) => {
+//   // Find all PartnerModule documents where partnerType is "partner" and sort by createdAt in descending order
+//   const partners = await PartnerModule.find({ partnerType: "partner" }).sort({
+//     createdAt: -1,
+//   });
+
+//   if (!partners || partners.length === 0) {
+//     return next(new ErrorHandler("No partners found", 404));
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Partners fetched successfully",
+//     partners,
+//   });
+// });
+
 const getAllPartners = asyncError(async (req, res, next) => {
-  // Find all PartnerModule documents where partnerType is "partner" and sort by createdAt in descending order
-  const partners = await PartnerModule.find({ partnerType: "partner" }).sort({
-    createdAt: -1,
+  let { page, limit } = req.query;
+
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Get total number of partners
+  const totalPartners = await PartnerModule.countDocuments({
+    partnerType: "partner",
   });
+
+  // Fetch partners with pagination
+  const partners = await PartnerModule.find({ partnerType: "partner" })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
 
   if (!partners || partners.length === 0) {
     return next(new ErrorHandler("No partners found", 404));
@@ -3429,14 +3607,47 @@ const getAllPartners = asyncError(async (req, res, next) => {
     success: true,
     message: "Partners fetched successfully",
     partners,
+    totalPartners,
+    totalPages: Math.ceil(totalPartners / limit),
+    currentPage: page,
   });
 });
 
+// const getAllSubpartners = asyncError(async (req, res, next) => {
+//   // Find all PartnerModule documents where partnerType is "subpartner"
+//   const subpartners = await PartnerModule.find({
+//     partnerType: "subpartner",
+//   }).sort({ createdAt: -1 });
+
+//   if (!subpartners || subpartners.length === 0) {
+//     return next(new ErrorHandler("No subpartners found", 404));
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Subpartners fetched successfully",
+//     subpartners,
+//   });
+// });
+
 const getAllSubpartners = asyncError(async (req, res, next) => {
-  // Find all PartnerModule documents where partnerType is "subpartner"
-  const subpartners = await PartnerModule.find({
+  let { page, limit } = req.query;
+
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Get total number of subpartners
+  const totalSubpartners = await PartnerModule.countDocuments({
     partnerType: "subpartner",
-  }).sort({ createdAt: -1 });
+  });
+
+  // Fetch subpartners with pagination
+  const subpartners = await PartnerModule.find({ partnerType: "subpartner" })
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
 
   if (!subpartners || subpartners.length === 0) {
     return next(new ErrorHandler("No subpartners found", 404));
@@ -3446,12 +3657,14 @@ const getAllSubpartners = asyncError(async (req, res, next) => {
     success: true,
     message: "Subpartners fetched successfully",
     subpartners,
+    totalSubpartners,
+    totalPages: Math.ceil(totalSubpartners / limit),
+    currentPage: page,
   });
 });
 
 const getPartnerByUserId = asyncError(async (req, res, next) => {
   const { userId } = req.params;
-
   // Find the partner in PartnerModule using userId
   const partner = await PartnerModule.findOne({ userId });
 
@@ -3466,43 +3679,117 @@ const getPartnerByUserId = asyncError(async (req, res, next) => {
   });
 });
 
+// const getPartnerUserList = asyncError(async (req, res, next) => {
+//   const { userId } = req.params;
+
+//   // Find the PartnerModule entry for the given userId and populate the userList
+//   const partner = await PartnerModule.findOne({ userId }).populate({
+//     path: "userList",
+//     options: { sort: { _id: -1 } }, // Sorting by _id in descending order
+//   });
+
+//   if (!partner) {
+//     return next(new ErrorHandler("Partner not found", 404));
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Populated user list fetched successfully",
+//     userList: partner.userList, // Populated user list in descending order
+//   });
+// });
 const getPartnerUserList = asyncError(async (req, res, next) => {
   const { userId } = req.params;
+  let { page, limit } = req.query;
 
-  // Find the PartnerModule entry for the given userId and populate the userList
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Find the PartnerModule entry for the given userId and populate the userList with pagination
   const partner = await PartnerModule.findOne({ userId }).populate({
     path: "userList",
-    options: { sort: { _id: -1 } }, // Sorting by _id in descending order
+    options: {
+      sort: { _id: -1 }, // Sorting by _id in descending order
+      skip: skip, // Skip based on page number
+      limit: limit, // Limit the number of users per page
+    },
   });
 
   if (!partner) {
     return next(new ErrorHandler("Partner not found", 404));
   }
+
+  // Get total number of users in the userList
+  const totalUsers = await PartnerModule.countDocuments({
+    userId,
+  });
 
   res.status(200).json({
     success: true,
     message: "Populated user list fetched successfully",
-    userList: partner.userList, // Populated user list in descending order
+    userList: partner.userList,
+    totalUsers,
+    totalPages: Math.ceil(totalUsers / limit),
+    currentPage: page,
   });
 });
 
+// const getPartnerPartnerList = asyncError(async (req, res, next) => {
+//   const { userId } = req.params;
+
+//   // Find the PartnerModule entry for the given userId and populate the userList
+//   const partner = await PartnerModule.findOne({ userId }).populate({
+//     path: "partnerList",
+//     options: { sort: { _id: -1 } }, // Sorting by _id in descending order
+//   });
+
+//   if (!partner) {
+//     return next(new ErrorHandler("Partner not found", 404));
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Populated partner list fetched successfully",
+//     userList: partner.partnerList, // Populated user list in descending order
+//   });
+// });
 const getPartnerPartnerList = asyncError(async (req, res, next) => {
   const { userId } = req.params;
+  let { page, limit } = req.query;
 
-  // Find the PartnerModule entry for the given userId and populate the userList
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Find the PartnerModule entry for the given userId and populate the partnerList with pagination
   const partner = await PartnerModule.findOne({ userId }).populate({
     path: "partnerList",
-    options: { sort: { _id: -1 } }, // Sorting by _id in descending order
+    options: {
+      sort: { _id: -1 }, // Sorting by _id in descending order
+      skip: skip, // Skip based on page number
+      limit: limit, // Limit the number of partners per page
+    },
   });
 
   if (!partner) {
     return next(new ErrorHandler("Partner not found", 404));
   }
 
+  // Get total number of partners in the partnerList
+  const totalPartners = await PartnerModule.countDocuments({
+    userId,
+  });
+
   res.status(200).json({
     success: true,
     message: "Populated partner list fetched successfully",
-    userList: partner.partnerList, // Populated user list in descending order
+    partnerList: partner.partnerList, // Populated partner list in descending order
+    totalPartners,
+    totalPages: Math.ceil(totalPartners / limit),
+    currentPage: page,
   });
 });
 
@@ -3577,44 +3864,116 @@ const createProfitDeduction = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllProfitDeductions = asyncError(async (req, res, next) => {
+//   try {
+//     // Fetch all profit deductions sorted by newest first
+//     const profitDeductions = await ProfitDeduction.find().sort({
+//       createdAt: -1,
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       count: profitDeductions.length,
+//       profitDeductions,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// });
+
 const getAllProfitDeductions = asyncError(async (req, res, next) => {
+  let { page, limit } = req.query;
+
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
   try {
-    // Fetch all profit deductions sorted by newest first
-    const profitDeductions = await ProfitDeduction.find().sort({
-      createdAt: -1,
-    });
+    // Fetch all profit deductions with pagination and sort by newest first
+    const profitDeductions = await ProfitDeduction.find()
+      .sort({ createdAt: -1 }) // Sorting by newest first
+      .skip(skip) // Skip based on page number
+      .limit(limit); // Limit the number of profit deductions per page
+
+    // Get total number of profit deductions
+    const totalProfitDeductions = await ProfitDeduction.countDocuments();
 
     res.status(200).json({
       success: true,
       count: profitDeductions.length,
       profitDeductions,
+      totalProfitDeductions,
+      totalPages: Math.ceil(totalProfitDeductions / limit),
+      currentPage: page,
     });
   } catch (error) {
     next(error);
   }
 });
 
+// const getPartnerProfitDeductions = asyncError(async (req, res, next) => {
+//   const { userId } = req.params;
+
+//   // Validate userId
+//   if (!userId) {
+//     return next(new ErrorHandler("User ID is required", 400));
+//   }
+
+//   // Find the partner associated with the given userId
+//   const partner = await PartnerModule.findOne({ userId }).populate({
+//     path: "profitDeduction",
+//     options: { sort: { createdAt: -1 } }, // Sort by newest first
+//   });
+
+//   if (!partner) {
+//     return next(new ErrorHandler("Partner not found", 404));
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     profitDeductions: partner.profitDeduction,
+//   });
+// });
 const getPartnerProfitDeductions = asyncError(async (req, res, next) => {
   const { userId } = req.params;
+  let { page, limit } = req.query;
 
   // Validate userId
   if (!userId) {
     return next(new ErrorHandler("User ID is required", 400));
   }
 
-  // Find the partner associated with the given userId
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Find the partner associated with the given userId and populate the profitDeduction with pagination
   const partner = await PartnerModule.findOne({ userId }).populate({
     path: "profitDeduction",
-    options: { sort: { createdAt: -1 } }, // Sort by newest first
+    options: {
+      sort: { createdAt: -1 }, // Sort by newest first
+      skip: skip, // Skip based on page number
+      limit: limit, // Limit the number of profit deductions per page
+    },
   });
 
   if (!partner) {
     return next(new ErrorHandler("Partner not found", 404));
   }
 
+  // Get total number of profit deductions for the partner
+  const totalProfitDeductions = await PartnerModule.countDocuments({
+    userId,
+  });
+
   res.status(200).json({
     success: true,
     profitDeductions: partner.profitDeduction,
+    totalProfitDeductions,
+    totalPages: Math.ceil(totalProfitDeductions / limit),
+    currentPage: page,
   });
 });
 
@@ -4071,21 +4430,52 @@ const updateRechargeStatus = async (req, res) => {
 };
 
 const getAllRecharge = asyncError(async (req, res, next) => {
+  let { page, limit } = req.query;
+
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
   try {
-    // Fetch all profit deductions sorted by newest first
-    const rechargeModule = await RechargeModule.find().sort({
-      createdAt: -1,
-    });
+    // Fetch all recharge entries with pagination and sort by newest first
+    const rechargeModule = await RechargeModule.find()
+      .sort({ createdAt: -1 }) // Sorting by newest first
+      .skip(skip) // Skip based on page number
+      .limit(limit); // Limit the number of recharge entries per page
+
+    // Get total number of recharge entries
+    const totalRecharge = await RechargeModule.countDocuments();
 
     res.status(200).json({
       success: true,
       count: rechargeModule.length,
       rechargeModule,
+      totalRecharge,
+      totalPages: Math.ceil(totalRecharge / limit),
+      currentPage: page,
     });
   } catch (error) {
     next(error);
   }
 });
+
+// const getAllRecharge = asyncError(async (req, res, next) => {
+//   try {
+//     // Fetch all profit deductions sorted by newest first
+//     const rechargeModule = await RechargeModule.find().sort({
+//       createdAt: -1,
+//     });
+
+//     res.status(200).json({
+//       success: true,
+//       count: rechargeModule.length,
+//       rechargeModule,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// });
 
 const getRechargeById = asyncError(async (req, res, next) => {
   try {
@@ -4164,73 +4554,58 @@ const updateRechargePermission = asyncError(async (req, res, next) => {
 });
 
 // GET PARTNER RECHARGE LIST
-
 const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
   const { userId } = req.params;
+  let { page, limit } = req.query;
 
-  // Step 1: Find the user by userId
-  // const user = await User.findOne({ userId });
-  // if (!user) {
-  //   return next(new ErrorHandler("User not found", 404));
-  // }
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
 
-  // // Step 2: Check if rechargePaymentId !== 1000
-  // if (user.rechargePaymentId === 1000) {
-  //   return next(
-  //     new ErrorHandler("User does not have a partner recharge module", 400)
-  //   );
-  // }
-  // console.log(user.rechargePaymentId);
-
-  // Step 3: Find the partner using rechargePaymentId
-  const partner = await PartnerModule.findOne({
-    userId,
-  });
+  // Step 3: Find the partner using userId
+  const partner = await PartnerModule.findOne({ userId });
   if (!partner) {
     return next(new ErrorHandler("Partner not found", 404));
   }
-
-  console.log(partner.rechargeModule);
 
   // Step 4: Find the rechargeModule from RechargeModule
   const rechargeModule = await RechargeModule.findById(
     partner.rechargeModule
   ).populate({
     path: "rechargeList",
-    options: { sort: { createdAt: -1 } }, // Sort in descending order
+    options: {
+      sort: { createdAt: -1 }, // Sort in descending order
+      skip: skip, // Skip based on page number
+      limit: limit, // Limit the number of recharges per page
+    },
   });
 
   if (!rechargeModule) {
     return next(new ErrorHandler("Recharge Module not found", 404));
   }
 
-  // Step 5: Return populated rechargeList
+  // Get total number of recharges for this partner
+  const totalRecharges = await RechargeModule.countDocuments({
+    _id: partner.rechargeModule,
+  });
+
+  // Step 5: Return populated rechargeList with pagination data
   res.status(200).json({
     success: true,
     recharges: rechargeModule.rechargeList,
+    totalRecharges,
+    totalPages: Math.ceil(totalRecharges / limit),
+    currentPage: page,
   });
 });
 
 // const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
 //   const { userId } = req.params;
 
-//   // Step 1: Find the user by userId
-//   const user = await User.findOne({ userId });
-//   if (!user) {
-//     return next(new ErrorHandler("User not found", 404));
-//   }
-
-//   // Step 2: Check if rechargePaymentId !== 1000
-//   if (user.rechargePaymentId === 1000) {
-//     return next(
-//       new ErrorHandler("User does not have a partner recharge module", 400)
-//     );
-//   }
-//   console.log(user.rechargePaymentId);
-
 //   // Step 3: Find the partner using rechargePaymentId
 //   const partner = await PartnerModule.findOne({
-//     userId: user.rechargePaymentId,
+//     userId,
 //   });
 //   if (!partner) {
 //     return next(new ErrorHandler("Partner not found", 404));
@@ -4579,16 +4954,52 @@ const getSinglePowerDate = asyncError(async (req, res, next) => {
 });
 
 // ✅ Get All PowerDates (with populated powertime)
-const getAllPowerDates = asyncError(async (req, res, next) => {
-  const powerDates = await PowerDate.find()
-    .populate("powertime")
-    .sort({ createdAt: -1 });
+// const getAllPowerDates = asyncError(async (req, res, next) => {
+//   const powerDates = await PowerDate.find()
+//     .populate("powertime")
+//     .sort({ createdAt: -1 });
 
-  res.status(200).json({
-    success: true,
-    count: powerDates.length,
-    powerDates,
-  });
+//   res.status(200).json({
+//     success: true,
+//     count: powerDates.length,
+//     powerDates,
+//   });
+// });
+
+const getAllPowerDates = asyncError(async (req, res, next) => {
+  const { page, limit, sortBy, sortOrder } = req.query;
+
+  // Set default values for pagination if not provided
+  const currentPage = parseInt(page) || 1;
+  const itemsPerPage = parseInt(limit) || 10;
+  const skip = (currentPage - 1) * itemsPerPage;
+
+  // Set sorting criteria (default by createdAt)
+  const sortField = sortBy || "createdAt";
+  const sortDirection = sortOrder === "asc" ? 1 : -1; // Default to descending
+
+  try {
+    // Fetch powerDates with pagination and sorting
+    const powerDates = await PowerDate.find()
+      .skip(skip)
+      .limit(itemsPerPage)
+      .populate("powertime")
+      .sort({ [sortField]: sortDirection });
+
+    // Get total count of powerDates for pagination info
+    const totalPowerDates = await PowerDate.countDocuments();
+
+    res.status(200).json({
+      success: true,
+      powerDates,
+      count: powerDates.length,
+      totalPowerDates,
+      totalPages: Math.ceil(totalPowerDates / itemsPerPage),
+      currentPage,
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
+  }
 });
 
 // ✅ Add Winner Prize to PowerBallGame
@@ -4691,7 +5102,136 @@ const getAllTicketsByPowerDateAndTime = asyncError(async (req, res, next) => {
   });
 });
 
+const searchUser = asyncError(async (req, res, next) => {
+  const searchTerm = req.query.searchTerm; // This will be the string passed
+
+  try {
+    if (!searchTerm) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a search term",
+      });
+    }
+
+    let query = {};
+
+    // Check if the searchTerm is a userId (numeric string like "1000")
+    if (/^\d+$/.test(searchTerm)) {
+      // If it's a numeric string, treat it as a userId
+      query.userId = searchTerm;
+    } else {
+      // Otherwise, treat it as a name
+      query.name = { $regex: new RegExp(searchTerm, "i") }; // Case-insensitive search for name
+    }
+
+    // Search for the user based on the query and populate the country
+    const user = await User.findOne(query).populate("country");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
+  }
+});
+
+const searchPartner = asyncError(async (req, res, next) => {
+  const searchTerm = req.query.searchTerm; // This will be the string passed
+
+  try {
+    if (!searchTerm) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a search term",
+      });
+    }
+
+    let query = {
+      partnerType: "partner", // Filter by partnerType "partner"
+    };
+
+    // Check if the searchTerm is a userId (numeric string like "1000")
+    if (/^\d+$/.test(searchTerm)) {
+      // If it's a numeric string, treat it as a userId
+      query.userId = searchTerm;
+    } else {
+      // Otherwise, treat it as a name
+      query.name = { $regex: new RegExp(searchTerm, "i") }; // Case-insensitive search for name
+    }
+
+    // Search for the partner based on the query and populate the country
+    const user = await PartnerModule.findOne(query).populate("country");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Partner not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
+  }
+});
+
+const searchSubPartner = asyncError(async (req, res, next) => {
+  const searchTerm = req.query.searchTerm; // This will be the string passed
+
+  try {
+    if (!searchTerm) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a search term",
+      });
+    }
+
+    let query = {
+      partnerType: "subpartner", // Filter by partnerType "partner"
+    };
+
+    // Check if the searchTerm is a userId (numeric string like "1000")
+    if (/^\d+$/.test(searchTerm)) {
+      // If it's a numeric string, treat it as a userId
+      query.userId = searchTerm;
+    } else {
+      // Otherwise, treat it as a name
+      query.name = { $regex: new RegExp(searchTerm, "i") }; // Case-insensitive search for name
+    }
+
+    // Search for the partner based on the query and populate the country
+    const user = await PartnerModule.findOne(query).populate("country");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Partner not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
+  }
+});
+
 module.exports = {
+  searchSubPartner,
+  searchPartner,
   getAllTicketsByPowerDateAndTime,
   createPowerballGameTickets,
   addWinnerPrize,
@@ -4786,4 +5326,5 @@ module.exports = {
   getAllRecharge,
   getRechargeById,
   updateRechargePermission,
+  searchUser,
 };

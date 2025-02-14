@@ -36,33 +36,55 @@ const RechargeModule = require("../models/RechargeModule.js");
 // RESULTS
 // ####################
 
-// Searching for Reasult
-// const results = await Result.find({}).populate("lotdate");
-
 // const getAllResult = asyncError(async (req, res, next) => {
 //   const results = await Result.find({})
 //     .populate("lotdate")
 //     .populate("lottime")
 //     .populate("lotlocation")
-//     .sort({ createdAt: -1 });
+//     .sort({ _id: -1 }); // Sort by _id in descending order
 
 //   res.status(200).json({
 //     success: true,
 //     results,
 //   });
 // });
-
 const getAllResult = asyncError(async (req, res, next) => {
-  const results = await Result.find({})
-    .populate("lotdate")
-    .populate("lottime")
-    .populate("lotlocation")
-    .sort({ _id: -1 }); // Sort by _id in descending order
+  const { lotdateId, lottimeId, lotlocationId, page, limit } = req.query;
 
-  res.status(200).json({
-    success: true,
-    results,
-  });
+  // Set default page and limit values
+  const currentPage = parseInt(page) || 1;
+  const itemsPerPage = parseInt(limit) || 20;
+  const skip = (currentPage - 1) * itemsPerPage;
+
+  // Build the query object to include filters if provided
+  let query = {};
+  if (lotdateId) query.lotdate = lotdateId;
+  if (lottimeId) query.lottime = lottimeId;
+  if (lotlocationId) query.lotlocation = lotlocationId;
+
+  try {
+    // Fetch the results with the applied filters, pagination, and sorting
+    const results = await Result.find(query)
+      .populate("lotdate")
+      .populate("lottime")
+      .populate("lotlocation")
+      .skip(skip) // Apply pagination
+      .limit(itemsPerPage) // Limit the number of results per page
+      .sort({ _id: -1 }); // Sort by _id in descending order
+
+    // Get the total count of results matching the filter
+    const totalResults = await Result.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      results,
+      totalResults,
+      totalPages: Math.ceil(totalResults / itemsPerPage),
+      currentPage,
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 const getAllTopWinner = asyncError(async (req, res, next) => {
@@ -1211,7 +1233,7 @@ const getAllLotDate = asyncError(async (req, res, next) => {
 //   async (req, res, next) => {
 //     const { lottimeId, lotlocationId } = req.query;
 
-//     // Fetch and sort LotDate based on the actual lotdate field in descending order
+//     // Fetch and sort LotDate based on the createdAt field in descending order (newest first)
 //     let lotdates = await LotDate.find({})
 //       .populate({
 //         path: "lottime",
@@ -1219,7 +1241,7 @@ const getAllLotDate = asyncError(async (req, res, next) => {
 //           path: "lotlocation",
 //         },
 //       })
-//       .sort({ lotdate: -1 }); // Sort based on lotdate in descending order (newest first)
+//       .sort({ createdAt: -1 }); // Sort by createdAt (newest first)
 
 //     // Apply filtering based on lottimeId and lotlocationId if provided
 //     if (lottimeId && lotlocationId) {
@@ -1245,43 +1267,52 @@ const getAllLotDate = asyncError(async (req, res, next) => {
 //     });
 //   }
 // );
-
 const getAllLotDateAccordindLocationAndTime = asyncError(
   async (req, res, next) => {
-    const { lottimeId, lotlocationId } = req.query;
+    let { lottimeId, lotlocationId, page, limit } = req.query;
 
-    // Fetch and sort LotDate based on the createdAt field in descending order (newest first)
-    let lotdates = await LotDate.find({})
-      .populate({
-        path: "lottime",
-        populate: {
-          path: "lotlocation",
-        },
-      })
-      .sort({ createdAt: -1 }); // Sort by createdAt (newest first)
+    // Set default page and limit values
+    page = parseInt(page) || 1;
+    limit = parseInt(limit) || 10;
+    const skip = (page - 1) * limit;
 
-    // Apply filtering based on lottimeId and lotlocationId if provided
-    if (lottimeId && lotlocationId) {
-      lotdates = lotdates.filter(
-        (item) =>
-          item.lottime._id.toString() === lottimeId &&
-          item.lottime.lotlocation._id.toString() === lotlocationId
-      );
-    } else if (lottimeId) {
-      lotdates = lotdates.filter(
-        (item) => item.lottime._id.toString() === lottimeId
-      );
-    } else if (lotlocationId) {
-      lotdates = lotdates.filter(
-        (item) => item.lottime.lotlocation._id.toString() === lotlocationId
-      );
+    try {
+      // Build the query object
+      let query = {};
+
+      // Apply filters if lottimeId or lotlocationId are provided
+      if (lottimeId) {
+        query["lottime"] = lottimeId;
+      }
+      if (lotlocationId) {
+        query["lottime.lotlocation"] = lotlocationId;
+      }
+
+      // Fetch lotdates with the applied filters, pagination, and sorting
+      let lotdates = await LotDate.find(query)
+        .populate({
+          path: "lottime",
+          populate: {
+            path: "lotlocation",
+          },
+        })
+        .skip(skip) // Apply pagination
+        .limit(limit) // Limit the number of lotdates per page
+        .sort({ createdAt: -1 }); // Sort by createdAt (newest first)
+
+      // Get the total count of lotdates matching the filter
+      const totalLotDates = await LotDate.countDocuments(query);
+
+      res.status(200).json({
+        success: true,
+        lotdates,
+        totalLotDates,
+        totalPages: Math.ceil(totalLotDates / limit),
+        currentPage: page,
+      });
+    } catch (error) {
+      next(error);
     }
-
-    // Send the filtered and sorted results
-    res.status(200).json({
-      success: true,
-      lotdates,
-    });
   }
 );
 
@@ -3427,103 +3458,6 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
   }
 });
 
-// const getUserPlaybets = asyncError(async (req, res, next) => {
-//   const userId = req.user._id;
-
-//   try {
-//     const user = await User.findById(userId).populate({
-//       path: "playbetHistory",
-//       populate: [
-//         { path: "lotdate", model: "LotDate" },
-//         { path: "lottime", model: "LotTime" },
-//         { path: "lotlocation", model: "LotLocation" },
-//         { path: "currency", model: "Currency" },
-//       ],
-//     });
-
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
-//     let playbets = user.playbetHistory;
-
-//     // Log raw data
-//     playbets.forEach(bet => {
-//       console.log(`ID: ${bet._id}, Created At: ${bet.createdAt}`);
-//     });
-
-//     // Ensure createdAt is treated as a date
-//     playbets = playbets.map(bet => ({
-//       ...bet.toObject(), // Ensure it's a plain object
-//       createdAt: new Date(bet.createdAt),
-//     }));
-
-//     // Sort playbets by createdAt in descending order
-//     playbets.sort((a, b) => b.createdAt - a.createdAt);
-
-//     res.status(200).json({
-//       success: true,
-//       playbets,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to retrieve playbets",
-//       error: error.message,
-//     });
-//   }
-// });
-
-const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
-  const userId = req.params.userid;
-
-  try {
-    // Find the user by ID to get the playbetHistory
-    const user = await User.findOne({ userId }).populate({
-      path: "playbetHistory",
-      populate: [
-        { path: "lotdate", model: "LotDate" },
-        { path: "lottime", model: "LotTime" },
-        { path: "lotlocation", model: "LotLocation" },
-        { path: "currency", model: "Currency" },
-      ],
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Get the playbetHistory array from the user document
-    let playbets = user.playbetHistory;
-
-    // Ensure createdAt is treated as a date
-    playbets = playbets.map((bet) => ({
-      ...bet.toObject(), // Ensure it's a plain object
-      createdAt: new Date(bet.createdAt),
-    }));
-
-    // Reverse the order to get the oldest first
-    playbets.reverse();
-
-    res.status(200).json({
-      success: true,
-      playbets,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve playbets",
-      error: error.message,
-    });
-  }
-});
-
 // const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
 //   const userId = req.params.userid;
 
@@ -3549,10 +3483,14 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
 //     // Get the playbetHistory array from the user document
 //     let playbets = user.playbetHistory;
 
-//     // Sort playbets by createdAt in descending order
-//     playbets = playbets.sort(
-//       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-//     );
+//     // Ensure createdAt is treated as a date
+//     playbets = playbets.map((bet) => ({
+//       ...bet.toObject(), // Ensure it's a plain object
+//       createdAt: new Date(bet.createdAt),
+//     }));
+
+//     // Reverse the order to get the oldest first
+//     playbets.reverse();
 
 //     res.status(200).json({
 //       success: true,
@@ -3566,6 +3504,69 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
 //     });
 //   }
 // });
+const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
+  const userId = req.params.userid;
+  let { page, limit } = req.query;
+
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  try {
+    // Find the user by ID to get the playbetHistory
+    const user = await User.findOne({ userId }).populate({
+      path: "playbetHistory",
+      populate: [
+        { path: "lotdate", model: "LotDate" },
+        { path: "lottime", model: "LotTime" },
+        { path: "lotlocation", model: "LotLocation" },
+        { path: "currency", model: "Currency" },
+      ],
+      options: {
+        skip: skip, // Skip based on page number
+        limit: limit, // Limit the number of playbets per page
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Get the total number of playbets for the user
+    const totalPlaybets = await User.countDocuments({ userId });
+
+    // Get the playbetHistory array from the user document
+    let playbets = user.playbetHistory;
+
+    // Ensure createdAt is treated as a date
+    playbets = playbets.map((bet) => ({
+      ...bet.toObject(), // Ensure it's a plain object
+      createdAt: new Date(bet.createdAt),
+    }));
+
+    // Reverse the order to get the oldest first
+    playbets.reverse();
+
+    // Return paginated response
+    res.status(200).json({
+      success: true,
+      playbets,
+      totalPlaybets,
+      totalPages: Math.ceil(totalPlaybets / limit),
+      currentPage: page,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve playbets",
+      error: error.message,
+    });
+  }
+});
 
 const createCurrency = asyncError(async (req, res, next) => {
   const {
@@ -3607,13 +3608,46 @@ const createCurrency = asyncError(async (req, res, next) => {
 });
 
 // Get all currencies
-const getAllCurrencies = asyncError(async (req, res, next) => {
-  const currencies = await Currency.find();
+// const getAllCurrencies = asyncError(async (req, res, next) => {
+//   const currencies = await Currency.find();
 
-  res.status(200).json({
-    success: true,
-    currencies,
-  });
+//   res.status(200).json({
+//     success: true,
+//     currencies,
+//   });
+// });
+
+const getAllCurrencies = asyncError(async (req, res, next) => {
+  const { page, limit, sortBy } = req.query;
+
+  // Set default values for pagination if not provided
+  const currentPage = parseInt(page) || 1;
+  const itemsPerPage = parseInt(limit) || 10;
+  const skip = (currentPage - 1) * itemsPerPage;
+
+  // Set sorting criteria (default by name)
+  const sortCriteria = sortBy || "name";
+
+  try {
+    // Fetch currencies with pagination and sorting
+    const currencies = await Currency.find()
+      .skip(skip)
+      .limit(itemsPerPage)
+      .sort({ [sortCriteria]: 1 }); // Sorting by the field provided in sortBy (ascending)
+
+    // Get total count of currencies for pagination info
+    const totalCurrencies = await Currency.countDocuments();
+
+    res.status(200).json({
+      success: true,
+      currencies,
+      totalCurrencies,
+      totalPages: Math.ceil(totalCurrencies / itemsPerPage),
+      currentPage,
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
+  }
 });
 
 // Update a currency
