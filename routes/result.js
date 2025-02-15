@@ -102,6 +102,11 @@ const {
   addOtherPayment,
   getAllOtherPayments,
   deleteOtherPayment,
+  getUserOtherPayments,
+  getPartnerOtherList,
+  updateOtherActivationStatus,
+  updateOtherPaymentStatus,
+  deleteSingleOther,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -323,6 +328,25 @@ router.put(
   updateSkrillPaymentStatus
 );
 router.delete("/deletesingleskrill/:id", isAuthenticated, deleteSingleSkrill);
+
+// FOR OTHER PAYMENT
+router.get(
+  "/getuserotherpaymets/:userId",
+  isAuthenticated,
+  getUserOtherPayments
+);
+router.get("/getpartnerotherlist/:id", isAuthenticated, getPartnerOtherList);
+router.put(
+  "/updateotherstatus/:id",
+  isAuthenticated,
+  updateOtherActivationStatus
+);
+router.put(
+  "/updateotherpaymentstatus/:id",
+  isAuthenticated,
+  updateOtherPaymentStatus
+);
+router.delete("/deletesingleother/:id", isAuthenticated, deleteSingleOther);
 
 // FOR PLAYZONE
 router.post("/addplay", isAuthenticated, addPlayzone);

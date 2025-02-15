@@ -5669,7 +5669,7 @@ const deleteSingleUpi = asyncError(async (req, res, next) => {
   const rechargeModule = partner.rechargeModule;
 
   // Step 4: Remove the bank data from the bankList inside rechargeModule
-  const updatedUpiList = rechargeModule.upiList.filter(
+  const updatedOtherList = rechargeModule.upiList.filter(
     (bank) => bank._id.toString() !== id
   );
 
@@ -5882,6 +5882,177 @@ const updateCryptoPaymentStatus = asyncError(async (req, res, next) => {
   });
 });
 
+// [ FOR OTHER PAYMENT OPTIONS]
+
+const getUserOtherPayments = asyncError(async (req, res, next) => {
+  const { userId } = req.params;
+  const numericUserId = Number(userId); // Convert userId to a number
+
+  let otherPayments = [];
+
+  try {
+    if (numericUserId === 1000) {
+      // Fetch all payments for userId 1000
+      otherPayments = await OtherPayment.find({ userId: 1000 }).sort({
+        createdAt: -1,
+      });
+    } else {
+      // Fetch payments for the specified userId with activationStatus: true
+      otherPayments = await OtherPayment.find({
+        userId: numericUserId,
+        activationStatus: true,
+      }).sort({ createdAt: -1 });
+
+      if (otherPayments.length === 0) {
+        // If no active payments found, fetch all payments for userId 1000
+        otherPayments = await OtherPayment.find({ userId: 1000 }).sort({
+          createdAt: -1,
+        });
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      count: otherPayments.length,
+      payments: otherPayments,
+    });
+  } catch (error) {
+    return next(
+      new ErrorHandler("An error occurred while fetching bank payments", 500)
+    );
+  }
+});
+
+const updateOtherActivationStatus = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+  const { activationStatus } = req.body;
+
+  if (typeof activationStatus !== "boolean") {
+    return next(new ErrorHandler("activationStatus must be a boolean", 400));
+  }
+
+  try {
+    // 1️⃣ Find the bank payment and get userId
+    const otherPayment = await OtherPayment.findById(id);
+    if (!otherPayment) {
+      return next(new ErrorHandler("Other Payment not found", 404));
+    }
+
+    //  Finally, update the activationStatus of the bank payment
+    const updatedDocument = await OtherPayment.findByIdAndUpdate(
+      id,
+      { activationStatus, paymentStatus: "Approved" },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedDocument) {
+      return next(new ErrorHandler("Failed to update activation status", 500));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Activation status updated successfully",
+      data: updatedDocument,
+    });
+  } catch (error) {
+    console.error(error);
+    return next(
+      new ErrorHandler(
+        "An error occurred while updating activation status",
+        500
+      )
+    );
+  }
+});
+
+const getPartnerOtherList = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Find the recharge module by ID and populate the bankList
+  const rechargeModule = await RechargeModule.findById(id).populate({
+    path: "otherList",
+    options: { sort: { createdAt: -1 } }, // Sort by descending order
+  });
+
+  if (!rechargeModule) {
+    return next(new ErrorHandler("Recharge Module not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    otherList: rechargeModule.otherList,
+  });
+});
+
+const deleteSingleOther = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Step 1: Get the bank data using the id from the params
+  const otherData = await OtherPayment.findById(id);
+  if (!otherData) {
+    return next(new ErrorHandler("Other Data not found", 404));
+  }
+
+  // Step 2: Get the userId from the bank data
+  const { userId } = otherData;
+
+  // Step 3: Get the partner data using userId and populate the rechargeModule
+  const partner = await PartnerModule.findOne({ userId }).populate({
+    path: "rechargeModule",
+    populate: {
+      path: "otherList", // Populate the bankList
+    },
+  });
+
+  if (!partner || !partner.rechargeModule) {
+    return next(new ErrorHandler("Partner or Recharge Module not found", 404));
+  }
+
+  const rechargeModule = partner.rechargeModule;
+
+  // Step 4: Remove the bank data from the bankList inside rechargeModule
+  const updatedOtherList = rechargeModule.otherList.filter(
+    (bank) => bank._id.toString() !== id
+  );
+
+  // Update the rechargeModule with the new bankList
+  rechargeModule.otherList = updatedOtherList;
+  await rechargeModule.save();
+
+  // Step 5: Delete the bank data from PaypalPaymentType
+  await OtherPayment.findByIdAndDelete(id);
+
+  // Return success response
+  res.status(200).json({
+    success: true,
+    message: "Other Data successfully deleted and updated in Recharge Module",
+  });
+});
+
+const updateOtherPaymentStatus = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+  const { paymentStatus } = req.body;
+
+  // Step 1: Find the BankPaymentType entry by ID
+  const otherData = await OtherPayment.findById(id);
+  if (!otherData) {
+    return next(new ErrorHandler("Other Payment Type not found", 404));
+  }
+
+  // Step 2: Update the paymentStatus
+  otherData.paymentStatus = paymentStatus;
+
+  // Step 3: Save the updated document
+  await otherData.save();
+
+  // Return success response
+  res.status(200).json({
+    success: true,
+    message: "Payment status updated successfully",
+    updatedData: otherData,
+  });
+});
+
 // TO GET THE SINGLE LATEST POWERBALL RESULT
 const getLatestPowerResult = asyncError(async (req, res, next) => {
   try {
@@ -5913,6 +6084,11 @@ const getLatestPowerResult = asyncError(async (req, res, next) => {
 });
 
 module.exports = {
+  getUserOtherPayments,
+  updateOtherActivationStatus,
+  getPartnerOtherList,
+  deleteSingleOther,
+  updateOtherPaymentStatus,
   getLatestPowerResult,
   searchPowerBet,
   addPowerBet,
