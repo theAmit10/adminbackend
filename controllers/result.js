@@ -34,6 +34,7 @@ const RechargeModule = require("../models/RechargeModule.js");
 const PowerBet = require("../models/PowerBet.js");
 const PowerballGameTickets = require("../models/PowerballGameTickets.js");
 const powerresult = require("../models/powerresult.js");
+const OtherPayment = require("../models/OtherPayment.js");
 
 // ####################
 // RESULTS
@@ -2243,6 +2244,70 @@ const deletePayment = asyncError(async (req, res, next) => {
 
   if (!payment) {
     return next(new ErrorHandler("Payment not found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Payment Deleted Successfully",
+  });
+});
+
+// [####################]
+// [### OTHER PAYMENT ####]
+
+const addOtherPayment = asyncError(async (req, res, next) => {
+  const { firstInput, secondInput, thirdInput, paymentnote, userId } = req.body;
+
+  // Create the document with only the provided fields
+  const newotherPayment = await OtherPayment.create({
+    ...(req.file && { qrcode: req.file.filename }), // Add qrcode only if file exists
+    ...(firstInput && { firstInput }), // Add firstinput only if provided
+    ...(secondInput && { secondInput }), // Add secondInput only if provided
+    ...(thirdInput && { thirdInput }), // Add thirdInput only if provided
+    paymentnote,
+  });
+
+  if (userId) {
+    // Fetch the PartnerModule by userId
+    const partner = await PartnerModule.findOne({ userId }).populate(
+      "rechargeModule"
+    );
+
+    if (!partner) {
+      return next(new ErrorHandler("Partner not found", 404));
+    }
+
+    if (!partner.rechargeModule) {
+      return next(new ErrorHandler("Recharge Module not found", 404));
+    }
+
+    // Push the new bank ID into the rechargeModule's otherList array
+    partner.rechargeModule.otherList.push(newotherPayment._id);
+    await partner.rechargeModule.save();
+  }
+
+  res.status(201).json({
+    success: true,
+    message: "Payment Added Successfully",
+  });
+});
+
+const getAllOtherPayments = asyncError(async (req, res, next) => {
+  const payments = await OtherPayment.find();
+
+  res.status(200).json({
+    success: true,
+    payments,
+  });
+});
+
+const deleteOtherPayment = asyncError(async (req, res, next) => {
+  const { id } = req.params;
+
+  const payment = await OtherPayment.findByIdAndDelete(id);
+
+  if (!payment) {
+    return next(new ErrorHandler("Other Payment not found", 404));
   }
 
   res.status(200).json({
@@ -5947,4 +6012,7 @@ module.exports = {
   deactivateShowPartnerRechargeToUserAndPartner,
   createPowerResult,
   getAllPowerBallResultsByLocationWithTimesMonthYear,
+  addOtherPayment,
+  getAllOtherPayments,
+  deleteOtherPayment,
 };

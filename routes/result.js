@@ -99,6 +99,9 @@ const {
   createPowerResult,
   getAllPowerBallResultsByLocationWithTimesMonthYear,
   getLatestPowerResult,
+  addOtherPayment,
+  getAllOtherPayments,
+  deleteOtherPayment,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -110,6 +113,9 @@ const {
 const {
   singleUploadForCryptoQrCode,
 } = require("../middlewares/cryptoqrcodemiddleware.js");
+const {
+  singleUploadForOtherPaymentQrCode,
+} = require("../middlewares/otherpaymentqrcodemiddleware.js");
 
 const router = express.Router();
 
@@ -194,6 +200,16 @@ router.put("/updatelotlocation/:id", isAuthenticated, updateLocation);
 router.post("/addpayment", isAuthenticated, addPayment);
 router.get("/allpaymets", isAuthenticated, getAllPayments);
 router.delete("/removepayment/:id", isAuthenticated, deletePayment);
+
+// FOT OTHER PAYMENT
+router.post(
+  "/addotherpayment",
+  isAuthenticated,
+  singleUploadForOtherPaymentQrCode,
+  addOtherPayment
+);
+router.get("/allotherpaymets", isAuthenticated, getAllOtherPayments);
+router.delete("/removeotherpayment/:id", isAuthenticated, deleteOtherPayment);
 
 // FOR  UPI PAYMENT
 router.post(

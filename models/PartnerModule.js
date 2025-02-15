@@ -61,6 +61,7 @@ partnerModuleSchema.pre("findOneAndUpdate", async function (next) {
             skrillList: [],
             cryptoList: [],
             paypalList: [],
+            otherList: [],
           });
 
           // Assign the new rechargeModule ID
