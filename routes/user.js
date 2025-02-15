@@ -97,6 +97,8 @@ const {
   searchUser,
   searchPartner,
   searchSubPartner,
+  getAllPowerballGameTickets,
+  getPowerballGameTicketsByDateAndTime,
 } = require("../controllers/user.js");
 const { isAuthenticated, verifyToken } = require("../middlewares/auth.js");
 const { singleUpload } = require("../middlewares/multer.js");
@@ -330,7 +332,16 @@ router.post(
   isAuthenticated,
   createPowerballGameTickets
 );
-router.get("/getalltickets", isAuthenticated, getAllTicketsByPowerDateAndTime);
+router.get(
+  "/getsinglepowerballtickets/:powerdateId/:powertimeId",
+  isAuthenticated,
+  getPowerballGameTicketsByDateAndTime
+);
+router.get(
+  "/getallpowerballtickets",
+  isAuthenticated,
+  getAllPowerballGameTickets
+);
 
 // SEARCH
 

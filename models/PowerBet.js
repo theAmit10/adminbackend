@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const ticketschema = new mongoose.Schema(
+const schema = new mongoose.Schema(
   {
     userId: {
       type: Number,
@@ -9,6 +9,16 @@ const ticketschema = new mongoose.Schema(
     username: {
       type: String,
       required: [true, "Please enter username"],
+    },
+    powertime: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PowerTime",
+      required: [true, "Please provide power time"],
+    },
+    powerdate: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PowerDate",
+      required: [true, "Please provide power date"],
     },
     currency: {
       type: mongoose.Schema.Types.ObjectId,
@@ -43,21 +53,4 @@ const ticketschema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const schema = new mongoose.Schema(
-  {
-    powerdate: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "PowerDate",
-      required: [true, "Please enter date id"],
-    },
-    powertime: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "PowerTime",
-      required: [true, "Please enter time id"],
-    },
-    alltickets: [ticketschema],
-  },
-  { timestamps: true }
-);
-
-module.exports = mongoose.model("PowerballGameTickets", schema);
+module.exports = mongoose.model("PowerBet", schema);

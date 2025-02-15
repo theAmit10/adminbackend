@@ -31,6 +31,8 @@ const topwinner = require("../models/topwinner.js");
 const PartnerPerformance = require("../models/PartnerPerformance.js");
 const PartnerModule = require("../models/PartnerModule.js");
 const RechargeModule = require("../models/RechargeModule.js");
+const PowerBet = require("../models/PowerBet.js");
+const PowerballGameTickets = require("../models/PowerballGameTickets.js");
 
 // ####################
 // RESULTS
@@ -2731,15 +2733,6 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 //   const remainingWalletBalance = totalBalanceAmount - parseFloat(totalAmount);
 //   console.log("Remaining amount after deduction :: " + remainingWalletBalance);
 
-//   // Update wallet
-//   // const updatedWallet = await WalletTwo.findByIdAndUpdate(
-//   //   walletId,
-//   //   { balance: remainingWalletBalance },
-//   //   { new: true }
-//   // );
-
-//   // console.log("User's walletTwo updated successfully :: " + updatedWallet);
-
 //   // Create a new Playbet document
 //   const newPlaybet = new Playbet({
 //     playnumbers,
@@ -2979,6 +2972,136 @@ const addUserToPlaynumber = asyncError(async (req, res, next) => {
 
 //   console.log("User's walletTwo updated successfully :: " + updatedWallet);
 
+//   //  FOR PARTNER PERFORMANCE
+
+//   // Step 2: Get user details using req.user.userId
+//   const { parentPartnerId } = user;
+//   if (!parentPartnerId) {
+//     return res.status(400).json({ message: "User has no parent partner" });
+//   }
+
+//   if (parentPartnerId !== 1000) {
+//     // Step 1: Get partner performance based on lotlocation, lottime, and lotdate
+//     let partnerPerformance = await PartnerPerformance.findOne({
+//       lotlocation,
+//       lottime,
+//       lotdate,
+//     });
+
+//     if (!partnerPerformance) {
+//       return res.status(404).json({ message: "Partner performance not found" });
+//     }
+
+//     // Step 3: Get parent details from ParentModule
+//     const parent = await PartnerModule.findOne({ userId: parentPartnerId });
+//     if (!parent) {
+//       return res.status(404).json({ message: "Parent partner not found" });
+//     }
+
+//     // Step 4: Ensure performance array exists
+//     // if (!partnerPerformance.performances) {
+//     //   partnerPerformance.performances = [];
+//     // }
+
+//     // Check if parentPartnerId is in performance array
+//     let partnerData = partnerPerformance.performances.find(
+//       (p) => p.partnerId.toString() === parentPartnerId.toString()
+//     );
+
+//     if (!partnerData) {
+//       // If not found, create an object
+//       partnerData = {
+//         partnerId: parentPartnerId,
+//         name: parent.name,
+//         profitPercentage: parent.profitPercentage || 0,
+//         rechargePercentage: parent.rechargePercentage || 0,
+//         users: [],
+//       };
+
+//       const currentuserId = req.user.userId;
+//       const currentnewAmount = parseFloat(totalAmount);
+//       const currentnewConvertedAmount = parseFloat(
+//         totalAmount * currencyconverter
+//       );
+
+//       partnerData.users.push({
+//         userId: currentuserId,
+//         username: req.user.name,
+//         amount: currentnewAmount,
+//         convertedAmount: currentnewConvertedAmount,
+//         currency: user.country._id.toString(),
+//       });
+
+//       // Push the new partner data into the performance array
+//       partnerPerformance.performances.push(partnerData);
+//     } else {
+//       const currentuserId = req.user.userId;
+//       const currentnewAmount = parseFloat(totalAmount);
+//       const currentnewConvertedAmount = parseFloat(
+//         totalAmount * currencyconverter
+//       );
+
+//       // Check if the user already exists in partnerData.users
+//       const existingUser = partnerData.users.find(
+//         (user) => user.userId.toString() === currentuserId.toString()
+//       );
+
+//       if (existingUser) {
+//         // Update the existing user's amount and convertedAmount
+//         existingUser.amount += currentnewAmount;
+//         existingUser.convertedAmount += currentnewConvertedAmount;
+//       } else {
+//         // Push new user data if not found
+//         partnerData.users.push({
+//           userId: currentuserId,
+//           username: req.user.name,
+//           amount: currentnewAmount,
+//           convertedAmount: currentnewConvertedAmount,
+//           currency: user.country._id.toString(),
+//         });
+//       }
+//     }
+
+//     // Step 5: Push user data into the users array
+
+//     // const currentuserId = req.user.userId;
+//     // const currentnewAmount = parseFloat(totalAmount);
+//     // const currentnewConvertedAmount = parseFloat(totalAmount * currencyconverter);
+
+//     // // Check if the user already exists in partnerData.users
+//     // const existingUser = partnerData.users.find(
+//     //   (user) => user.userId.toString() === currentuserId.toString()
+//     // );
+
+//     // if (existingUser) {
+//     //   // Update the existing user's amount and convertedAmount
+//     //   existingUser.amount += currentnewAmount;
+//     //   existingUser.convertedAmount += currentnewConvertedAmount;
+//     // } else {
+//     //   // Push new user data if not found
+//     //   partnerData.users.push({
+//     //     userId: currentuserId,
+//     //     username: req.user.name,
+//     //     amount: currentnewAmount,
+//     //     convertedAmount: currentnewConvertedAmount,
+//     //     currency: user.country._id.toString(),
+//     //   });
+//     // }
+
+//     // partnerData.users.push({
+//     //   userId: req.user.userId,
+//     //   username: req.user.name,
+//     //   amount: parseFloat(totalAmount * currencyconverter),
+//     //   convertedAmount: parseFloat(totalAmount * currencyconverter),
+//     //   currency: user.country._id.toString(),
+//     // });
+
+//     // partnerPerformance.performances.push(partnerData);
+
+//     // Save the updated partner performance data
+//     await partnerPerformance.save();
+//   }
+
 //   res.status(201).json({
 //     success: true,
 //     message: "Playbet entry added successfully",
@@ -3193,23 +3316,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
   await playzone.save();
   console.log("Playzone Update Successful");
 
-  // Create AppBalanceSheet entry
-  // Calculate withdrawalbalance as the total sum of all walletOne balances
-  // const walletOneBalances = await WalletOne.find({});
-  // const withdrawalBalance = walletOneBalances.reduce(
-  //   (sum, wallet) => sum + wallet.balance,
-  //   0
-  // );
-
-  // // Calculate gamebalance as the total sum of all walletTwo balances minus totalAmount
-  // const walletTwoBalances = await WalletTwo.find({});
-  // const gameBalance =
-  //   walletTwoBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
-  //   totalAmount;
-
-  // // Calculate totalbalance as the total sum of walletOne and walletTwo balances minus totalAmount
-  // const totalBalance = withdrawalBalance + gameBalance;
-
   const currencyap = await Currency.findById(user.country._id);
   if (!currencyap) {
     return next(new ErrorHandler("Currency not found", 404));
@@ -3362,42 +3468,6 @@ const addPlaybet = asyncError(async (req, res, next) => {
       }
     }
 
-    // Step 5: Push user data into the users array
-
-    // const currentuserId = req.user.userId;
-    // const currentnewAmount = parseFloat(totalAmount);
-    // const currentnewConvertedAmount = parseFloat(totalAmount * currencyconverter);
-
-    // // Check if the user already exists in partnerData.users
-    // const existingUser = partnerData.users.find(
-    //   (user) => user.userId.toString() === currentuserId.toString()
-    // );
-
-    // if (existingUser) {
-    //   // Update the existing user's amount and convertedAmount
-    //   existingUser.amount += currentnewAmount;
-    //   existingUser.convertedAmount += currentnewConvertedAmount;
-    // } else {
-    //   // Push new user data if not found
-    //   partnerData.users.push({
-    //     userId: currentuserId,
-    //     username: req.user.name,
-    //     amount: currentnewAmount,
-    //     convertedAmount: currentnewConvertedAmount,
-    //     currency: user.country._id.toString(),
-    //   });
-    // }
-
-    // partnerData.users.push({
-    //   userId: req.user.userId,
-    //   username: req.user.name,
-    //   amount: parseFloat(totalAmount * currencyconverter),
-    //   convertedAmount: parseFloat(totalAmount * currencyconverter),
-    //   currency: user.country._id.toString(),
-    // });
-
-    // partnerPerformance.performances.push(partnerData);
-
     // Save the updated partner performance data
     await partnerPerformance.save();
   }
@@ -3407,6 +3477,315 @@ const addPlaybet = asyncError(async (req, res, next) => {
     message: "Playbet entry added successfully",
   });
 });
+
+// const addPowerBet = async (req, res) => {
+//   try {
+//     const userId = req.user._id;
+//     const { powertime, powerdate, gameType, tickets } = req.body;
+
+//     // Calculate total amount
+//     const totalAmount = tickets.reduce((sum, ticket) => sum + ticket.amount, 0);
+
+//     // Find the user
+
+//     // Find the user and update their walletTwo balance
+//     const user = await User.findById(userId)
+//       .populate("walletOne")
+//       .populate("walletTwo")
+//       .populate("country"); // Ensure country is populated
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     if (user.walletTwo.balance < totalAmount) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Insufficient balance in walletTwo",
+//       });
+//     }
+
+//     const walletId = user.walletTwo._id;
+
+//     const totalBalanceAmount = parseFloat(user.walletTwo.balance);
+//     const remainingWalletBalance = totalBalanceAmount - parseFloat(totalAmount);
+
+//     const newPlaybet = new Playbet({
+//       tickets,
+//       username: req.user.name,
+//       userid: req.user.userId,
+//       powerdate,
+//       powertime,
+//       gameType,
+//       currency: user.country._id.toString(),
+//     });
+
+//     await newPlaybet.save();
+
+//     // Add playbet ID to user's playbet history
+//     await User.findByIdAndUpdate(userId, {
+//       $push: {
+//         playbetHistory: newPlaybet._id,
+//       },
+//     });
+
+//     // Get powerball details from PowerballGameTickets model
+//     const powerballDetails = await PowerballGameTickets.findOne({
+//       powertime,
+//       powerdate,
+//     });
+
+//     if (!powerballDetails) {
+//       return res.status(404).json({ message: "Powerball game not found" });
+//     }
+
+//     // Add data to alltickets array as per Tickets model
+//     const newTicket = new Tickets({
+//       userId,
+//       powertime,
+//       powerdate,
+//       gameType,
+//       tickets,
+//       powerballDetails,
+//     });
+//     await newTicket.save();
+
+//     res.status(201).json({
+//       message: "Power bet placed successfully",
+//       powerBet: savedPowerBet,
+//       powerballDetails,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
+
+const addPowerBet = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { powertime, powerdate, gameType, tickets } = req.body;
+
+    if (!tickets || !Array.isArray(tickets) || tickets.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Tickets array is required and cannot be empty",
+      });
+    }
+
+    // Calculate total amount
+    const totalAmount = tickets.reduce((sum, ticket) => sum + ticket.amount, 0);
+
+    // Find the user and update their walletTwo balance
+    const user = await User.findById(userId)
+      .populate("walletOne")
+      .populate("walletTwo")
+      .populate("country");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.walletTwo.balance < totalAmount) {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance in walletTwo",
+      });
+    }
+
+    const walletId = user.walletTwo._id;
+    const remainingWalletBalance = user.walletTwo.balance - totalAmount;
+
+    const newPlaybet = new Playbet({
+      tickets,
+      username: user.name,
+      userid: user.userId,
+      powerdate,
+      powertime,
+      gameType,
+      currency: user.country._id.toString(),
+    });
+
+    await newPlaybet.save();
+
+    // Add playbet ID to user's playbet history
+    await User.findByIdAndUpdate(userId, {
+      $push: { playbetHistory: newPlaybet._id },
+    });
+
+    // Get powerball details from PowerballGameTickets model
+    const powerballDetails = await PowerballGameTickets.findOne({
+      powertime,
+      powerdate,
+    });
+
+    if (!powerballDetails) {
+      return res.status(404).json({ message: "Powerball game not found" });
+    }
+
+    // Create the new ticket entry
+    const newTicketEntry = {
+      userId: user.userId,
+      username: user.name,
+      currency: user.country._id,
+      tickets: tickets.map((ticket) => ({
+        amount: ticket.amount,
+        convertedAmount: ticket.convertedAmount || 0,
+        multiplier: ticket.multiplier || 1,
+        usernumber: ticket.usernumber,
+      })),
+    };
+
+    // Push new ticket data to alltickets array
+    powerballDetails.alltickets.push(newTicketEntry);
+    await powerballDetails.save();
+
+    // FOR BALANCESHEET UPDATE
+    const currencyap = await Currency.findById(user.country._id);
+    if (!currencyap) {
+      return next(new ErrorHandler("Currency not found", 404));
+    }
+
+    const currencyconverter = parseFloat(
+      currencyap.countrycurrencyvaluecomparedtoinr
+    );
+
+    // Fetch all WalletTwo balances and populate currencyId
+    const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+    let gameBalance = 0;
+
+    walletTwoBalances.forEach((wallet) => {
+      const walletCurrencyConverter = parseFloat(
+        wallet.currencyId.countrycurrencyvaluecomparedtoinr
+      );
+      gameBalance += wallet.balance * walletCurrencyConverter;
+    });
+
+    // Fetch all WalletOne balances and populate currencyId
+    const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+    let withdrawalBalance = 0;
+
+    walletOneBalances.forEach((wallet) => {
+      const walletCurrencyConverter = parseFloat(
+        wallet.currencyId.countrycurrencyvaluecomparedtoinr
+      );
+      withdrawalBalance += wallet.balance * walletCurrencyConverter;
+    });
+
+    // Add the additional amount with currency conversion
+    gameBalance -= parseFloat(totalAmount * currencyconverter);
+
+    // Calculate total balance as the sum of walletOne and walletTwo balances
+    const totalBalance = withdrawalBalance + gameBalance;
+
+    // Create a new AppBalanceSheet document
+    const appBalanceSheet = new AppBalanceSheet({
+      amount: parseFloat(totalAmount * currencyconverter),
+      withdrawalbalance: withdrawalBalance,
+      gamebalance: gameBalance,
+      totalbalance: totalBalance,
+      usercurrency: user.country._id.toString(),
+      activityType: "Bet",
+      userId: user.userId,
+      paybetId: newPlaybet._id,
+      paymentProcessType: "Debit",
+    });
+
+    // Save the AppBalanceSheet document
+    await appBalanceSheet.save();
+    console.log("AppBalanceSheet Created Successfully");
+
+    const updatedWallet = await WalletTwo.findByIdAndUpdate(
+      walletId,
+      { balance: remainingWalletBalance },
+      { new: true }
+    );
+
+    // TODO: FOR PARTNER PERFORMANCE
+
+    res.status(201).json({
+      success: true,
+      message: "Power bet placed successfully",
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const searchPowerBet = async (req, res) => {
+  try {
+    const { id, jackpot } = req.body;
+
+    if (!id || !jackpot) {
+      return res.status(400).json({
+        success: false,
+        message: "ID and jackpot are required",
+      });
+    }
+
+    // Convert jackpot string into an array of numbers
+    const jackpotNumbers = jackpot.split(" ").map(Number);
+
+    if (jackpotNumbers.some(isNaN)) {
+      return res.status(400).json({
+        success: false,
+        message: "Jackpot numbers must be valid numbers separated by spaces",
+      });
+    }
+
+    // Find the power game by ID
+    const powerGame = await PowerballGameTickets.findById(id).populate(
+      "alltickets.userId"
+    );
+
+    if (!powerGame) {
+      return res.status(404).json({
+        success: false,
+        message: "Powerball game not found",
+      });
+    }
+
+    // Extract users who have matching numbers in their tickets
+    let matchingUsers = [];
+
+    powerGame.alltickets.forEach((ticketEntry) => {
+      ticketEntry.tickets.forEach((ticket) => {
+        const userNumbers = ticket.usernumber;
+
+        // Check if all jackpotNumbers are in userNumbers
+        if (jackpotNumbers.every((num) => userNumbers.includes(num))) {
+          matchingUsers.push({
+            userId: ticketEntry.userId,
+            username: ticketEntry.username,
+            matchedNumbers: userNumbers.filter((num) =>
+              jackpotNumbers.includes(num)
+            ),
+          });
+        }
+      });
+    });
+
+    res.status(200).json({
+      success: true,
+      matchingUsers,
+    });
+  } catch (error) {
+    console.error("Error in searchPowerBet:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
 
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id;
@@ -5067,6 +5446,8 @@ const updateCryptoPaymentStatus = asyncError(async (req, res, next) => {
 });
 
 module.exports = {
+  searchPowerBet,
+  addPowerBet,
   updateLiveResultAndTimerForTime,
   getUserCryptoPayments,
   updateCryptoActivationStatus,

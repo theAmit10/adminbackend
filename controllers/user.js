@@ -4868,6 +4868,7 @@ const getAllPowerTimes = asyncError(async (req, res, next) => {
 // POWERBALL DATE
 
 // ✅ Create a New PowerDate
+
 const createPowerDate = asyncError(async (req, res, next) => {
   const { powerdate, powertime } = req.body;
 
@@ -4883,14 +4884,45 @@ const createPowerDate = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Invalid power time ID", 404));
   }
 
+  // Create PowerDate
   const newPowerDate = await PowerDate.create({ powerdate, powertime });
+
+  // Create PowerballGameTickets using the newly created PowerDate ID
+  const newGameEntry = await PowerballGameTickets.create({
+    powerdate: newPowerDate._id, // Use the _id from PowerDate
+    powertime,
+    alltickets: [], // Initially empty
+  });
 
   res.status(201).json({
     success: true,
-    message: "PowerDate created successfully",
-    powerDate: newPowerDate,
+    message: "PowerDate and PowerballGameTickets created successfully",
   });
 });
+
+// const createPowerDate = asyncError(async (req, res, next) => {
+//   const { powerdate, powertime } = req.body;
+
+//   if (!powerdate || !powertime) {
+//     return next(
+//       new ErrorHandler("Power date and power time ID are required", 400)
+//     );
+//   }
+
+//   // Check if powertime exists
+//   const timeExists = await PowerTime.findById(powertime);
+//   if (!timeExists) {
+//     return next(new ErrorHandler("Invalid power time ID", 404));
+//   }
+
+//   const newPowerDate = await PowerDate.create({ powerdate, powertime });
+
+//   res.status(201).json({
+//     success: true,
+//     message: "PowerDate created successfully",
+//     powerDate: newPowerDate,
+//   });
+// });
 
 // ✅ Update PowerDate by ID
 const updatePowerDate = asyncError(async (req, res, next) => {
@@ -5061,46 +5093,102 @@ const createPowerballGameTickets = asyncError(async (req, res, next) => {
   });
 });
 
-const getAllTicketsByPowerDateAndTime = asyncError(async (req, res, next) => {
-  const { powerdate, powertime } = req.params;
-  let { page, limit } = req.query;
+const getAllPowerballGameTickets = asyncError(async (req, res, next) => {
+  try {
+    const powerTickets = await PowerballGameTickets.find()
+      .populate("powerdate")
+      .populate("powertime")
+      .sort({ createdAt: -1 }); // Sorting by latest created first
 
-  // Default values for pagination
-  page = parseInt(page) || 1;
-  limit = parseInt(limit) || 10;
-  const skip = (page - 1) * limit;
-
-  // Find the PowerballGameTickets entry based on powerdate & powertime
-  const powerballGameTickets = await PowerballGameTickets.findOne({
-    powerdate,
-    powertime,
-  }).populate({
-    path: "alltickets",
-    options: { skip, limit }, // Apply pagination while populating
-  });
-
-  if (!powerballGameTickets) {
-    return next(
-      new ErrorHandler(
-        "No tickets found for the provided powerdate and powertime",
-        404
-      )
-    );
+    res.status(200).json({
+      success: true,
+      count: powerTickets.length,
+      powerTickets,
+    });
+  } catch (error) {
+    next(new ErrorHandler(error.message, 500));
   }
-
-  // Get total tickets count for pagination
-  const totalTickets = powerballGameTickets.alltickets.length;
-  const totalPages = Math.ceil(totalTickets / limit);
-
-  res.status(200).json({
-    success: true,
-    page,
-    limit,
-    totalTickets,
-    totalPages,
-    alltickets: powerballGameTickets.alltickets, // Returning paginated tickets array
-  });
 });
+
+// const getAllTicketsByPowerDateAndTime = asyncError(async (req, res, next) => {
+//   const { powerdate, powertime } = req.params;
+//   let { page, limit } = req.query;
+
+//   // Default values for pagination
+//   page = parseInt(page) || 1;
+//   limit = parseInt(limit) || 10;
+//   const skip = (page - 1) * limit;
+
+//   // Find the PowerballGameTickets entry based on powerdate & powertime
+//   const powerballGameTickets = await PowerballGameTickets.findOne({
+//     powerdate,
+//     powertime,
+//   }).populate({
+//     path: "alltickets",
+//     options: { skip, limit }, // Apply pagination while populating
+//   });
+
+//   if (!powerballGameTickets) {
+//     return next(
+//       new ErrorHandler(
+//         "No tickets found for the provided powerdate and powertime",
+//         404
+//       )
+//     );
+//   }
+
+//   // Get total tickets count for pagination
+//   const totalTickets = powerballGameTickets.alltickets.length;
+//   const totalPages = Math.ceil(totalTickets / limit);
+
+//   res.status(200).json({
+//     success: true,
+//     page,
+//     limit,
+//     totalTickets,
+//     totalPages,
+//     alltickets: powerballGameTickets.alltickets, // Returning paginated tickets array
+//   });
+// });
+
+const getPowerballGameTicketsByDateAndTime = asyncError(
+  async (req, res, next) => {
+    const { powerdateId, powertimeId } = req.params;
+
+    try {
+      // Validate the provided IDs
+      if (
+        !mongoose.Types.ObjectId.isValid(powerdateId) ||
+        !mongoose.Types.ObjectId.isValid(powertimeId)
+      ) {
+        return next(new ErrorHandler("Invalid powerdate or powertime ID", 400));
+      }
+
+      // Find the PowerballGameTickets based on powerdate and powertime
+      const tickets = await PowerballGameTickets.findOne({
+        powerdate: powerdateId,
+        powertime: powertimeId,
+      })
+        .populate("powerdate")
+        .populate("powertime");
+
+      if (!tickets) {
+        return res.status(404).json({
+          success: false,
+          message:
+            "No PowerballGameTickets found for the given powerdate and powertime",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        tickets,
+      });
+    } catch (error) {
+      next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
 
 const searchUser = asyncError(async (req, res, next) => {
   const searchTerm = req.query.searchTerm; // This will be the string passed
@@ -5230,9 +5318,10 @@ const searchSubPartner = asyncError(async (req, res, next) => {
 });
 
 module.exports = {
+  getPowerballGameTicketsByDateAndTime,
+  getAllPowerballGameTickets,
   searchSubPartner,
   searchPartner,
-  getAllTicketsByPowerDateAndTime,
   createPowerballGameTickets,
   addWinnerPrize,
   createPowerDate,
