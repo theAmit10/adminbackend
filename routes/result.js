@@ -96,6 +96,7 @@ const {
   updateLiveResultAndTimerForTime,
   addPowerBet,
   searchPowerBet,
+  createPowerResult,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -323,6 +324,7 @@ router.post("/playbet/addplybet", isAuthenticated, addPlaybet);
 router.post("/playbet/addpowerbet", isAuthenticated, addPowerBet);
 router.get("/singleuser/playbets", isAuthenticated, getUserPlaybets);
 router.get("/powerball/search", isAuthenticated, searchPowerBet);
+router.post("/createpowerresult", isAuthenticated, createPowerResult);
 router.get(
   "/singleuserplayhistory/:userid",
   isAuthenticated,

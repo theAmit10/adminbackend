@@ -33,6 +33,7 @@ const PartnerModule = require("../models/PartnerModule.js");
 const RechargeModule = require("../models/RechargeModule.js");
 const PowerBet = require("../models/PowerBet.js");
 const PowerballGameTickets = require("../models/PowerballGameTickets.js");
+const powerresult = require("../models/powerresult.js");
 
 // ####################
 // RESULTS
@@ -1172,6 +1173,164 @@ const createResult = asyncError(async (req, res, next) => {
 //     message: "Result Created and Wallets Updated Successfully",
 //   });
 // });
+
+const createPowerResult = asyncError(async (req, res, next) => {
+  const { jackpotnumber, powerdate, powertime, prize } = req.body;
+
+  try {
+    // Validate request body
+    if (
+      !jackpotnumber ||
+      !Array.isArray(jackpotnumber) ||
+      jackpotnumber.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Jackpot numbers are required and must be an array.",
+      });
+    }
+    if (!powerdate || !powertime) {
+      return res.status(400).json({
+        success: false,
+        message: "Powerdate and Powertime are required.",
+      });
+    }
+    if (!prize || typeof prize !== "object") {
+      return res.status(400).json({
+        success: false,
+        message: "Prize details are required.",
+      });
+    }
+
+    // Step 1: Create new PowerResult
+    const powerResult = await powerresult.create({
+      jackpotnumber,
+      powerdate,
+      powertime,
+      prize,
+    });
+
+    console.log(
+      `New PowerResult Created: ID: ${powerResult._id}, Created At: ${powerResult.createdAt}`
+    );
+
+    // Step 2: Find the PowerballGameTickets for the given powerdate and powertime
+    const powerGame = await PowerballGameTickets.findOne({
+      powerdate,
+      powertime,
+    });
+
+    if (!powerGame) {
+      return res.status(404).json({
+        success: false,
+        message: "No Powerball Game found for the given date and time.",
+      });
+    }
+
+    // Step 3: Get all tickets from the found power game
+    const allTickets = powerGame.alltickets;
+
+    // Step 4: Function to distribute prize
+    // const distributePrize = async (matchCount, prizeAmount) => {
+    //   const winningUsers = allTickets.filter(
+    //     (ticket) =>
+    //       ticket.usernumber.filter((num) => jackpotnumber.includes(num))
+    //         .length === matchCount
+    //   );
+
+    //   for (let ticket of winningUsers) {
+    //     const user = await User.findById(ticket.user);
+    //     if (user) {
+    //       user.walletTwo.balance += prizeAmount;
+    //       await user.save();
+    //     }
+    //   }
+    // };
+
+    const distributePrize = async (matchCount, prizeAmount) => {
+      for (let ticketHolder of allTickets) {
+        for (let ticket of ticketHolder.tickets) {
+          // Count the number of matching numbers
+          const matches = ticket.usernumber.filter((num) =>
+            jackpotnumber.includes(num)
+          ).length;
+
+          if (matches === matchCount) {
+            const user = await User.findOne({ userId: ticketHolder.userId });
+
+            if (user) {
+              const walletId = user.walletOne._id;
+              const wallet = await WalletOne.findById(walletId);
+              const totalBalanceAmount = parseFloat(wallet.balance);
+              const remainingWalletBalance =
+                totalBalanceAmount + parseFloat(prizeAmount);
+
+              // Update wallet
+              await WalletOne.findByIdAndUpdate(
+                walletId,
+                { balance: remainingWalletBalance },
+                { new: true }
+              );
+
+              // FOR NOTIFICATION
+              const notification = await Notification.create({
+                title: "Congratulations! You won!",
+                description: `You have won an amount of ${prizeAmount}.`,
+              });
+
+              // Add notification to the user's notifications array
+              user.notifications.push(notification._id);
+              await user.save();
+
+              // FOR PLAYBET HISTORY
+              const playbet = await Playbet.create({
+                tickets: [
+                  {
+                    amount: prizeAmount,
+                    convertedAmount: prizeAmount,
+                    multiplier: 1,
+                    usernumber: jackpotnumber,
+                  },
+                ],
+                username: user.name,
+                userid: user.userId,
+                currency: user.country._id.toString(), // Assuming currency is related to the user
+                powerdate: powerdate,
+                powertime: powertime,
+                gameType: "powerball",
+                walletName: wallet.walletName,
+              });
+
+              // Add playbet history to the user's playbetHistory array
+              user.playbetHistory.push(playbet._id);
+              await user.save();
+            }
+          }
+        }
+      }
+    };
+
+    // Step 5: Distribute prizes based on matches
+    await distributePrize(6, prize.firstprize.amount);
+    await distributePrize(5, prize.secondprize.amount);
+    await distributePrize(4, prize.thirdprize.amount);
+    await distributePrize(3, prize.fourthprize.amount);
+    await distributePrize(2, prize.fifthprize.amount);
+    await distributePrize(1, prize.sixthprize.amount);
+
+    res.status(201).json({
+      success: true,
+      message: "PowerResult created and prizes distributed successfully",
+      data: powerResult,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to create PowerResult and distribute prizes",
+      error: error.message,
+    });
+  }
+});
 
 const updateResult = asyncError(async (req, res, next) => {
   const { resultNumber, nextresulttime } = req.body;
@@ -5542,4 +5701,5 @@ module.exports = {
   updateBankPaymentStatus,
   updateShowPartnerRechargeToUserAndPartner,
   deactivateShowPartnerRechargeToUserAndPartner,
+  createPowerResult,
 };
