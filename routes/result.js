@@ -97,6 +97,8 @@ const {
   addPowerBet,
   searchPowerBet,
   createPowerResult,
+  getAllPowerBallResultsByLocationWithTimesMonthYear,
+  getLatestPowerResult,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -118,6 +120,7 @@ router
   .get(isAuthenticated, getResultDetails)
   .put(isAuthenticated, updateResult);
 router.post("/createresult", isAuthenticated, createResult);
+router.get("/singlepowerresult", isAuthenticated, getLatestPowerResult);
 router.get(
   "/searchresult",
   isAuthenticated,
@@ -138,6 +141,12 @@ router.get(
   isAuthenticated,
   getAllResultsByLocationWithTimesMonthYear
 );
+router.get(
+  "/allpowerresultmonyear",
+  isAuthenticated,
+  getAllPowerBallResultsByLocationWithTimesMonthYear
+);
+
 router.get(
   "/allresultwithdate",
   isAuthenticated,

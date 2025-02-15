@@ -337,6 +337,170 @@ const getAllResultsByLocationWithTimesMonthYear = asyncError(
   }
 );
 
+const getAllPowerBallResultsByLocationWithTimesMonthYear = asyncError(
+  async (req, res, next) => {
+    const { powertimeid, year, month } = req.query; // Extract the location ID, year, and month from the query parameters
+
+    // Validate the year and month
+    if (!year || !month) {
+      return res.status(400).json({
+        success: false,
+        message: "Year and month are required.",
+      });
+    }
+
+    console.log(`Year Provided: ${year}`);
+    console.log(`Month Provided: ${month}`);
+
+    // Convert month name to number (e.g., "july" to 7)
+    const monthMap = {
+      january: 1,
+      february: 2,
+      march: 3,
+      april: 4,
+      may: 5,
+      june: 6,
+      july: 7,
+      august: 8,
+      september: 9,
+      october: 10,
+      november: 11,
+      december: 12,
+    };
+
+    const monthNumber = monthMap[month.toLowerCase()];
+    if (!monthNumber) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid month provided.",
+      });
+    }
+
+    console.log(`Converted Month Number: ${monthNumber}`);
+
+    // Define the start and end dates for the specified month and year
+    // const startDate = new Date(`${year}-${monthNumber.toString().padStart(2, '0')}-01T00:00:00.000Z`);
+    // const endDate = new Date(`${year}-${(monthNumber + 1).toString().padStart(2, '0')}-01T00:00:00.000Z`);
+
+    // Define the start and end dates for the specified month and year
+    const startDate = new Date(
+      `${year}-${monthNumber.toString().padStart(2, "0")}-01T00:00:00.000Z`
+    );
+
+    // Handle end date properly, considering the year transition
+    const endMonth = monthNumber === 12 ? 1 : monthNumber + 1; // Next month or January
+    const endYear = monthNumber === 12 ? parseInt(year) + 1 : year; // Increment year if December
+    const endDate = new Date(
+      `${endYear}-${endMonth.toString().padStart(2, "0")}-01T00:00:00.000Z`
+    );
+
+    console.log(`Start Date: ${startDate}`);
+    console.log(`End Date: ${endDate}`);
+
+    // Check if dates are valid
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date range.",
+      });
+    }
+
+    // Fetch all results from the database with the specified location ID
+    let results = await powerresult
+      .find({
+        powertime: powertimeid,
+        createdAt: {
+          $gte: startDate,
+          $lt: endDate,
+        },
+      })
+      .populate("powerdate") // Populate the lotdate field with its full document
+      .populate("powertime") // Populate the lottime field with its full document
+      .sort({ createdAt: -1 }); // Sort results by creation date in descending order
+
+    console.log(`Fetched Results Count: ${results.length}`);
+    // console.log('Fetched Results:', results);
+
+    results = results.filter((item) => {
+      if (!item.powerdate || !item.powerdate.powerdate) {
+        // console.warn('Skipping result due to missing lotdate:', item);
+        return false;
+      }
+
+      // Parse the lotdate in "DD-MM-YYYY" format
+      const [day, month, year] = item.powerdate.powerdate
+        .split("-")
+        .map(Number);
+      const powerdate = new Date(year, month - 1, day); // month is 0-based in JavaScript
+
+      // Extract year and month for comparison
+      const powerdateYear = powerdate.getFullYear();
+      const powerdateMonth = powerdate.getMonth() + 1; // JavaScript months are 0-based
+
+      console.log(
+        `Checking Result - date ${item.powerdate.powerdate} Mine Year ${year} Year: ${powerdateYear}, Month: ${powerdateMonth} Mine month ${monthNumber}`
+      );
+      return powerdateYear === parseInt(year) && powerdateMonth === monthNumber;
+    });
+
+    console.log(`Filtered Results Count: ${results.length}`);
+    // console.log('Filtered Results:', results);
+
+    // Initialize an empty object to group results by lottime
+    const groupedResults = {};
+
+    // Iterate through each result to group them by lottime and powerdate
+    results.forEach((item) => {
+      const powertimeId = item.powertime._id.toString(); // Convert the lottime ID to a string for easier comparison
+
+      // Check if the lottime group exists in groupedResults; if not, create it
+      if (!groupedResults[powertimeId]) {
+        groupedResults[powertimeId] = {
+          _id: powertimeId, // Store the lottime ID
+          powertime: item.powertime.toObject(), // Store the populated lottime object
+          dates: [], // Initialize an empty array to hold the powerdates for this lottime
+          createdAt: item.createdAt, // Store the creation date of the result
+        };
+      }
+
+      // Check if the powerdate already exists within the current lottime group
+      let dateGroup = groupedResults[powertimeId].dates.find(
+        (date) =>
+          date.powerdate._id.toString() === item.powerdate._id.toString()
+      );
+
+      // If the powerdate group doesn't exist, create it
+      if (!dateGroup) {
+        dateGroup = {
+          powerdate: item.powerdate.toObject(), // Store the populated powerdate object
+          results: [], // Initialize an empty array to hold the results for this powerdate
+          createdAt: item.createdAt, // Store the creation date of the result
+        };
+        groupedResults[powertimeId].dates.push(dateGroup); // Add the new date group to the lottime's dates array
+      }
+
+      // Add the current result to the results array within the date group
+      dateGroup.results.push({
+        resultNumber: item.resultNumber, // Store the result number
+        powerdate: item.powerdate.toObject(), // Store the populated lotdate object
+        powertime: item.powertime.toObject(), // Store the populated lottime object
+        createdAt: item.createdAt, // Store the creation date of the result
+      });
+    });
+
+    // Convert the groupedResults object into an array of lottimes with nested lotdates and results
+    const finalResults = Object.values(groupedResults);
+
+    // console.log('Final Grouped Results:', finalResults);
+
+    // Send the grouped results as a JSON response with a success status
+    res.status(200).json({
+      success: true,
+      results: finalResults, // Send the final grouped results array
+    });
+  }
+);
+
 const getAllResultsByLocationWithDates = asyncError(async (req, res, next) => {
   const { locationid } = req.query; // Get the location ID from the request query parameters
 
@@ -1317,6 +1481,55 @@ const createPowerResult = asyncError(async (req, res, next) => {
     await distributePrize(3, prize.fourthprize.amount);
     await distributePrize(2, prize.fifthprize.amount);
     await distributePrize(1, prize.sixthprize.amount);
+
+    // TODO: ADDING TO BALANCE SHEET
+    // // Fetch all WalletTwo balances and populate currencyId
+    // const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+    // let gameBalance = 0;
+
+    // walletTwoBalances.forEach((wallet) => {
+    //   const walletCurrencyConverter = parseFloat(
+    //     wallet.currencyId.countrycurrencyvaluecomparedtoinr
+    //   );
+    //   gameBalance += wallet.balance * walletCurrencyConverter;
+    // });
+
+    // // Fetch all WalletOne balances and populate currencyId
+    // const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+    // let withdrawalBalance = 0;
+
+    // walletOneBalances.forEach((wallet) => {
+    //   const walletCurrencyConverter = parseFloat(
+    //     wallet.currencyId.countrycurrencyvaluecomparedtoinr
+    //   );
+    //   withdrawalBalance += wallet.balance * walletCurrencyConverter;
+    // });
+
+    // // Calculate total balance as the sum of walletOne and walletTwo balances
+    // const totalBalance = withdrawalBalance + gameBalance;
+
+    // // Search for the "INR" countrycurrencysymbol in the Currency Collection
+    // const currency = await Currency.findOne({ countrycurrencysymbol: "INR" });
+    // if (!currency) {
+    //   return next(new ErrorHandler("Currency not found", 404));
+    // }
+    // // Create a new AppBalanceSheet document
+    // const appBalanceSheet = new AppBalanceSheet({
+    //   amount: totalAmount,
+    //   withdrawalbalance: withdrawalBalance,
+    //   gamebalance: gameBalance,
+    //   totalbalance: totalBalance,
+    //   usercurrency: currency._id, // Use the _id of the found currency
+    //   activityType: "Winning",
+    //   userId: playnumberEntry?.users[0]?.userId || "1000",
+    //   payzoneId: playzone._id,
+    //   paymentProcessType: "Credit",
+    //   walletName: req.user.walletOne.walletName,
+    // });
+
+    // // Save the AppBalanceSheet document
+    // await appBalanceSheet.save();
+    // console.log("AppBalanceSheet Created Successfully");
 
     res.status(201).json({
       success: true,
@@ -5604,7 +5817,38 @@ const updateCryptoPaymentStatus = asyncError(async (req, res, next) => {
   });
 });
 
+// TO GET THE SINGLE LATEST POWERBALL RESULT
+const getLatestPowerResult = asyncError(async (req, res, next) => {
+  try {
+    // Fetch the latest PowerResult by sorting in descending order based on createdAt
+    const latestPowerResult = await powerresult
+      .findOne()
+      .sort({ createdAt: -1 });
+
+    // Check if a document exists
+    if (!latestPowerResult) {
+      return res.status(404).json({
+        success: false,
+        message: "No PowerResult found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Latest PowerResult retrieved successfully",
+      data: latestPowerResult,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve latest PowerResult",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = {
+  getLatestPowerResult,
   searchPowerBet,
   addPowerBet,
   updateLiveResultAndTimerForTime,
@@ -5702,4 +5946,5 @@ module.exports = {
   updateShowPartnerRechargeToUserAndPartner,
   deactivateShowPartnerRechargeToUserAndPartner,
   createPowerResult,
+  getAllPowerBallResultsByLocationWithTimesMonthYear,
 };
