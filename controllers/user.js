@@ -3445,6 +3445,7 @@ const makeUserPartner = asyncError(async (req, res, next) => {
     parentPartnerId: user.parentPartnerId, // Use the user's parentPartnerId
     parentParentPartnerId: user.parentParentPartnerId, // Use the user's parentParentPartnerId
     topParentId: user.topParentId, // Use the user's topParentId
+    walletTwo: user.walletTwo._id,
     playHistoryPermission: false, // Default value
     transactionHistoryPermission: false, // Default value
     partnerType: "partner", // Set partnerType to "partner"
@@ -3499,6 +3500,7 @@ const makeUserSubPartner = asyncError(async (req, res, next) => {
     parentParentPartnerId: parent.parentPartnerId, // Use the parent's parentPartnerId
     topParentId: parent.topParentId, // Use the parent's topParentId
     playHistoryPermission: false, // Default value
+    walletTwo: user.walletTwo._id,
     transactionHistoryPermission: false, // Default value
     partnerType: "subpartner", // Explicitly set partnerType to "subpartner"
     rechargeStatus: false, // Default value
@@ -3597,7 +3599,8 @@ const getAllPartners = asyncError(async (req, res, next) => {
   const partners = await PartnerModule.find({ partnerType: "partner" })
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit);
+    .limit(limit)
+    .populate("walletTwo");
 
   if (!partners || partners.length === 0) {
     return next(new ErrorHandler("No partners found", 404));
@@ -3647,7 +3650,8 @@ const getAllSubpartners = asyncError(async (req, res, next) => {
   const subpartners = await PartnerModule.find({ partnerType: "subpartner" })
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit);
+    .limit(limit)
+    .populate("walletTwo");
 
   if (!subpartners || subpartners.length === 0) {
     return next(new ErrorHandler("No subpartners found", 404));
@@ -3721,10 +3725,13 @@ const getPartnerUserList = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Partner not found", 404));
   }
 
-  // Get total number of users in the userList
-  const totalUsers = await PartnerModule.countDocuments({
-    userId,
-  });
+  // ✅ Find the partner and get total user count BEFORE pagination
+  const partnerTotal = await PartnerModule.findOne({ userId });
+
+  const totalUsers = partnerTotal.userList.length; // ✅ Total count before pagination
+
+  // ✅ Get total number of users in the userList (fixed)
+  // const totalUsers = partner.userList.length; // Count the number of populated users
 
   res.status(200).json({
     success: true,
@@ -3779,9 +3786,16 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
   }
 
   // Get total number of partners in the partnerList
-  const totalPartners = await PartnerModule.countDocuments({
-    userId,
-  });
+  // const totalPartners = await PartnerModule.countDocuments({
+  //   userId,
+  // });
+
+  // ✅ Find the partner and get total user count BEFORE pagination
+  const partnerTotal = await PartnerModule.findOne({ userId }).populate(
+    "partnerList"
+  );
+
+  const totalPartners = partnerTotal.userList.length; // ✅ Total count before pagination
 
   res.status(200).json({
     success: true,

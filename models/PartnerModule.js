@@ -29,6 +29,7 @@ const partnerModuleSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "RechargeModule",
     },
+    walletTwo: { type: mongoose.Schema.Types.ObjectId, ref: "WalletTwo" },
     userList: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     partnerList: [
       { type: mongoose.Schema.Types.ObjectId, ref: "PartnerModule" },
