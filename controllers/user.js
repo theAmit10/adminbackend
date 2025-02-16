@@ -3743,6 +3743,76 @@ const getPartnerUserList = asyncError(async (req, res, next) => {
   });
 });
 
+const searchPartnerUserList = asyncError(async (req, res, next) => {
+  let { userId } = req.params;
+  const { query } = req.query;
+
+  if (!userId || !query) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid userId or search query" });
+  }
+
+  // Ensure correct format
+  userId = isNaN(userId) ? userId.toString() : Number(userId);
+
+  const partner = await PartnerModule.findOne({ userId }).populate("userList");
+
+  if (!partner) {
+    return res
+      .status(404)
+      .json({ success: false, message: "Partner not found" });
+  }
+
+  // Filter userList by userId OR name
+  const filteredUsers = partner.userList.filter(
+    (user) =>
+      user.name.toLowerCase().includes(query.toLowerCase()) ||
+      user.userId.toString().includes(query)
+  );
+
+  res.status(200).json({
+    success: true,
+    userList: filteredUsers,
+  });
+});
+
+const searchPartnerPartnerList = asyncError(async (req, res, next) => {
+  let { userId } = req.params;
+  const { query } = req.query;
+
+  if (!userId || !query) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid userId or search query" });
+  }
+
+  // Ensure correct format
+  userId = isNaN(userId) ? userId.toString() : Number(userId);
+
+  const partner = await PartnerModule.findOne({ userId }).populate(
+    "partnerList"
+  );
+
+  if (!partner) {
+    return res
+      .status(404)
+      .json({ success: false, message: "Partner not found" });
+  }
+
+  // Filter userList by userId OR name
+  const filteredUsers = partner.partnerList.filter(
+    (user) =>
+      user.name.toLowerCase().includes(query.toLowerCase()) ||
+      user.userId.toString().includes(query)
+  );
+
+  res.status(200).json({
+    success: true,
+    partnerList: filteredUsers,
+  });
+});
+
 // const getPartnerPartnerList = asyncError(async (req, res, next) => {
 //   const { userId } = req.params;
 
@@ -5430,4 +5500,6 @@ module.exports = {
   getRechargeById,
   updateRechargePermission,
   searchUser,
+  searchPartnerUserList,
+  searchPartnerPartnerList,
 };

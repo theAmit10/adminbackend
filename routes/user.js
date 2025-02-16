@@ -99,6 +99,8 @@ const {
   searchSubPartner,
   getAllPowerballGameTickets,
   getPowerballGameTicketsByDateAndTime,
+  searchPartnerUserList,
+  searchPartnerPartnerList,
 } = require("../controllers/user.js");
 const { isAuthenticated, verifyToken } = require("../middlewares/auth.js");
 const { singleUpload } = require("../middlewares/multer.js");
@@ -348,5 +350,11 @@ router.get(
 router.get("/searchuser", isAuthenticated, searchUser);
 router.get("/searchpartner", isAuthenticated, searchPartner);
 router.get("/searchusubpartner", isAuthenticated, searchSubPartner);
+router.get("/searchuserlist/:userId", isAuthenticated, searchPartnerUserList);
+router.get(
+  "/searchpartnerlist/:userId",
+  isAuthenticated,
+  searchPartnerPartnerList
+);
 
 module.exports = router;
