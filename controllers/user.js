@@ -4780,17 +4780,42 @@ const createPowerBallGame = asyncError(async (req, res, next) => {
 });
 
 // ✅ Add Multiplier to the Game
+// const addMultiplier = asyncError(async (req, res, next) => {
+//   const { gameId } = req.params;
+//   const { value } = req.body;
+
+//   if (!value)
+//     return next(new ErrorHandler("Multiplier value is required", 400));
+
+//   const game = await PowerBallGame.findById(gameId);
+//   if (!game) return next(new ErrorHandler("Game not found", 404));
+
+//   game.multiplier.push({ value });
+//   await game.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Multiplier added successfully",
+//     game,
+//   });
+// });
 const addMultiplier = asyncError(async (req, res, next) => {
-  const { gameId } = req.params;
   const { value } = req.body;
 
-  if (!value)
+  if (!value) {
     return next(new ErrorHandler("Multiplier value is required", 400));
+  }
 
-  const game = await PowerBallGame.findById(gameId);
-  if (!game) return next(new ErrorHandler("Game not found", 404));
+  // Fetch the latest game (sorted by createdAt in descending order)
+  const game = await PowerBallGame.findOne().sort({ createdAt: -1 });
 
+  if (!game) {
+    return next(new ErrorHandler("No game found", 404));
+  }
+
+  // Add the new multiplier
   game.multiplier.push({ value });
+
   await game.save();
 
   res.status(200).json({
@@ -4801,18 +4826,44 @@ const addMultiplier = asyncError(async (req, res, next) => {
 });
 
 // ✅ Remove Multiplier from the Game
+// const removeMultiplier = asyncError(async (req, res, next) => {
+//   const { gameId } = req.params;
+//   const { value } = req.body;
+
+//   if (!value)
+//     return next(new ErrorHandler("Multiplier value is required", 400));
+
+//   const game = await PowerBallGame.findById(gameId);
+//   if (!game) return next(new ErrorHandler("Game not found", 404));
+
+//   // Filter out the multiplier with the given value
+//   game.multiplier = game.multiplier.filter((item) => item.value !== value);
+//   await game.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Multiplier removed successfully",
+//     game,
+//   });
+// });
+
 const removeMultiplier = asyncError(async (req, res, next) => {
-  const { gameId } = req.params;
   const { value } = req.body;
 
-  if (!value)
+  if (!value) {
     return next(new ErrorHandler("Multiplier value is required", 400));
+  }
 
-  const game = await PowerBallGame.findById(gameId);
-  if (!game) return next(new ErrorHandler("Game not found", 404));
+  // Fetch the latest game (sorted by createdAt in descending order)
+  const game = await PowerBallGame.findOne().sort({ createdAt: -1 });
+
+  if (!game) {
+    return next(new ErrorHandler("No game found", 404));
+  }
 
   // Filter out the multiplier with the given value
   game.multiplier = game.multiplier.filter((item) => item.value !== value);
+
   await game.save();
 
   res.status(200).json({
@@ -4823,12 +4874,35 @@ const removeMultiplier = asyncError(async (req, res, next) => {
 });
 
 // ✅ Update Name, StartRange, or EndRange
+// const updateGameDetails = asyncError(async (req, res, next) => {
+//   const { gameId } = req.params;
+//   const { name, startRange, endRange } = req.body;
+
+//   const game = await PowerBallGame.findById(gameId);
+//   if (!game) return next(new ErrorHandler("Game not found", 404));
+
+//   // Update only if the value is provided
+//   if (name !== undefined) game.name = name;
+//   if (startRange !== undefined) game.range.startRange = startRange;
+//   if (endRange !== undefined) game.range.endRange = endRange;
+
+//   await game.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Game details updated successfully",
+//     game,
+//   });
+// });
 const updateGameDetails = asyncError(async (req, res, next) => {
-  const { gameId } = req.params;
   const { name, startRange, endRange } = req.body;
 
-  const game = await PowerBallGame.findById(gameId);
-  if (!game) return next(new ErrorHandler("Game not found", 404));
+  // Fetch the latest game (sorted by createdAt in descending order)
+  const game = await PowerBallGame.findOne().sort({ createdAt: -1 });
+
+  if (!game) {
+    return next(new ErrorHandler("No game found", 404));
+  }
 
   // Update only if the value is provided
   if (name !== undefined) game.name = name;
@@ -5119,8 +5193,40 @@ const getAllPowerDates = asyncError(async (req, res, next) => {
 });
 
 // ✅ Add Winner Prize to PowerBallGame
+// const addWinnerPrize = asyncError(async (req, res, next) => {
+//   const { gameId } = req.params;
+//   const {
+//     firstprize,
+//     secondPrize,
+//     thirdprize,
+//     fourthPrize,
+//     fifthprize,
+//     sixthPrize,
+//   } = req.body;
+
+//   let game = await PowerBallGame.findById(gameId);
+//   if (!game) {
+//     return next(new ErrorHandler("PowerBallGame not found", 404));
+//   }
+
+//   game.winnerPrize = {
+//     firstprize: firstprize || game.winnerPrize.firstprize,
+//     secondPrize: secondPrize || game.winnerPrize.secondPrize,
+//     thirdprize: thirdprize || game.winnerPrize.thirdprize,
+//     fourthPrize: fourthPrize || game.winnerPrize.fourthPrize,
+//     fifthprize: fifthprize || game.winnerPrize.fifthprize,
+//     sixthPrize: sixthPrize || game.winnerPrize.sixthPrize,
+//   };
+
+//   await game.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Winner prize updated successfully",
+//     game,
+//   });
+// });
 const addWinnerPrize = asyncError(async (req, res, next) => {
-  const { gameId } = req.params;
   const {
     firstprize,
     secondPrize,
@@ -5130,18 +5236,21 @@ const addWinnerPrize = asyncError(async (req, res, next) => {
     sixthPrize,
   } = req.body;
 
-  let game = await PowerBallGame.findById(gameId);
+  // Fetch the latest game (sorted by createdAt in descending order)
+  let game = await PowerBallGame.findOne().sort({ createdAt: -1 });
+
   if (!game) {
     return next(new ErrorHandler("PowerBallGame not found", 404));
   }
 
+  // Update only if values are provided
   game.winnerPrize = {
-    firstprize: firstprize || game.winnerPrize.firstprize,
-    secondPrize: secondPrize || game.winnerPrize.secondPrize,
-    thirdprize: thirdprize || game.winnerPrize.thirdprize,
-    fourthPrize: fourthPrize || game.winnerPrize.fourthPrize,
-    fifthprize: fifthprize || game.winnerPrize.fifthprize,
-    sixthPrize: sixthPrize || game.winnerPrize.sixthPrize,
+    firstprize: firstprize ?? game.winnerPrize?.firstprize,
+    secondPrize: secondPrize ?? game.winnerPrize?.secondPrize,
+    thirdprize: thirdprize ?? game.winnerPrize?.thirdprize,
+    fourthPrize: fourthPrize ?? game.winnerPrize?.fourthPrize,
+    fifthprize: fifthprize ?? game.winnerPrize?.fifthprize,
+    sixthPrize: sixthPrize ?? game.winnerPrize?.sixthPrize,
   };
 
   await game.save();
