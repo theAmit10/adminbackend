@@ -307,11 +307,11 @@ router.get("/getalluserrecharge", isAuthenticated, getAllRechargeTransactions);
 // PowerBall
 
 router.post("/createpowerball", isAuthenticated, createPowerBallGame);
-router.post("/addmultipler/:gameId", isAuthenticated, addMultiplier);
-router.delete("/removemultipler/:gameId", isAuthenticated, removeMultiplier);
-router.put("/updategamedetails/:gameId", isAuthenticated, updateGameDetails);
-router.put("/updatewinnerprize/:gameId", isAuthenticated, addWinnerPrize);
-router.get("/getallpowerball/", isAuthenticated, getAllPowerBallGames);
+router.post("/addmultipler", isAuthenticated, addMultiplier);
+router.delete("/removemultipler", isAuthenticated, removeMultiplier);
+router.put("/updategamedetails", isAuthenticated, updateGameDetails);
+router.put("/updatewinnerprize", isAuthenticated, addWinnerPrize);
+router.get("/getallpowerball", isAuthenticated, getAllPowerBallGames);
 router.get("/getpowerball/:gameId", isAuthenticated, getPowerBallGameById);
 
 // POWERBALL TIME
