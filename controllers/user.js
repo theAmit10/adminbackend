@@ -5314,7 +5314,6 @@ const searchUser = asyncError(async (req, res, next) => {
     next(new ErrorHandler(error.message, 500));
   }
 });
-
 const searchPartner = asyncError(async (req, res, next) => {
   const searchTerm = req.query.searchTerm; // This will be the string passed
 
@@ -5332,10 +5331,8 @@ const searchPartner = asyncError(async (req, res, next) => {
 
     // Check if the searchTerm is a userId (numeric string like "1000")
     if (/^\d+$/.test(searchTerm)) {
-      // If it's a numeric string, treat it as a userId
-      query.userId = searchTerm;
+      query.userId = searchTerm; // If numeric, search by userId
     } else {
-      // Otherwise, treat it as a name
       query.name = { $regex: new RegExp(searchTerm, "i") }; // Case-insensitive search for name
     }
 
@@ -5346,18 +5343,18 @@ const searchPartner = asyncError(async (req, res, next) => {
       return res.status(404).json({
         success: false,
         message: "Partner not found",
+        partners: [], // Return an empty array when no partner is found
       });
     }
 
     res.status(200).json({
       success: true,
-      user,
+      partners: [user], // Wrap the user object inside an array
     });
   } catch (error) {
     next(new ErrorHandler(error.message, 500));
   }
 });
-
 const searchSubPartner = asyncError(async (req, res, next) => {
   const searchTerm = req.query.searchTerm; // This will be the string passed
 
@@ -5370,15 +5367,13 @@ const searchSubPartner = asyncError(async (req, res, next) => {
     }
 
     let query = {
-      partnerType: "subpartner", // Filter by partnerType "partner"
+      partnerType: "subpartner", // Filter by partnerType "subpartner"
     };
 
     // Check if the searchTerm is a userId (numeric string like "1000")
     if (/^\d+$/.test(searchTerm)) {
-      // If it's a numeric string, treat it as a userId
-      query.userId = searchTerm;
+      query.userId = searchTerm; // If numeric, search by userId
     } else {
-      // Otherwise, treat it as a name
       query.name = { $regex: new RegExp(searchTerm, "i") }; // Case-insensitive search for name
     }
 
@@ -5388,18 +5383,105 @@ const searchSubPartner = asyncError(async (req, res, next) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Partner not found",
+        message: "Sub-partner not found",
+        partners: [], // Return an empty array when no sub-partner is found
       });
     }
 
     res.status(200).json({
       success: true,
-      user,
+      subpartners: [user], // Wrap the user object inside an array
     });
   } catch (error) {
     next(new ErrorHandler(error.message, 500));
   }
 });
+
+// const searchPartner = asyncError(async (req, res, next) => {
+//   const searchTerm = req.query.searchTerm; // This will be the string passed
+
+//   try {
+//     if (!searchTerm) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Please provide a search term",
+//       });
+//     }
+
+//     let query = {
+//       partnerType: "partner", // Filter by partnerType "partner"
+//     };
+
+//     // Check if the searchTerm is a userId (numeric string like "1000")
+//     if (/^\d+$/.test(searchTerm)) {
+//       // If it's a numeric string, treat it as a userId
+//       query.userId = searchTerm;
+//     } else {
+//       // Otherwise, treat it as a name
+//       query.name = { $regex: new RegExp(searchTerm, "i") }; // Case-insensitive search for name
+//     }
+
+//     // Search for the partner based on the query and populate the country
+//     const user = await PartnerModule.findOne(query).populate("country");
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Partner not found",
+//       });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       user,
+//     });
+//   } catch (error) {
+//     next(new ErrorHandler(error.message, 500));
+//   }
+// });
+
+// const searchSubPartner = asyncError(async (req, res, next) => {
+//   const searchTerm = req.query.searchTerm; // This will be the string passed
+
+//   try {
+//     if (!searchTerm) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Please provide a search term",
+//       });
+//     }
+
+//     let query = {
+//       partnerType: "subpartner", // Filter by partnerType "partner"
+//     };
+
+//     // Check if the searchTerm is a userId (numeric string like "1000")
+//     if (/^\d+$/.test(searchTerm)) {
+//       // If it's a numeric string, treat it as a userId
+//       query.userId = searchTerm;
+//     } else {
+//       // Otherwise, treat it as a name
+//       query.name = { $regex: new RegExp(searchTerm, "i") }; // Case-insensitive search for name
+//     }
+
+//     // Search for the partner based on the query and populate the country
+//     const user = await PartnerModule.findOne(query).populate("country");
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Partner not found",
+//       });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       user,
+//     });
+//   } catch (error) {
+//     next(new ErrorHandler(error.message, 500));
+//   }
+// });
 
 module.exports = {
   getPowerballGameTicketsByDateAndTime,
