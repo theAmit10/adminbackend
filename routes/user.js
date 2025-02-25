@@ -102,6 +102,8 @@ const {
   searchPartnerUserList,
   searchPartnerPartnerList,
   getPowerDatesByTime,
+  updateSettings,
+  getSettings,
 } = require("../controllers/user.js");
 const { isAuthenticated, verifyToken } = require("../middlewares/auth.js");
 const { singleUpload } = require("../middlewares/multer.js");
@@ -358,5 +360,7 @@ router.get(
   isAuthenticated,
   searchPartnerPartnerList
 );
+router.put("/updatesetting", isAuthenticated, updateSettings);
+router.get("/getsettings", isAuthenticated, getSettings);
 
 module.exports = router;

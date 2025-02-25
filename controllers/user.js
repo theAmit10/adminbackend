@@ -26,6 +26,7 @@ const PowerBallGame = require("../models/PowerBallGame.js");
 const PowerTime = require("../models/PowerTime.js");
 const PowerDate = require("../models/PowerDate.js");
 const PowerballGameTickets = require("../models/PowerballGameTickets.js");
+const Settings = require("../models/Settings.js");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -3433,6 +3434,11 @@ const makeUserPartner = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("User is already a partner", 400));
   }
 
+  // Fetch settings dynamically
+  const settings = await Settings.findOne();
+  const MIN_PROFIT_PERCENTAGE = settings?.minProfitPercentage || 0;
+  const MIN_RECHARGE_PERCENTAGE = settings?.minRechargePercentage || 0;
+
   // Set partnerStatus to true
   user.partnerStatus = true;
   user.partnerType = "partner";
@@ -3441,8 +3447,8 @@ const makeUserPartner = asyncError(async (req, res, next) => {
   const partnerModule = await PartnerModule.create({
     userId: user.userId,
     name: user.name, // Use the user's name
-    profitPercentage: 0, // Default value
-    rechargePercentage: 0, // Default value
+    profitPercentage: MIN_PROFIT_PERCENTAGE, // Set dynamic value
+    rechargePercentage: MIN_RECHARGE_PERCENTAGE, // Set dynamic value
     parentPartnerId: user.parentPartnerId, // Use the user's parentPartnerId
     parentParentPartnerId: user.parentParentPartnerId, // Use the user's parentParentPartnerId
     topParentId: user.topParentId, // Use the user's topParentId
@@ -3468,6 +3474,55 @@ const makeUserPartner = asyncError(async (req, res, next) => {
   });
 });
 
+// const makeUserPartner = asyncError(async (req, res, next) => {
+//   const { userId } = req.body; // Get userId from the request body
+
+//   // Find the user by userId
+//   const user = await User.findOne({ userId });
+//   if (!user) {
+//     return next(new ErrorHandler("User not found", 404));
+//   }
+
+//   // Check if the user is already a partner
+//   if (user.partnerStatus === true) {
+//     return next(new ErrorHandler("User is already a partner", 400));
+//   }
+
+//   // Set partnerStatus to true
+//   user.partnerStatus = true;
+//   user.partnerType = "partner";
+
+//   // Create a PartnerModule for the user
+//   const partnerModule = await PartnerModule.create({
+//     userId: user.userId,
+//     name: user.name, // Use the user's name
+//     profitPercentage: 0, // Default value
+//     rechargePercentage: 0, // Default value
+//     parentPartnerId: user.parentPartnerId, // Use the user's parentPartnerId
+//     parentParentPartnerId: user.parentParentPartnerId, // Use the user's parentParentPartnerId
+//     topParentId: user.topParentId, // Use the user's topParentId
+//     walletTwo: user.walletTwo._id,
+//     playHistoryPermission: false, // Default value
+//     transactionHistoryPermission: false, // Default value
+//     partnerType: "partner", // Set partnerType to "partner"
+//     rechargeStatus: false, // Default value
+//     userList: [], // Add the user to the userList
+//     partnerList: [], // Initialize partnerList as empty
+//   });
+
+//   // Assign the created PartnerModule to the user
+//   user.partnerModule = partnerModule._id;
+
+//   // Save the updated user
+//   await user.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "User promoted to partner successfully",
+//     user,
+//   });
+// });
+
 const makeUserSubPartner = asyncError(async (req, res, next) => {
   const { userId, parentId } = req.body; // Get userId and parentId from the request body
 
@@ -3491,12 +3546,17 @@ const makeUserSubPartner = asyncError(async (req, res, next) => {
     );
   }
 
+  // Fetch settings dynamically
+  const settings = await Settings.findOne();
+  const MIN_PROFIT_PERCENTAGE = settings?.minProfitPercentage || 0;
+  const MIN_RECHARGE_PERCENTAGE = settings?.minRechargePercentage || 0;
+
   // Create a PartnerModule for the user as a subpartner
   const partnerModule = await PartnerModule.create({
     userId: user.userId,
     name: user.name, // Use the user's name
-    profitPercentage: 0, // Default value
-    rechargePercentage: 0, // Default value
+    profitPercentage: MIN_PROFIT_PERCENTAGE, // Set dynamic value
+    rechargePercentage: MIN_RECHARGE_PERCENTAGE, // Set dynamic value
     parentPartnerId: parent.userId, // Use the parent's userId
     parentParentPartnerId: parent.parentPartnerId, // Use the parent's parentPartnerId
     topParentId: parent.topParentId, // Use the parent's topParentId
@@ -5783,7 +5843,65 @@ const searchSubPartner = asyncError(async (req, res, next) => {
 //   }
 // });
 
+// [DEFAULT RECHARGE AND PROFIT VALUE]
+
+// Update settings API (for admin)
+const updateSettings = async (req, res) => {
+  try {
+    const { minProfitPercentage, minRechargePercentage } = req.body;
+
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings();
+    }
+
+    if (minProfitPercentage !== undefined) {
+      settings.minProfitPercentage = minProfitPercentage;
+    }
+
+    if (minRechargePercentage !== undefined) {
+      settings.minRechargePercentage = minRechargePercentage;
+    }
+
+    await settings.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Settings updated successfully",
+      data: settings,
+    });
+  } catch (error) {
+    console.error("Error updating settings:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+const getSettings = asyncError(async (req, res, next) => {
+  // Fetch the settings from the database
+  const settings = await Settings.findOne();
+
+  // If no settings found, return default values
+  if (!settings) {
+    return res.status(200).json({
+      success: true,
+      message: "Settings not found, returning default values.",
+      settings: {
+        minProfitPercentage: 5, // Default minimum profit percentage
+        minRechargePercentage: 2, // Default minimum recharge percentage
+      },
+    });
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Settings retrieved successfully.",
+    settings,
+  });
+});
+
 module.exports = {
+  getSettings,
+  updateSettings,
   getPowerballGameTicketsByDateAndTime,
   getAllPowerballGameTickets,
   searchSubPartner,
