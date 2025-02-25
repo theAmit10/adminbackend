@@ -3435,6 +3435,7 @@ const makeUserPartner = asyncError(async (req, res, next) => {
 
   // Set partnerStatus to true
   user.partnerStatus = true;
+  user.partnerType = "partner";
 
   // Create a PartnerModule for the user
   const partnerModule = await PartnerModule.create({
@@ -4407,6 +4408,12 @@ const removeTopPartner = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("User ID is required", 400));
   }
 
+  const user = await User.findOne({ userId });
+
+  if (!user) {
+    return next(new ErrorHandler("User not found", 404));
+  }
+
   // Find the partner using userId
   const partner = await PartnerModule.findOne({ userId })
     .populate("userList")
@@ -4418,6 +4425,10 @@ const removeTopPartner = asyncError(async (req, res, next) => {
 
   // Update the partner type to "user"
   partner.partnerType = "user";
+  user.partnerType = "user";
+  user.partnerStatus = false;
+  user.rechargeStatus = false;
+  await user.save();
 
   // Process the userList
   for (const user of partner.userList) {
@@ -5378,9 +5389,66 @@ const getAllPowerballGameTickets = asyncError(async (req, res, next) => {
 //   });
 // });
 
+// const getPowerballGameTicketsByDateAndTime = asyncError(
+//   async (req, res, next) => {
+//     const { powerdateId, powertimeId } = req.params;
+//     const { page = 1, limit = 10 } = req.query; // Pagination parameters
+
+//     try {
+//       // Validate the provided IDs
+//       if (
+//         !mongoose.Types.ObjectId.isValid(powerdateId) ||
+//         !mongoose.Types.ObjectId.isValid(powertimeId)
+//       ) {
+//         return next(new ErrorHandler("Invalid powerdate or powertime ID", 400));
+//       }
+
+//       const pageNumber = parseInt(page, 10);
+//       const limitNumber = parseInt(limit, 10);
+//       const skip = (pageNumber - 1) * limitNumber;
+
+//       // Find the PowerballGameTickets based on powerdate and powertime with pagination and sorting
+//       const tickets = await PowerballGameTickets.find({
+//         powerdate: powerdateId,
+//         powertime: powertimeId,
+//       })
+//         .populate("powerdate")
+//         .populate("powertime")
+//         .sort({ createdAt: -1 }) // Sorting by newest first
+//         .skip(skip)
+//         .limit(limitNumber);
+
+//       if (!tickets.length) {
+//         return res.status(404).json({
+//           success: false,
+//           message:
+//             "No PowerballGameTickets found for the given powerdate and powertime",
+//         });
+//       }
+
+//       // Get total count for pagination info
+//       const total = await PowerballGameTickets.countDocuments({
+//         powerdate: powerdateId,
+//         powertime: powertimeId,
+//       });
+//       const totalPages = Math.ceil(total / limitNumber);
+
+//       res.status(200).json({
+//         success: true,
+//         page: pageNumber,
+//         totalPages,
+//         totalRecords: total,
+//         tickets,
+//       });
+//     } catch (error) {
+//       next(new ErrorHandler(error.message, 500));
+//     }
+//   }
+// );
 const getPowerballGameTicketsByDateAndTime = asyncError(
   async (req, res, next) => {
     const { powerdateId, powertimeId } = req.params;
+    const { page = 1, limit = 10 } = req.query; // Pagination parameters
 
     try {
       // Validate the provided IDs
@@ -5391,24 +5459,33 @@ const getPowerballGameTicketsByDateAndTime = asyncError(
         return next(new ErrorHandler("Invalid powerdate or powertime ID", 400));
       }
 
-      // Find the PowerballGameTickets based on powerdate and powertime
-      const tickets = await PowerballGameTickets.findOne({
+      const pageNumber = parseInt(page, 10);
+      const limitNumber = parseInt(limit, 10);
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // Find the PowerballGameTickets based on powerdate and powertime with pagination and sorting
+      const tickets = await PowerballGameTickets.find({
         powerdate: powerdateId,
         powertime: powertimeId,
       })
         .populate("powerdate")
-        .populate("powertime");
+        .populate("powertime")
+        .sort({ createdAt: -1 }) // Sorting by newest first
+        .skip(skip)
+        .limit(limitNumber);
 
-      if (!tickets) {
-        return res.status(404).json({
-          success: false,
-          message:
-            "No PowerballGameTickets found for the given powerdate and powertime",
-        });
-      }
+      // Get total count for pagination info
+      const total = await PowerballGameTickets.countDocuments({
+        powerdate: powerdateId,
+        powertime: powertimeId,
+      });
+      const totalPages = Math.ceil(total / limitNumber);
 
       res.status(200).json({
         success: true,
+        page: pageNumber,
+        totalPages,
+        totalRecords: total,
         tickets,
       });
     } catch (error) {
@@ -5417,6 +5494,44 @@ const getPowerballGameTicketsByDateAndTime = asyncError(
   }
 );
 
+// const getPowerballGameTicketsByDateAndTime = asyncError(
+//   async (req, res, next) => {
+//     const { powerdateId, powertimeId } = req.params;
+
+//     try {
+//       // Validate the provided IDs
+//       if (
+//         !mongoose.Types.ObjectId.isValid(powerdateId) ||
+//         !mongoose.Types.ObjectId.isValid(powertimeId)
+//       ) {
+//         return next(new ErrorHandler("Invalid powerdate or powertime ID", 400));
+//       }
+
+//       // Find the PowerballGameTickets based on powerdate and powertime
+//       const tickets = await PowerballGameTickets.findOne({
+//         powerdate: powerdateId,
+//         powertime: powertimeId,
+//       })
+//         .populate("powerdate")
+//         .populate("powertime");
+
+//       if (!tickets) {
+//         return res.status(404).json({
+//           success: false,
+//           message:
+//             "No PowerballGameTickets found for the given powerdate and powertime",
+//         });
+//       }
+
+//       res.status(200).json({
+//         success: true,
+//         tickets,
+//       });
+//     } catch (error) {
+//       next(new ErrorHandler(error.message, 500));
+//     }
+//   }
+// );
 const searchUser = asyncError(async (req, res, next) => {
   const searchTerm = req.query.searchTerm; // This will be the string passed
 
@@ -5442,21 +5557,55 @@ const searchUser = asyncError(async (req, res, next) => {
     // Search for the user based on the query and populate the country
     const user = await User.findOne(query).populate("country");
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
     res.status(200).json({
       success: true,
-      user,
+      users: user ? [user] : [],
     });
   } catch (error) {
     next(new ErrorHandler(error.message, 500));
   }
 });
+
+// const searchUser = asyncError(async (req, res, next) => {
+//   const searchTerm = req.query.searchTerm; // This will be the string passed
+
+//   try {
+//     if (!searchTerm) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Please provide a search term",
+//       });
+//     }
+
+//     let query = {};
+
+//     // Check if the searchTerm is a userId (numeric string like "1000")
+//     if (/^\d+$/.test(searchTerm)) {
+//       // If it's a numeric string, treat it as a userId
+//       query.userId = searchTerm;
+//     } else {
+//       // Otherwise, treat it as a name
+//       query.name = { $regex: new RegExp(searchTerm, "i") }; // Case-insensitive search for name
+//     }
+
+//     // Search for the user based on the query and populate the country
+//     const user = await User.findOne(query).populate("country");
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     res.status(200).json({
+//       success: true,
+//       user,
+//     });
+//   } catch (error) {
+//     next(new ErrorHandler(error.message, 500));
+//   }
+// });
 const searchPartner = asyncError(async (req, res, next) => {
   const searchTerm = req.query.searchTerm; // This will be the string passed
 
