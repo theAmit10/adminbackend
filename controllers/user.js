@@ -4428,6 +4428,11 @@ const removeTopPartner = asyncError(async (req, res, next) => {
   user.partnerType = "user";
   user.partnerStatus = false;
   user.rechargeStatus = false;
+  user.rechargePaymentId = 1000;
+  user.parentPartnerId = 1000;
+  user.parentParentPartnerId = 1000;
+  user.topParentId = 1000;
+
   await user.save();
 
   // Process the userList
@@ -4487,6 +4492,9 @@ const removeTopPartner = asyncError(async (req, res, next) => {
   partner.partnerList = []; // Remove all partners from partnerList
 
   await partner.save();
+
+  // Remove the partner from the PartnerModule
+  await PartnerModule.findByIdAndDelete(partner._id);
 
   res.status(200).json({
     success: true,
