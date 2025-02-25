@@ -101,6 +101,7 @@ const {
   getPowerballGameTicketsByDateAndTime,
   searchPartnerUserList,
   searchPartnerPartnerList,
+  getPowerDatesByTime,
 } = require("../controllers/user.js");
 const { isAuthenticated, verifyToken } = require("../middlewares/auth.js");
 const { singleUpload } = require("../middlewares/multer.js");
@@ -326,6 +327,7 @@ router.post("/createpowerdate", isAuthenticated, createPowerDate);
 router.put("/updatepowerdate/:id", isAuthenticated, updatePowerDate);
 router.get("/getallpowerdate", isAuthenticated, getAllPowerDates);
 router.get("/getpowerdate/:id", isAuthenticated, getSinglePowerDate);
+router.get("/getpowerdatebytime/:id", isAuthenticated, getPowerDatesByTime);
 router.delete("/removepowerdate/:id", isAuthenticated, deletePowerDate);
 
 // POWERBALL PLAY

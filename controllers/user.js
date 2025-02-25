@@ -5143,6 +5143,40 @@ const getSinglePowerDate = asyncError(async (req, res, next) => {
   });
 });
 
+const getPowerDatesByTime = asyncError(async (req, res, next) => {
+  const { id } = req.params; // powertime ID
+  const { page = 1, limit = 10 } = req.query; // Pagination parameters
+
+  const pageNumber = parseInt(page, 10);
+  const limitNumber = parseInt(limit, 10);
+  const skip = (pageNumber - 1) * limitNumber;
+
+  // Fetch power dates based on powertime ID with pagination, sorted by newest first
+  const powerDates = await PowerDate.find({ powertime: id })
+    .populate("powertime")
+    .sort({ createdAt: -1 }) // Sorting by newest first
+    .skip(skip)
+    .limit(limitNumber);
+
+  if (!powerDates.length) {
+    return next(
+      new ErrorHandler("No PowerDates found for the given powertime ID", 404)
+    );
+  }
+
+  // Get total count for pagination info
+  const total = await PowerDate.countDocuments({ powertime: id });
+  const totalPages = Math.ceil(total / limitNumber);
+
+  res.status(200).json({
+    success: true,
+    page: pageNumber,
+    totalPages,
+    totalRecords: total,
+    powerDates,
+  });
+});
+
 // ✅ Get All PowerDates (with populated powertime)
 // const getAllPowerDates = asyncError(async (req, res, next) => {
 //   const powerDates = await PowerDate.find()
@@ -5692,5 +5726,6 @@ module.exports = {
   updateRechargePermission,
   searchUser,
   searchPartnerUserList,
+  getPowerDatesByTime,
   searchPartnerPartnerList,
 };
