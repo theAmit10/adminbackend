@@ -104,6 +104,7 @@ const {
   getPowerDatesByTime,
   updateSettings,
   getSettings,
+  increasePartnerRecharge,
 } = require("../controllers/user.js");
 const { isAuthenticated, verifyToken } = require("../middlewares/auth.js");
 const { singleUpload } = require("../middlewares/multer.js");
@@ -245,7 +246,8 @@ router.post("/createpartner", isAuthenticated, makeUserPartner);
 router.post("/createsubpartner", isAuthenticated, makeUserSubPartner);
 router.post("/createprofitdeduction", isAuthenticated, createProfitDeduction);
 router.put("/increaseprofit", isAuthenticated, increasePartnerProfit);
-router.put("/updatesubpartner", isAuthenticated, updateSubPartnerStatus);
+router.put("/increaserecharge", isAuthenticated, increasePartnerRecharge);
+router.put("/updatesubpartner", isAuthenticated, increasePartnerRecharge);
 router.get("/getallpartner", isAuthenticated, getAllPartners);
 router.get("/getallsubpartner", isAuthenticated, getAllSubpartners);
 router.get("/getpartnerbyuserid/:userId", isAuthenticated, getPartnerByUserId);

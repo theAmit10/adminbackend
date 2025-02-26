@@ -3968,6 +3968,36 @@ const increasePartnerProfit = asyncError(async (req, res, next) => {
   });
 });
 
+const increasePartnerRecharge = asyncError(async (req, res, next) => {
+  const { partnerId, rechargePercentage } = req.body;
+
+  // Validate required fields
+  if (!partnerId || rechargePercentage === undefined) {
+    return next(new ErrorHandler("All fields are required", 400));
+  }
+
+  // Ensure rechargePercentage is a valid number and positive
+  if (typeof rechargePercentage !== "number" || rechargePercentage <= 0) {
+    return next(
+      new ErrorHandler("Recharge percentage must be a positive number", 400)
+    );
+  }
+
+  // Find the partner using partnerId
+  const partner = await PartnerModule.findOne({ userId: partnerId });
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  partner.rechargePercentage = rechargePercentage;
+  await partner.save();
+
+  res.status(201).json({
+    success: true,
+    message: "Recharge percentage updated successfully",
+  });
+});
+
 const createProfitDeduction = asyncError(async (req, res, next) => {
   const { userId, partnerId, profitPercentage, reason } = req.body;
 
@@ -6003,4 +6033,5 @@ module.exports = {
   searchPartnerUserList,
   getPowerDatesByTime,
   searchPartnerPartnerList,
+  increasePartnerRecharge,
 };
