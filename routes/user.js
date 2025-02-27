@@ -247,7 +247,7 @@ router.post("/createsubpartner", isAuthenticated, makeUserSubPartner);
 router.post("/createprofitdeduction", isAuthenticated, createProfitDeduction);
 router.put("/increaseprofit", isAuthenticated, increasePartnerProfit);
 router.put("/increaserecharge", isAuthenticated, increasePartnerRecharge);
-router.put("/updatesubpartner", isAuthenticated, increasePartnerRecharge);
+router.put("/updatesubpartner", isAuthenticated, updateSubPartnerStatus);
 router.get("/getallpartner", isAuthenticated, getAllPartners);
 router.get("/getallsubpartner", isAuthenticated, getAllSubpartners);
 router.get("/getpartnerbyuserid/:userId", isAuthenticated, getPartnerByUserId);

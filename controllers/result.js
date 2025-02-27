@@ -482,7 +482,7 @@ const getAllPowerBallResultsByLocationWithTimesMonthYear = asyncError(
 
       // Add the current result to the results array within the date group
       dateGroup.results.push({
-        resultNumber: item.resultNumber, // Store the result number
+        jackpotnumber: item.jackpotnumber, // Store the result number
         powerdate: item.powerdate.toObject(), // Store the populated lotdate object
         powertime: item.powertime.toObject(), // Store the populated lottime object
         createdAt: item.createdAt, // Store the creation date of the result
@@ -1642,52 +1642,58 @@ const getAllLotDate = asyncError(async (req, res, next) => {
 //     });
 //   }
 // );
+
 const getAllLotDateAccordindLocationAndTime = asyncError(
   async (req, res, next) => {
-    let { lottimeId, lotlocationId, page, limit } = req.query;
+    const { lottimeId, lotlocationId, page = 1, limit = 10 } = req.query;
 
-    // Set default page and limit values
-    page = parseInt(page) || 1;
-    limit = parseInt(limit) || 10;
-    const skip = (page - 1) * limit;
+    // Convert page and limit to numbers
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * limitNumber;
 
-    try {
-      // Build the query object
-      let query = {};
+    // Fetch and sort LotDate based on the createdAt field in descending order (newest first)
+    let lotdates = await LotDate.find({})
+      .populate({
+        path: "lottime",
+        populate: {
+          path: "lotlocation",
+        },
+      })
+      .sort({ createdAt: -1 }); // Sort by createdAt (newest first)
 
-      // Apply filters if lottimeId or lotlocationId are provided
-      if (lottimeId) {
-        query["lottime"] = lottimeId;
-      }
-      if (lotlocationId) {
-        query["lottime.lotlocation"] = lotlocationId;
-      }
-
-      // Fetch lotdates with the applied filters, pagination, and sorting
-      let lotdates = await LotDate.find(query)
-        .populate({
-          path: "lottime",
-          populate: {
-            path: "lotlocation",
-          },
-        })
-        .skip(skip) // Apply pagination
-        .limit(limit) // Limit the number of lotdates per page
-        .sort({ createdAt: -1 }); // Sort by createdAt (newest first)
-
-      // Get the total count of lotdates matching the filter
-      const totalLotDates = await LotDate.countDocuments(query);
-
-      res.status(200).json({
-        success: true,
-        lotdates,
-        totalLotDates,
-        totalPages: Math.ceil(totalLotDates / limit),
-        currentPage: page,
-      });
-    } catch (error) {
-      next(error);
+    // Apply filtering based on lottimeId and lotlocationId if provided
+    if (lottimeId && lotlocationId) {
+      lotdates = lotdates.filter(
+        (item) =>
+          item.lottime._id.toString() === lottimeId &&
+          item.lottime.lotlocation._id.toString() === lotlocationId
+      );
+    } else if (lottimeId) {
+      lotdates = lotdates.filter(
+        (item) => item.lottime._id.toString() === lottimeId
+      );
+    } else if (lotlocationId) {
+      lotdates = lotdates.filter(
+        (item) => item.lottime.lotlocation._id.toString() === lotlocationId
+      );
     }
+
+    // Get total count after filtering
+    const totalResults = lotdates.length;
+
+    // Apply pagination
+    const paginatedLotdates = lotdates.slice(skip, skip + limitNumber);
+
+    // Send the paginated, filtered, and sorted results
+    res.status(200).json({
+      success: true,
+      page: pageNumber,
+      limit: limitNumber,
+      totalResults,
+      totalPages: Math.ceil(totalResults / limitNumber),
+      lotdates: paginatedLotdates,
+    });
   }
 );
 
@@ -2191,6 +2197,8 @@ const getAllLotLocationWithTimes = asyncError(async (req, res, next) => {
       .map((time) => ({
         _id: time._id,
         time: time.lottime, // Include any other fields you need from LotTime
+        liveresultlink: time.liveresultlink,
+        liveresulttimer: time.liveresulttimer,
         createdAt: time.createdAt,
       }));
 
@@ -3602,6 +3610,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
     lottime,
     lotlocation,
     currency: user.country._id.toString(),
+    gameType: "playarena",
   });
 
   console.log("New Bet :: " + JSON.stringify(newPlaybet));
