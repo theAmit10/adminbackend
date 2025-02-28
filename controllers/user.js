@@ -3876,23 +3876,44 @@ const searchPartnerPartnerList = asyncError(async (req, res, next) => {
 
 // const getPartnerPartnerList = asyncError(async (req, res, next) => {
 //   const { userId } = req.params;
+//   let { page, limit } = req.query;
 
-//   // Find the PartnerModule entry for the given userId and populate the userList
+//   // Convert page and limit to integers and set default values
+//   page = parseInt(page) || 1;
+//   limit = parseInt(limit) || 10;
+//   const skip = (page - 1) * limit;
+
+//   // Find the PartnerModule entry for the given userId and populate the partnerList with pagination
 //   const partner = await PartnerModule.findOne({ userId }).populate({
 //     path: "partnerList",
-//     options: { sort: { _id: -1 } }, // Sorting by _id in descending order
+//     options: {
+//       sort: { _id: -1 }, // Sorting by _id in descending order
+//       skip: skip, // Skip based on page number
+//       limit: limit, // Limit the number of partners per page
+//     },
 //   });
 
 //   if (!partner) {
 //     return next(new ErrorHandler("Partner not found", 404));
 //   }
 
+//   // ✅ Find the partner and get total user count BEFORE pagination
+//   const partnerTotal = await PartnerModule.findOne({ userId }).populate(
+//     "partnerList"
+//   );
+
+//   const totalPartners = partnerTotal.userList.length; // ✅ Total count before pagination
+
 //   res.status(200).json({
 //     success: true,
 //     message: "Populated partner list fetched successfully",
-//     userList: partner.partnerList, // Populated user list in descending order
+//     partnerList: partner.partnerList, // Populated partner list in descending order
+//     totalPartners,
+//     totalPages: Math.ceil(totalPartners / limit),
+//     currentPage: page,
 //   });
 // });
+
 const getPartnerPartnerList = asyncError(async (req, res, next) => {
   const { userId } = req.params;
   let { page, limit } = req.query;
@@ -3905,6 +3926,9 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
   // Find the PartnerModule entry for the given userId and populate the partnerList with pagination
   const partner = await PartnerModule.findOne({ userId }).populate({
     path: "partnerList",
+    populate: {
+      path: "walletTwo", // ✅ Only populating walletTwo inside partnerList
+    },
     options: {
       sort: { _id: -1 }, // Sorting by _id in descending order
       skip: skip, // Skip based on page number
@@ -3916,11 +3940,6 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Partner not found", 404));
   }
 
-  // Get total number of partners in the partnerList
-  // const totalPartners = await PartnerModule.countDocuments({
-  //   userId,
-  // });
-
   // ✅ Find the partner and get total user count BEFORE pagination
   const partnerTotal = await PartnerModule.findOne({ userId }).populate(
     "partnerList"
@@ -3931,7 +3950,7 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
   res.status(200).json({
     success: true,
     message: "Populated partner list fetched successfully",
-    partnerList: partner.partnerList, // Populated partner list in descending order
+    partnerList: partner.partnerList, // Populated partner list with walletTwo
     totalPartners,
     totalPages: Math.ceil(totalPartners / limit),
     currentPage: page,

@@ -4400,6 +4400,7 @@ const createCurrency = asyncError(async (req, res, next) => {
     countrycurrencysymbol,
     countrycurrencyvaluecomparedtoinr,
     timezone,
+    ticketprice,
   } = req.body;
 
   if (!countryname)
@@ -4410,6 +4411,11 @@ const createCurrency = asyncError(async (req, res, next) => {
 
   if (!countrycurrencysymbol)
     return next(new ErrorHandler("country currency symbol is missing", 404));
+
+  if (!ticketprice)
+    return next(
+      new ErrorHandler("country powerball ticket price is missing", 404)
+    );
 
   if (!countrycurrencyvaluecomparedtoinr)
     return next(
@@ -4424,6 +4430,7 @@ const createCurrency = asyncError(async (req, res, next) => {
     countryicon: req.file ? req.file.filename : undefined,
     countrycurrencysymbol,
     countrycurrencyvaluecomparedtoinr,
+    ticketprice,
   });
 
   res.status(201).json({
@@ -4482,6 +4489,7 @@ const updateCurrency = asyncError(async (req, res, next) => {
     countryname,
     countrycurrencysymbol,
     countrycurrencyvaluecomparedtoinr,
+    ticketprice,
   } = req.body;
 
   // Find the existing currency
@@ -4492,6 +4500,8 @@ const updateCurrency = asyncError(async (req, res, next) => {
 
   // Update the fields if provided
   if (countryname) currency.countryname = countryname;
+  if (ticketprice) currency.ticketprice = ticketprice;
+
   if (countrycurrencysymbol)
     currency.countrycurrencysymbol = countrycurrencysymbol;
   if (countrycurrencyvaluecomparedtoinr)
@@ -6068,7 +6078,8 @@ const getLatestPowerResult = asyncError(async (req, res, next) => {
     // Fetch the latest PowerResult by sorting in descending order based on createdAt
     const latestPowerResult = await powerresult
       .findOne()
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .populate("powerdate powertime");
 
     // Check if a document exists
     if (!latestPowerResult) {
