@@ -22,6 +22,10 @@ const schema = new mongoose.Schema(
       type: Number,
       required: [true, "Please enter ticket price"],
     },
+    multiplierprice: {
+      type: Number,
+      required: [true, "Please enter ticket multiplier price"],
+    },
     countrycurrencyvaluecomparedtoinr: {
       type: Number,
       required: [true, "Please enter country currency value compared to INR"],

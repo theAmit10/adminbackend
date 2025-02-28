@@ -4345,6 +4345,8 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
       populate: [
         { path: "lotdate", model: "LotDate" },
         { path: "lottime", model: "LotTime" },
+        { path: "powerdate", model: "PowerDate" },
+        { path: "powertime", model: "PowerTime" },
         { path: "lotlocation", model: "LotLocation" },
         { path: "currency", model: "Currency" },
       ],
@@ -4401,6 +4403,7 @@ const createCurrency = asyncError(async (req, res, next) => {
     countrycurrencyvaluecomparedtoinr,
     timezone,
     ticketprice,
+    multiplierprice,
   } = req.body;
 
   if (!countryname)
@@ -4411,6 +4414,10 @@ const createCurrency = asyncError(async (req, res, next) => {
 
   if (!countrycurrencysymbol)
     return next(new ErrorHandler("country currency symbol is missing", 404));
+  if (!multiplierprice)
+    return next(
+      new ErrorHandler("country ticket multiplier price is missing", 404)
+    );
 
   if (!ticketprice)
     return next(
@@ -4431,6 +4438,7 @@ const createCurrency = asyncError(async (req, res, next) => {
     countrycurrencysymbol,
     countrycurrencyvaluecomparedtoinr,
     ticketprice,
+    multiplierprice,
   });
 
   res.status(201).json({
@@ -4490,6 +4498,7 @@ const updateCurrency = asyncError(async (req, res, next) => {
     countrycurrencysymbol,
     countrycurrencyvaluecomparedtoinr,
     ticketprice,
+    multiplierprice,
   } = req.body;
 
   // Find the existing currency
@@ -4501,6 +4510,7 @@ const updateCurrency = asyncError(async (req, res, next) => {
   // Update the fields if provided
   if (countryname) currency.countryname = countryname;
   if (ticketprice) currency.ticketprice = ticketprice;
+  if (multiplierprice) currency.multiplierprice = multiplierprice;
 
   if (countrycurrencysymbol)
     currency.countrycurrencysymbol = countrycurrencysymbol;
