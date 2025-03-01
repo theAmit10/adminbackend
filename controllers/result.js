@@ -5019,7 +5019,7 @@ const addPartnerPerformance = asyncError(async (req, res) => {
 });
 
 const getSinglePartnerPerformance = asyncError(async (req, res) => {
-  const { lotlocation, lottime, lotdate } = req.body;
+  const { lotlocation, lottime, lotdate } = req.params;
 
   if (!lotlocation || !lottime || !lotdate) {
     return res.status(400).json({

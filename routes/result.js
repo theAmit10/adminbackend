@@ -413,7 +413,10 @@ router.get("/getapplink", getAppLinks);
 router.delete("/deleteapplink", isAuthenticated, deleteAppLinks);
 
 // FOR GETTING PARTNER PERFORMANCE
-router.get("/singlepartnerperformance", getSinglePartnerPerformance);
+router.get(
+  "/singlepartnerperformance/:lotlocation/:lottime/:lotdate",
+  getSinglePartnerPerformance
+);
 router.put(
   "/updaterechargetouserandpartner",
   isAuthenticated,
