@@ -199,7 +199,11 @@ const register = asyncError(async (req, res, next) => {
     parentPartnerId = partner.userId;
     parentParentPartnerId = partner.parentPartnerId;
     topParentId = partner.parentParentPartnerId;
-    rechargePaymentId = partner.rechargePaymentId;
+    if (partner.rechargeStatus) {
+      rechargePaymentId = partner.userId;
+    } else {
+      rechargePaymentId = partner.rechargePaymentId;
+    }
   }
 
   const contact = userId;
