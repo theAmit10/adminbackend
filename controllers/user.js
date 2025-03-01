@@ -2524,6 +2524,37 @@ const getAllTransaction = asyncError(async (req, res, next) => {
   });
 });
 
+// Get all RECHARGE transactions
+const getAllRechargeAdmin = asyncError(async (req, res, next) => {
+  // Get page and limit from query params or set default values
+  const page = parseInt(req.query.page) || 1; // Default page is 1
+  const limit = parseInt(req.query.limit) || 20; // Default limit is 10
+
+  // Calculate the number of documents to skip for pagination
+  const skip = (page - 1) * limit;
+
+  // Fetch deposits with pagination
+  const deposits = await Transaction.find({ transactionType: "Recharge" })
+    .populate("currency")
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  // Get the total number of documents (for calculating total pages)
+  const totalDeposits = await Transaction.countDocuments({
+    transactionType: "Deposit",
+  });
+
+  res.status(200).json({
+    success: true,
+    deposits,
+    page,
+    limit,
+    totalPages: Math.ceil(totalDeposits / limit),
+    totalDeposits,
+  });
+});
+
 // Get all Deposit transactions
 const getAllDeposit = asyncError(async (req, res, next) => {
   // Get page and limit from query params or set default values
@@ -6053,4 +6084,5 @@ module.exports = {
   getPowerDatesByTime,
   searchPartnerPartnerList,
   increasePartnerRecharge,
+  getAllRechargeAdmin,
 };

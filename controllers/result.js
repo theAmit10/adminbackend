@@ -6274,7 +6274,39 @@ const getLatestPowerResult = asyncError(async (req, res, next) => {
   }
 });
 
+const getPowerResultByTimeAndDate = asyncError(async (req, res, next) => {
+  try {
+    const { powertimeid, powerdateid } = req.params;
+
+    // Fetch the PowerResult based on powertimeid and powerdateid
+    const powerResult = await powerresult
+      .findOne({ powertime: powertimeid, powerdate: powerdateid })
+      .populate("powerdate powertime");
+
+    // Check if a document exists
+    if (!powerResult) {
+      return res.status(404).json({
+        success: false,
+        message: "No PowerResult found for the given powertime and powerdate",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "PowerResult retrieved successfully",
+      data: powerResult,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve PowerResult",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = {
+  getPowerResultByTimeAndDate,
   getUserOtherPayments,
   updateOtherActivationStatus,
   getPartnerOtherList,

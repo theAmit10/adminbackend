@@ -107,6 +107,7 @@ const {
   updateOtherActivationStatus,
   updateOtherPaymentStatus,
   deleteSingleOther,
+  getPowerResultByTimeAndDate,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -132,6 +133,11 @@ router
   .put(isAuthenticated, updateResult);
 router.post("/createresult", isAuthenticated, createResult);
 router.get("/singlepowerresult", isAuthenticated, getLatestPowerResult);
+router.get(
+  "/powerresultdatetime/:powertimeid/:powerdateid",
+  isAuthenticated,
+  getPowerResultByTimeAndDate
+);
 router.get(
   "/searchresult",
   isAuthenticated,
