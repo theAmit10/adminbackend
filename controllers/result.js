@@ -5018,8 +5018,59 @@ const addPartnerPerformance = asyncError(async (req, res) => {
   });
 });
 
+// const getSinglePartnerPerformance = asyncError(async (req, res) => {
+//   const { lotlocation, lottime, lotdate } = req.params;
+//   let { page, limit } = req.query;
+
+//   if (!lotlocation || !lottime || !lotdate) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "All fields (lotlocation, lottime, lotdate) are required",
+//     });
+//   }
+
+//   // Convert page and limit to numbers, set defaults if not provided
+//   page = parseInt(page) || 1;
+//   limit = parseInt(limit) || 10;
+//   const skip = (page - 1) * limit;
+
+//   // Find the PartnerPerformance entries based on given parameters with pagination
+//   const partnerPerformance = await PartnerPerformance.find({
+//     lotlocation,
+//     lottime,
+//     lotdate,
+//   })
+//     .populate("lotlocation lottime lotdate")
+//     .skip(skip)
+//     .limit(limit);
+
+//   if (!partnerPerformance.length) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "No PartnerPerformance records found",
+//     });
+//   }
+
+//   // Get total count for pagination metadata
+//   const totalRecords = await PartnerPerformance.countDocuments({
+//     lotlocation,
+//     lottime,
+//     lotdate,
+//   });
+
+//   res.status(200).json({
+//     success: true,
+//     message: "PartnerPerformance fetched successfully",
+//     totalRecords,
+//     currentPage: page,
+//     totalPages: Math.ceil(totalRecords / limit),
+//     partnerPerformance,
+//   });
+// });
+
 const getSinglePartnerPerformance = asyncError(async (req, res) => {
   const { lotlocation, lottime, lotdate } = req.params;
+  let { page, limit } = req.query;
 
   if (!lotlocation || !lottime || !lotdate) {
     return res.status(400).json({
@@ -5028,12 +5079,17 @@ const getSinglePartnerPerformance = asyncError(async (req, res) => {
     });
   }
 
+  // Convert page and limit to numbers, set defaults if not provided
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
   // Find the PartnerPerformance entry based on the given parameters
   const partnerPerformance = await PartnerPerformance.findOne({
     lotlocation,
     lottime,
     lotdate,
-  }).populate("lotlocation lottime lotdate"); // Populating related fields
+  }).populate("lotlocation lottime lotdate");
 
   if (!partnerPerformance) {
     return res.status(404).json({
@@ -5042,14 +5098,31 @@ const getSinglePartnerPerformance = asyncError(async (req, res) => {
     });
   }
 
+  // Extract performances array and apply pagination
+  const totalRecords = partnerPerformance.performances.length;
+  const paginatedPerformances = partnerPerformance.performances.slice(
+    skip,
+    skip + limit
+  );
+
   res.status(200).json({
     success: true,
     message: "PartnerPerformance fetched successfully",
-    partnerPerformance,
+    totalRecords,
+    currentPage: page,
+    totalPages: Math.ceil(totalRecords / limit),
+    performances: paginatedPerformances, // Return only paginated performances
+    partnerPerformance: {
+      _id: partnerPerformance._id,
+      lotlocation: partnerPerformance.lotlocation,
+      lottime: partnerPerformance.lottime,
+      lotdate: partnerPerformance.lotdate,
+    }, // Sending only metadata to reduce response size
   });
 });
 
 // ACTIVATE RECHARGE PAYMENT MODULE SO THAT USER CAN SEE DATA
+
 const updateShowPartnerRechargeToUserAndPartner = asyncError(
   async (req, res, next) => {
     const { userId, id } = req.body;
