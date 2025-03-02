@@ -1255,7 +1255,7 @@ const getAllUser = asyncError(async (req, res, next) => {
 
   try {
     // Fetch users with pagination, sorting, and populating necessary fields
-    const users = await User.find({})
+    const users = await User.find({ partnerType: "user" })
       .skip(skip) // Skip based on page number
       .limit(limit) // Limit the number of users per page
       .populate("walletOne")
@@ -5685,6 +5685,7 @@ const getPowerballGameTicketsByDateAndTime = asyncError(
 //     }
 //   }
 // );
+
 const searchUser = asyncError(async (req, res, next) => {
   const searchTerm = req.query.searchTerm; // This will be the string passed
 
@@ -5696,14 +5697,12 @@ const searchUser = asyncError(async (req, res, next) => {
       });
     }
 
-    let query = {};
+    let query = { partnerType: "user" }; // Ensure only users with partnerType "user" are searched
 
     // Check if the searchTerm is a userId (numeric string like "1000")
     if (/^\d+$/.test(searchTerm)) {
-      // If it's a numeric string, treat it as a userId
       query.userId = searchTerm;
     } else {
-      // Otherwise, treat it as a name
       query.name = { $regex: new RegExp(searchTerm, "i") }; // Case-insensitive search for name
     }
 
@@ -5744,21 +5743,15 @@ const searchUser = asyncError(async (req, res, next) => {
 //     // Search for the user based on the query and populate the country
 //     const user = await User.findOne(query).populate("country");
 
-//     if (!user) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "User not found",
-//       });
-//     }
-
 //     res.status(200).json({
 //       success: true,
-//       user,
+//       users: user ? [user] : [],
 //     });
 //   } catch (error) {
 //     next(new ErrorHandler(error.message, 500));
 //   }
 // });
+
 const searchPartner = asyncError(async (req, res, next) => {
   const searchTerm = req.query.searchTerm; // This will be the string passed
 
