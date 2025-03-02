@@ -3492,6 +3492,7 @@ const makeUserPartner = asyncError(async (req, res, next) => {
     transactionHistoryPermission: false, // Default value
     partnerType: "partner", // Set partnerType to "partner"
     rechargeStatus: false, // Default value
+    partnerStatus: true,
     userList: [], // Add the user to the userList
     partnerList: [], // Initialize partnerList as empty
   });
