@@ -3809,8 +3809,21 @@ const getPartnerUserList = asyncError(async (req, res, next) => {
   const skip = (page - 1) * limit;
 
   // Find the PartnerModule entry for the given userId and populate the userList with pagination
+  // const partner = await PartnerModule.findOne({ userId }).populate({
+  //   path: "userList",
+  //   options: {
+  //     sort: { _id: -1 }, // Sorting by _id in descending order
+  //     skip: skip, // Skip based on page number
+  //     limit: limit, // Limit the number of users per page
+  //   },
+  // });
+
+  // Find the PartnerModule entry for the given userId and populate the userList with pagination
   const partner = await PartnerModule.findOne({ userId }).populate({
     path: "userList",
+    populate: {
+      path: "country", // ✅ Populating the country field from userList
+    },
     options: {
       sort: { _id: -1 }, // Sorting by _id in descending order
       skip: skip, // Skip based on page number
