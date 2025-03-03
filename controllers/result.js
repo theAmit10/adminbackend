@@ -911,6 +911,7 @@ const createResult = asyncError(async (req, res, next) => {
       lottime: lottime,
       lotlocation: lotlocation,
       walletName: wallet.walletName,
+      gameType: "playarena",
     });
 
     // Add playbet history to the user's playbetHistory array
@@ -1241,6 +1242,7 @@ const createResult = asyncError(async (req, res, next) => {
       lottime: lottime,
       lotlocation: lotlocation,
       walletName: wallet.walletName,
+      gameType: "playarena",
     });
 
     // Add playbet history to the user's playbetHistory array
