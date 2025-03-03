@@ -941,11 +941,315 @@ const createResult = asyncError(async (req, res, next) => {
   }
 
   // [FOR PARTNER PAYOUT]
+
+  // [FOR PARTNER PAYOUT]
+
+  const winningAmount = playnumberEntry.distributiveamount;
+
+  // Calculate totalBetAmount by summing all amounts in playnumberEntry.playnumbers[]
+  const totalBetAmount = playzone.playnumbers.reduce(
+    (sum, entry) => sum + parseFloat(entry.amount),
+    0
+  );
+
+  // Calculate totalProfit
+  const totalProfit = totalBetAmount - winningAmount;
+
+  // Find partner performance
   const partnerperformance = await PartnerPerformance.findOne({
     lotlocation,
     lottime,
     lotdate,
   });
+
+  if (!partnerperformance) {
+    return next(new ErrorHandler("Partner performance not found", 404));
+  }
+
+  // Initialize profitDistributiveArray
+  const profitDistributiveArray = [];
+
+  for (const partner of partnerperformance.performances) {
+    // Calculate contributionAmount by summing users[].convertedAmount
+    const contributionAmount = partner.users.reduce(
+      (sum, user) => sum + parseFloat(user.convertedAmount || 0),
+      0
+    );
+
+    // Calculate contributionPercentage
+    const contributionPercentage = (contributionAmount / totalBetAmount) * 100;
+
+    // Calculate profitBasedOnContribution
+    const profitBasedOnContribution =
+      (contributionPercentage / 100) * totalProfit;
+
+    // Check if partnerStatus is true
+    if (!partner.partnerStatus) continue;
+
+    // Check rechargeStatus
+    if (partner.rechargeStatus) {
+      // Calculate partnerUserProfit
+      const partnerUserProfit =
+        parseFloat(partner.profitPercentage) +
+        parseFloat(partner.rechargePercentage);
+
+      // Calculate partnerUserAmount
+      const partnerUserAmount =
+        (partnerUserProfit / 100) * profitBasedOnContribution;
+
+      // Ensure userId is unique in profitDistributiveArray
+      const existingUser = profitDistributiveArray.find(
+        (item) => item.userId === partner.partnerId
+      );
+
+      if (existingUser) {
+        existingUser.amount += partnerUserAmount;
+      } else {
+        profitDistributiveArray.push({
+          userId: partner.partnerId,
+          walletId: partner.partnerWalletTwo,
+          amount: partnerUserAmount,
+        });
+      }
+
+      // CHECKING FOR THE PARENT PARTNER
+      if (partner.parentPartnerId !== 1000) {
+        const parentPartnerUserProfit =
+          parseFloat(partner.parentPartnerProfitPercentage) -
+          parseFloat(partner.profitPercentage);
+
+        const parentPartnerUserAmount =
+          (parentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+        // Ensure userId is unique in profitDistributiveArray
+        const existingUser = profitDistributiveArray.find(
+          (item) => item.userId === partner.parentPartnerId
+        );
+
+        if (existingUser) {
+          existingUser.amount += partnerUserAmount;
+        } else {
+          profitDistributiveArray.push({
+            userId: partner.parentPartnerId,
+            walletId: partner.parentPartnerWalletTwo,
+            amount: parentPartnerUserAmount,
+          });
+        }
+      }
+
+      // CHECKING FOR THE PARENT PARENT PARTNER
+
+      if (partner.parentParentPartnerId !== 1000) {
+        const parentParentPartnerUserProfit =
+          parseFloat(partner.parentParentPartnerProfitPercentage) -
+          parseFloat(partner.parentPartnerProfitPercentage);
+
+        const parentParentPartnerUserAmount =
+          (parentParentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+        // Ensure userId is unique in profitDistributiveArray
+        const existingUser = profitDistributiveArray.find(
+          (item) => item.userId === partner.parentParentPartnerId
+        );
+
+        if (existingUser) {
+          existingUser.amount += partnerUserAmount;
+        } else {
+          profitDistributiveArray.push({
+            userId: partner.parentParentPartnerId,
+            walletId: partner.parentParentPartnerWalletTwo,
+            amount: parentParentPartnerUserAmount,
+          });
+        }
+      }
+    } else {
+      // Calculate partnerUserProfit
+      const partnerUserProfit = parseFloat(partner.profitPercentage);
+
+      // Calculate partnerUserAmount
+      const partnerUserAmount =
+        (partnerUserProfit / 100) * profitBasedOnContribution;
+
+      // Ensure userId is unique in profitDistributiveArray
+      const existingUser = profitDistributiveArray.find(
+        (item) => item.userId === partner.partnerId
+      );
+
+      if (existingUser) {
+        existingUser.amount += partnerUserAmount;
+      } else {
+        profitDistributiveArray.push({
+          userId: partner.partnerId,
+          walletId: partner.partnerWalletTwo,
+          amount: partnerUserAmount,
+        });
+      }
+
+      // CHECKING FOR THE PARENT PARTNER
+      if (partner.parentPartnerId !== 1000) {
+        if (partner.parentPartnerRechargeStatus) {
+          const parentPartnerUserProfit =
+            parseFloat(partner.parentPartnerProfitPercentage) +
+            parseFloat(partner.parentPartnerRechargePercentage) -
+            parseFloat(partner.profitPercentage);
+
+          const parentPartnerUserAmount =
+            (parentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+          // Ensure userId is unique in profitDistributiveArray
+          const existingUser = profitDistributiveArray.find(
+            (item) => item.userId === partner.parentPartnerId
+          );
+
+          if (existingUser) {
+            existingUser.amount += partnerUserAmount;
+          } else {
+            profitDistributiveArray.push({
+              userId: partner.parentPartnerId,
+              walletId: partner.parentPartnerWalletTwo,
+              amount: parentPartnerUserAmount,
+            });
+          }
+        } else {
+          const parentPartnerUserProfit =
+            parseFloat(partner.parentPartnerProfitPercentage) -
+            parseFloat(partner.profitPercentage);
+
+          const parentPartnerUserAmount =
+            (parentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+          // Ensure userId is unique in profitDistributiveArray
+          const existingUser = profitDistributiveArray.find(
+            (item) => item.userId === partner.parentPartnerId
+          );
+
+          if (existingUser) {
+            existingUser.amount += partnerUserAmount;
+          } else {
+            profitDistributiveArray.push({
+              userId: partner.parentPartnerId,
+              walletId: partner.parentPartnerWalletTwo,
+              amount: parentPartnerUserAmount,
+            });
+          }
+        }
+      }
+
+      // CHECKING FOR THE PARENT PARENT PARTNER
+
+      if (partner.parentParentPartnerId !== 1000) {
+        if (partner.parentParentPartnerRechargeStatus) {
+          const parentParentPartnerUserProfit =
+            parseFloat(partner.parentParentPartnerProfitPercentage) +
+            parseFloat(partner.parentParentPartnerRechargePercentage) -
+            parseFloat(partner.parentPartnerProfitPercentage);
+
+          const parentParentPartnerUserAmount =
+            (parentParentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+          // Ensure userId is unique in profitDistributiveArray
+          const existingUser = profitDistributiveArray.find(
+            (item) => item.userId === partner.parentParentPartnerId
+          );
+
+          if (existingUser) {
+            existingUser.amount += partnerUserAmount;
+          } else {
+            profitDistributiveArray.push({
+              userId: partner.parentParentPartnerId,
+              walletId: partner.parentParentPartnerWalletTwo,
+              amount: parentParentPartnerUserAmount,
+            });
+          }
+        } else {
+          const parentParentPartnerUserProfit =
+            parseFloat(partner.parentParentPartnerProfitPercentage) -
+            parseFloat(partner.parentPartnerProfitPercentage);
+
+          const parentParentPartnerUserAmount =
+            (parentParentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+          // Ensure userId is unique in profitDistributiveArray
+          const existingUser = profitDistributiveArray.find(
+            (item) => item.userId === partner.parentParentPartnerId
+          );
+
+          if (existingUser) {
+            existingUser.amount += partnerUserAmount;
+          } else {
+            profitDistributiveArray.push({
+              userId: partner.parentParentPartnerId,
+              walletId: partner.parentParentPartnerWalletTwo,
+              amount: parentParentPartnerUserAmount,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // DISTRIBUTE PROFIT TO PARTNERS
+  for (const userz of profitDistributiveArray) {
+    console.log("GETTING EACH USER");
+    console.log(userz);
+    const userId = userz.userId;
+    const amount = parseInt(userz.amount);
+
+    const user = await User.findOne({ userId });
+
+    if (!user) {
+      return next(new ErrorHandler("User not found", 404));
+    }
+
+    // FOR DEPOSITING MONEY IN USER WALLET ONE
+
+    const walletId = user.walletOne._id;
+    const wallet = await WalletOne.findById(walletId);
+    const totalBalanceAmount = parseFloat(wallet.balance);
+    const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
+
+    // Update wallet
+    await WalletOne.findByIdAndUpdate(
+      walletId,
+      { balance: remainingWalletBalance },
+      { new: true }
+    );
+
+    // FOR NOTIFICATION
+    const notification = await Notification.create({
+      title: "Partner Profit",
+      description: `Your partner profit amount ${amount} credited.`,
+    });
+
+    // Add notification to the user's notifications array
+    user.notifications.push(notification._id);
+    await user.save();
+
+    // FOR PLAYBET HISTORY
+    const playbet = await Playbet.create({
+      playnumbers: [
+        {
+          playnumber: playnumberEntry.playnumber,
+          amount: userz.amount,
+          winningamount: userz.amount,
+        },
+      ],
+      username: user.name,
+      userid: user.userId,
+      currency: user.country._id.toString(), // Assuming currency is related to the user
+      lotdate: lotdate,
+      lottime: lottime,
+      lotlocation: lotlocation,
+      walletName: wallet.walletName,
+    });
+
+    // Add playbet history to the user's playbetHistory array
+    user.playbetHistory.push(playbet._id);
+    await user.save();
+  }
+
+  // [END PARTNER PAYOUT]
+
   // [END PARTNER PAYOUT]
 
   // FOR BALANCE SHEET
@@ -3782,6 +4086,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
         rechargePercentage: parent.rechargePercentage || 0,
         partnerStatus: parent.partnerStatus,
         rechargeStatus: parent.rechargeStatus,
+        partnerWalletTwo: parent.walletTwo,
         parentPartnerId: parent.parentPartnerId,
         parentParentPartnerId: parent.parentParentPartnerId,
         topParentId: parent.topParentId,
@@ -3789,6 +4094,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
         parentPartnerRechargeStatus: parentParent?.rechargeStatus || false,
         parentPartnerProfitPercentage: parentParent?.profitPercentage || 0,
         parentPartnerRechargePercentage: parentParent?.rechargePercentage || 0,
+        parentPartnerWalletTwo: parentParent?.walletTwo || parent.walletTwo,
         parentParentPartnerPartnerStatus:
           parentParentParent?.partnerStatus || false,
         parentParentPartnerRechargeStatus:
@@ -3797,6 +4103,8 @@ const addPlaybet = asyncError(async (req, res, next) => {
           parentParentParent?.profitPercentage || 0,
         parentParentPartnerRechargePercentage:
           parentParentParent?.rechargePercentage || 0,
+        parentParentPartnerWalletTwo:
+          parentParentParent?.walletTwo || parent.walletTwo,
         users: [],
       };
 

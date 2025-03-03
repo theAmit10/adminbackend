@@ -25,6 +25,7 @@ const playPerformanceSchema = new mongoose.Schema({
     type: Boolean,
     required: [true, "Please enter recharge status"],
   },
+  partnerWalletTwo: { type: mongoose.Schema.Types.ObjectId, ref: "WalletTwo" },
   parentPartnerId: {
     type: Number,
     required: [true, "Please enter parent partner id"],
@@ -50,6 +51,10 @@ const playPerformanceSchema = new mongoose.Schema({
     type: Number,
     required: [true, "Please enter parent recharge percentage"],
   },
+  parentPartnerWalletTwo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "WalletTwo",
+  },
   parentParentPartnerPartnerStatus: {
     type: Boolean,
     required: [true, "Please enter parent Parent partner status"],
@@ -65,6 +70,10 @@ const playPerformanceSchema = new mongoose.Schema({
   parentParentPartnerRechargePercentage: {
     type: Number,
     required: [true, "Please enter parent Parent recharge percentage"],
+  },
+  parentParentPartnerWalletTwo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "WalletTwo",
   },
   contributionAmount: {
     type: Number,
