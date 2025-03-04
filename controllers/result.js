@@ -1789,6 +1789,7 @@ const createResult = asyncError(async (req, res, next) => {
       lotlocation: lotlocation,
       walletName: wallet.walletName,
       gameType: "playarena",
+      forProcess: "partnercredit",
     });
 
     // Add playbet history to the user's playbetHistory array

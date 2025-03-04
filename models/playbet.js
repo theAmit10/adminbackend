@@ -91,6 +91,9 @@ const schema = new mongoose.Schema(
     walletName: {
       type: String,
     },
+    forProcess: {
+      type: String,
+    },
     gameType: {
       type: String,
       enum: ["playarena", "powerball"],
