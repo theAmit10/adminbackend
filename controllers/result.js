@@ -2039,6 +2039,23 @@ const addLotTime = asyncError(async (req, res, next) => {
   };
   const newPlayzone = await Playzone.create(playzoneData);
 
+  // Check if a PartnerPerformance already exists for the given lotlocation, lottime, and lotdate
+  let partnerPerformance = await PartnerPerformance.findOne({
+    lotlocation: location._id,
+    lottime: lotTime._id,
+    lotdate: lotdate._id,
+  });
+
+  if (!partnerPerformance) {
+    partnerPerformance = new PartnerPerformance({
+      lotlocation: location._id,
+      lottime: lotTime._id,
+      lotdate: lotdate._id,
+      performances: [], // Initially empty
+    });
+    await partnerPerformance.save();
+  }
+
   // 8. Respond with success
   res.status(201).json({
     success: true,
