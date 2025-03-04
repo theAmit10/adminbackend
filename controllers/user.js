@@ -27,6 +27,7 @@ const PowerTime = require("../models/PowerTime.js");
 const PowerDate = require("../models/PowerDate.js");
 const PowerballGameTickets = require("../models/PowerballGameTickets.js");
 const Settings = require("../models/Settings.js");
+const PartnerPerformancePowerball = require("../models/PartnerPerformancePowerball.jsx");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -5228,6 +5229,22 @@ const createPowerDate = asyncError(async (req, res, next) => {
     powertime,
     alltickets: [], // Initially empty
   });
+
+  // GETTING THE PARTNER PERFORMANCE
+  // Check if a PartnerPerformance already exists for the given lotlocation, lottime, and lotdate
+  let partnerPerformance = await PartnerPerformancePowerball.findOne({
+    powertime,
+    powerdate: newPowerDate._id,
+  });
+
+  if (!partnerPerformance) {
+    partnerPerformance = new PartnerPerformancePowerball({
+      powertime,
+      powerdate: newPowerDate._id,
+      performances: [], // Initially empty
+    });
+    await partnerPerformance.save();
+  }
 
   res.status(201).json({
     success: true,

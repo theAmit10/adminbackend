@@ -35,6 +35,7 @@ const PowerBet = require("../models/PowerBet.js");
 const PowerballGameTickets = require("../models/PowerballGameTickets.js");
 const powerresult = require("../models/powerresult.js");
 const OtherPayment = require("../models/OtherPayment.js");
+const PartnerPerformancePowerball = require("../models/PartnerPerformancePowerball.jsx");
 
 // ####################
 // RESULTS
@@ -4962,6 +4963,134 @@ const addPowerBet = async (req, res) => {
 
     // TODO: FOR PARTNER PERFORMANCE
 
+    // Step 2: Get user details using req.user.userId
+    const { parentPartnerId } = user;
+    if (!parentPartnerId) {
+      return res.status(400).json({ message: "User has no parent partner" });
+    }
+
+    if (parentPartnerId !== 1000) {
+      // Step 1: Get partner performance based on lotlocation, lottime, and lotdate
+      let partnerPerformance = await PartnerPerformancePowerball.findOne({
+        powertime,
+        powerdate,
+      });
+
+      if (!partnerPerformance) {
+        return res
+          .status(404)
+          .json({ message: "Partner performance not found" });
+      }
+
+      // Step 3: Get parent details from ParentModule
+      const parent = await PartnerModule.findOne({ userId: parentPartnerId });
+      if (!parent) {
+        return res.status(404).json({ message: "Parent partner not found" });
+      }
+
+      // [GETTING PARTNER PARENT]
+      let parentParent = null;
+      if (parent.parentPartnerId !== 1000) {
+        parentParent = await PartnerModule.findOne({
+          userId: parent.parentPartnerId,
+        });
+      }
+
+      // [GETTING PARTNER PARENT PARENT]
+      let parentParentParent = null;
+      if (parent.parentParentPartnerId !== 1000) {
+        parentParentParent = await PartnerModule.findOne({
+          userId: parent.parentParentPartnerId,
+        });
+      }
+
+      // Step 4: Ensure performance array exists
+      // if (!partnerPerformance.performances) {
+      //   partnerPerformance.performances = [];
+      // }
+
+      // Check if parentPartnerId is in performance array
+      let partnerData = partnerPerformance.performances.find(
+        (p) => p.partnerId.toString() === parentPartnerId.toString()
+      );
+
+      if (!partnerData) {
+        // If not found, create an object
+        partnerData = {
+          partnerId: parentPartnerId,
+          name: parent.name,
+          profitPercentage: parent.profitPercentage || 0,
+          rechargePercentage: parent.rechargePercentage || 0,
+          partnerStatus: parent.partnerStatus,
+          rechargeStatus: parent.rechargeStatus,
+          parentPartnerId: parent.parentPartnerId,
+          parentParentPartnerId: parent.parentParentPartnerId,
+          topParentId: parent.topParentId,
+          parentPartnerPartnerStatus: parentParent?.partnerStatus || false,
+          parentPartnerRechargeStatus: parentParent?.rechargeStatus || false,
+          parentPartnerProfitPercentage: parentParent?.profitPercentage || 0,
+          parentPartnerRechargePercentage:
+            parentParent?.rechargePercentage || 0,
+          parentParentPartnerPartnerStatus:
+            parentParentParent?.partnerStatus || false,
+          parentParentPartnerRechargeStatus:
+            parentParentParent?.rechargeStatus || false,
+          parentParentPartnerProfitPercentage:
+            parentParentParent?.profitPercentage || 0,
+          parentParentPartnerRechargePercentage:
+            parentParentParent?.rechargePercentage || 0,
+
+          users: [],
+        };
+
+        const currentuserId = req.user.userId;
+        const currentnewAmount = parseFloat(totalAmount);
+        const currentnewConvertedAmount = parseFloat(
+          totalAmount * currencyconverter
+        );
+
+        partnerData.users.push({
+          userId: currentuserId,
+          username: req.user.name,
+          amount: currentnewAmount,
+          convertedAmount: currentnewConvertedAmount,
+          currency: user.country._id.toString(),
+        });
+
+        // Push the new partner data into the performance array
+        partnerPerformance.performances.push(partnerData);
+      } else {
+        const currentuserId = req.user.userId;
+        const currentnewAmount = parseFloat(totalAmount);
+        const currentnewConvertedAmount = parseFloat(
+          totalAmount * currencyconverter
+        );
+
+        // Check if the user already exists in partnerData.users
+        const existingUser = partnerData.users.find(
+          (user) => user.userId.toString() === currentuserId.toString()
+        );
+
+        if (existingUser) {
+          // Update the existing user's amount and convertedAmount
+          existingUser.amount += currentnewAmount;
+          existingUser.convertedAmount += currentnewConvertedAmount;
+        } else {
+          // Push new user data if not found
+          partnerData.users.push({
+            userId: currentuserId,
+            username: req.user.name,
+            amount: currentnewAmount,
+            convertedAmount: currentnewConvertedAmount,
+            currency: user.country._id.toString(),
+          });
+        }
+      }
+
+      // Save the updated partner performance data
+      await partnerPerformance.save();
+    }
+
     res.status(201).json({
       success: true,
       message: "Power bet placed successfully",
@@ -5924,6 +6053,60 @@ const getSinglePartnerPerformance = asyncError(async (req, res) => {
       lotlocation: partnerPerformance.lotlocation,
       lottime: partnerPerformance.lottime,
       lotdate: partnerPerformance.lotdate,
+      totalAmount: partnerPerformance.totalAmount,
+      winningAmount: partnerPerformance.winningAmount,
+      totalProfit: partnerPerformance.totalProfit,
+    }, // Sending only metadata to reduce response size
+  });
+});
+
+const getSinglePartnerPerformancePowerball = asyncError(async (req, res) => {
+  const { powertime, powerdate } = req.params;
+  let { page, limit } = req.query;
+
+  if (!powertime || !powerdate) {
+    return res.status(400).json({
+      success: false,
+      message: "All fields ( powertime, powerdate) are required",
+    });
+  }
+
+  // Convert page and limit to numbers, set defaults if not provided
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  // Find the PartnerPerformance entry based on the given parameters
+  const partnerPerformance = await PartnerPerformancePowerball.findOne({
+    powertime,
+    powerdate,
+  }).populate("powertime powerdate");
+
+  if (!partnerPerformance) {
+    return res.status(404).json({
+      success: false,
+      message: "PartnerPerformance not found",
+    });
+  }
+
+  // Extract performances array and apply pagination
+  const totalRecords = partnerPerformance.performances.length;
+  const paginatedPerformances = partnerPerformance.performances.slice(
+    skip,
+    skip + limit
+  );
+
+  res.status(200).json({
+    success: true,
+    message: "PartnerPerformance fetched successfully",
+    totalRecords,
+    currentPage: page,
+    totalPages: Math.ceil(totalRecords / limit),
+    performances: paginatedPerformances, // Return only paginated performances
+    partnerPerformance: {
+      _id: partnerPerformance._id,
+      powertime: partnerPerformance.powertime,
+      powerdate: partnerPerformance.powerdate,
       totalAmount: partnerPerformance.totalAmount,
       winningAmount: partnerPerformance.winningAmount,
       totalProfit: partnerPerformance.totalProfit,
@@ -7297,4 +7480,5 @@ module.exports = {
   addOtherPayment,
   getAllOtherPayments,
   deleteOtherPayment,
+  getSinglePartnerPerformancePowerball,
 };

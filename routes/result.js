@@ -108,6 +108,7 @@ const {
   updateOtherPaymentStatus,
   deleteSingleOther,
   getPowerResultByTimeAndDate,
+  getSinglePartnerPerformancePowerball,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -417,6 +418,12 @@ router.get(
   "/singlepartnerperformance/:lotlocation/:lottime/:lotdate",
   getSinglePartnerPerformance
 );
+
+router.get(
+  "/singlepartnerperformancepowerball/:powertime/:powerdate",
+  getSinglePartnerPerformancePowerball
+);
+
 router.put(
   "/updaterechargetouserandpartner",
   isAuthenticated,
