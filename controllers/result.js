@@ -2150,21 +2150,8 @@ const createPowerResult = asyncError(async (req, res, next) => {
     const allTickets = powerGame.alltickets;
 
     // Step 4: Function to distribute prize
-    // const distributePrize = async (matchCount, prizeAmount) => {
-    //   const winningUsers = allTickets.filter(
-    //     (ticket) =>
-    //       ticket.usernumber.filter((num) => jackpotnumber.includes(num))
-    //         .length === matchCount
-    //   );
 
-    //   for (let ticket of winningUsers) {
-    //     const user = await User.findById(ticket.user);
-    //     if (user) {
-    //       user.walletTwo.balance += prizeAmount;
-    //       await user.save();
-    //     }
-    //   }
-    // };
+    let winningAmount = 0;
 
     const distributePrize = async (matchCount, prizeAmount) => {
       for (let ticketHolder of allTickets) {
@@ -2181,8 +2168,22 @@ const createPowerResult = asyncError(async (req, res, next) => {
               const walletId = user.walletOne._id;
               const wallet = await WalletOne.findById(walletId);
               const totalBalanceAmount = parseFloat(wallet.balance);
+
+              let wonAmount = prizeAmount * ticket.multiplier;
+              if (matchCount === 3) {
+                wonAmount = ticket.convertedAmount * parseFloat(prizeAmount);
+              }
+              if (matchCount === 2) {
+                wonAmount = ticket.convertedAmount * parseFloat(prizeAmount);
+              }
+              if (matchCount === 1) {
+                wonAmount = ticket.convertedAmount * parseFloat(prizeAmount);
+              }
+
+              winningAmount += wonAmount;
+
               const remainingWalletBalance =
-                totalBalanceAmount + parseFloat(prizeAmount);
+                totalBalanceAmount + parseFloat(wonAmount);
 
               // Update wallet
               await WalletOne.findByIdAndUpdate(
@@ -2194,7 +2195,7 @@ const createPowerResult = asyncError(async (req, res, next) => {
               // FOR NOTIFICATION
               const notification = await Notification.create({
                 title: "Congratulations! You won!",
-                description: `You have won an amount of ${prizeAmount}.`,
+                description: `You have won an amount of ${wonAmount}.`,
               });
 
               // Add notification to the user's notifications array
@@ -2205,9 +2206,9 @@ const createPowerResult = asyncError(async (req, res, next) => {
               const playbet = await Playbet.create({
                 tickets: [
                   {
-                    amount: prizeAmount,
-                    convertedAmount: prizeAmount,
-                    multiplier: 1,
+                    amount: wonAmount,
+                    convertedAmount: wonAmount,
+                    multiplier: ticket.multiplier,
                     usernumber: jackpotnumber,
                   },
                 ],
@@ -2236,6 +2237,336 @@ const createPowerResult = asyncError(async (req, res, next) => {
     await distributePrize(3, prize.fourthprize.amount);
     await distributePrize(2, prize.fifthprize.amount);
     await distributePrize(1, prize.sixthprize.amount);
+
+    // [FOR PARTNER PAYOUT]
+
+    // const winningAmount = playnumberEntry.distributiveamount;
+
+    // Calculate totalBetAmount by summing all amounts in playnumberEntry.playnumbers[]
+    // const totalBetAmount = allTickets.reduce(
+    //   (sum, entry) => sum + parseFloat(entry.amount),
+    //   0
+    // );
+
+    const totalBetAmount = allTickets.reduce((sum, user) => {
+      return (
+        sum +
+        user.tickets.reduce((userSum, ticket) => {
+          return userSum + ticket.convertedAmount;
+        }, 0)
+      );
+    }, 0);
+
+    // Calculate totalProfit
+    const totalProfit = totalBetAmount - winningAmount;
+    // Find partner performance
+    const partnerperformance = await PartnerPerformancePowerball.findOne({
+      powertime,
+      powerdate,
+    });
+
+    if (!partnerperformance) {
+      return next(new ErrorHandler("Partner performance not found", 404));
+    }
+
+    partnerperformance.totalAmount = totalBetAmount;
+    partnerperformance.totalProfit = totalProfit;
+    partnerperformance.winningAmount = winningAmount;
+    // Initialize profitDistributiveArray
+    const profitDistributiveArray = [];
+
+    // Loop through each partner in partnerperformance.performances
+    for (const partner of partnerperformance.performances) {
+      // Calculate contributionAmount by summing users[].convertedAmount
+      const contributionAmount = partner.users.reduce(
+        (sum, user) => sum + parseFloat(user.convertedAmount || 0),
+        0
+      );
+
+      // Calculate contributionPercentage
+      const contributionPercentage =
+        (contributionAmount / totalBetAmount) * 100;
+
+      // Calculate profitBasedOnContribution
+      const profitBasedOnContribution =
+        (contributionPercentage / 100) * totalProfit;
+
+      // Update the partner's contributionAmount and contributionPercentage
+      partner.contributionAmount = contributionAmount;
+      partner.contributionPercentage = contributionPercentage;
+
+      // Check if partnerStatus is true
+      if (!partner.partnerStatus) continue;
+
+      // Check rechargeStatus
+      if (partner.rechargeStatus) {
+        // Calculate partnerUserProfit
+        const partnerUserProfit =
+          parseFloat(partner.profitPercentage) +
+          parseFloat(partner.rechargePercentage);
+
+        // Calculate partnerUserAmount
+        const partnerUserAmount =
+          (partnerUserProfit / 100) * profitBasedOnContribution;
+
+        // Ensure userId is unique in profitDistributiveArray
+        const existingUser = profitDistributiveArray.find(
+          (item) => item.userId === partner.partnerId
+        );
+
+        if (existingUser) {
+          existingUser.amount += partnerUserAmount;
+        } else {
+          profitDistributiveArray.push({
+            userId: partner.partnerId,
+            amount: partnerUserAmount,
+          });
+        }
+
+        // CHECKING FOR THE PARENT PARTNER
+        if (partner.parentPartnerId !== 1000) {
+          const parentPartnerUserProfit =
+            parseFloat(partner.parentPartnerProfitPercentage) -
+            parseFloat(partner.profitPercentage);
+
+          const parentPartnerUserAmount =
+            (parentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+          // Ensure userId is unique in profitDistributiveArray
+          const existingUser = profitDistributiveArray.find(
+            (item) => item.userId === partner.parentPartnerId
+          );
+
+          if (existingUser) {
+            existingUser.amount += partnerUserAmount;
+          } else {
+            profitDistributiveArray.push({
+              userId: partner.parentPartnerId,
+              amount: parentPartnerUserAmount,
+            });
+          }
+        }
+
+        // CHECKING FOR THE PARENT PARENT PARTNER
+        if (partner.parentParentPartnerId !== 1000) {
+          const parentParentPartnerUserProfit =
+            parseFloat(partner.parentParentPartnerProfitPercentage) -
+            parseFloat(partner.parentPartnerProfitPercentage);
+
+          const parentParentPartnerUserAmount =
+            (parentParentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+          // Ensure userId is unique in profitDistributiveArray
+          const existingUser = profitDistributiveArray.find(
+            (item) => item.userId === partner.parentParentPartnerId
+          );
+
+          if (existingUser) {
+            existingUser.amount += partnerUserAmount;
+          } else {
+            profitDistributiveArray.push({
+              userId: partner.parentParentPartnerId,
+              amount: parentParentPartnerUserAmount,
+            });
+          }
+        }
+      } else {
+        // Calculate partnerUserProfit
+        const partnerUserProfit = parseFloat(partner.profitPercentage);
+
+        // Calculate partnerUserAmount
+        const partnerUserAmount =
+          (partnerUserProfit / 100) * profitBasedOnContribution;
+
+        // Ensure userId is unique in profitDistributiveArray
+        const existingUser = profitDistributiveArray.find(
+          (item) => item.userId === partner.partnerId
+        );
+
+        if (existingUser) {
+          existingUser.amount += partnerUserAmount;
+        } else {
+          profitDistributiveArray.push({
+            userId: partner.partnerId,
+            amount: partnerUserAmount,
+          });
+        }
+
+        // CHECKING FOR THE PARENT PARTNER
+        if (partner.parentPartnerId !== 1000) {
+          if (partner.parentPartnerRechargeStatus) {
+            const parentPartnerUserProfit =
+              parseFloat(partner.parentPartnerProfitPercentage) +
+              parseFloat(partner.parentPartnerRechargePercentage) -
+              parseFloat(partner.profitPercentage);
+
+            const parentPartnerUserAmount =
+              (parentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+            // Ensure userId is unique in profitDistributiveArray
+            const existingUser = profitDistributiveArray.find(
+              (item) => item.userId === partner.parentPartnerId
+            );
+
+            if (existingUser) {
+              existingUser.amount += partnerUserAmount;
+            } else {
+              profitDistributiveArray.push({
+                userId: partner.parentPartnerId,
+                amount: parentPartnerUserAmount,
+              });
+            }
+          } else {
+            const parentPartnerUserProfit =
+              parseFloat(partner.parentPartnerProfitPercentage) -
+              parseFloat(partner.profitPercentage);
+
+            const parentPartnerUserAmount =
+              (parentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+            // Ensure userId is unique in profitDistributiveArray
+            const existingUser = profitDistributiveArray.find(
+              (item) => item.userId === partner.parentPartnerId
+            );
+
+            if (existingUser) {
+              existingUser.amount += partnerUserAmount;
+            } else {
+              profitDistributiveArray.push({
+                userId: partner.parentPartnerId,
+                amount: parentPartnerUserAmount,
+              });
+            }
+          }
+        }
+
+        // CHECKING FOR THE PARENT PARENT PARTNER
+        if (partner.parentParentPartnerId !== 1000) {
+          if (partner.parentParentPartnerRechargeStatus) {
+            const parentParentPartnerUserProfit =
+              parseFloat(partner.parentParentPartnerProfitPercentage) +
+              parseFloat(partner.parentParentPartnerRechargePercentage) -
+              parseFloat(partner.parentPartnerProfitPercentage);
+
+            const parentParentPartnerUserAmount =
+              (parentParentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+            // Ensure userId is unique in profitDistributiveArray
+            const existingUser = profitDistributiveArray.find(
+              (item) => item.userId === partner.parentParentPartnerId
+            );
+
+            if (existingUser) {
+              existingUser.amount += partnerUserAmount;
+            } else {
+              profitDistributiveArray.push({
+                userId: partner.parentParentPartnerId,
+                amount: parentParentPartnerUserAmount,
+              });
+            }
+          } else {
+            const parentParentPartnerUserProfit =
+              parseFloat(partner.parentParentPartnerProfitPercentage) -
+              parseFloat(partner.parentPartnerProfitPercentage);
+
+            const parentParentPartnerUserAmount =
+              (parentParentPartnerUserProfit / 100) * profitBasedOnContribution;
+
+            // Ensure userId is unique in profitDistributiveArray
+            const existingUser = profitDistributiveArray.find(
+              (item) => item.userId === partner.parentParentPartnerId
+            );
+
+            if (existingUser) {
+              existingUser.amount += partnerUserAmount;
+            } else {
+              profitDistributiveArray.push({
+                userId: partner.parentParentPartnerId,
+                amount: parentParentPartnerUserAmount,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Update partner.profitAmount based on profitDistributiveArray
+    for (const profitEntry of profitDistributiveArray) {
+      const partner = partnerperformance.performances.find(
+        (p) => p.partnerId === profitEntry.userId
+      );
+
+      if (partner) {
+        partner.profitAmount = profitEntry.amount;
+      }
+    }
+
+    // Save the updated partnerperformance document
+    await partnerperformance.save();
+
+    // DISTRIBUTE PROFIT TO PARTNERS
+    for (const userz of profitDistributiveArray) {
+      console.log("GETTING EACH USER");
+      console.log(userz);
+      const userId = userz.userId;
+      const amount = parseInt(userz.amount);
+
+      const user = await User.findOne({ userId });
+
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      // FOR DEPOSITING MONEY IN USER WALLET ONE
+
+      const walletId = user.walletOne._id;
+      const wallet = await WalletOne.findById(walletId);
+      const totalBalanceAmount = parseFloat(wallet.balance);
+      const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
+
+      // Update wallet
+      await WalletOne.findByIdAndUpdate(
+        walletId,
+        { balance: remainingWalletBalance },
+        { new: true }
+      );
+
+      // FOR NOTIFICATION
+      const notification = await Notification.create({
+        title: "Partner Profit",
+        description: `Your partner profit amount ${amount} credited.`,
+      });
+
+      // Add notification to the user's notifications array
+      user.notifications.push(notification._id);
+      await user.save();
+
+      // FOR PLAYBET HISTORY
+      const playbet = await Playbet.create({
+        tickets: [
+          {
+            amount: amount,
+            convertedAmount: amount,
+            multiplier: 1,
+            usernumber: jackpotnumber,
+          },
+        ],
+        username: user.name,
+        userid: user.userId,
+        currency: user.country._id.toString(), // Assuming currency is related to the user
+        powerdate: powerdate,
+        powertime: powertime,
+        walletName: wallet.walletName,
+        gameType: "powerball",
+        forProcess: "partnercredit",
+      });
+
+      // Add playbet history to the user's playbetHistory array
+      user.playbetHistory.push(playbet._id);
+      await user.save();
+    }
+
+    // [END PARTNER PAYOUT]
 
     // TODO: ADDING TO BALANCE SHEET
     // // Fetch all WalletTwo balances and populate currencyId
