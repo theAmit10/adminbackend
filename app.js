@@ -22,6 +22,7 @@ const AppBalanceSheet = require("./models/AppBalanceSheet.js");
 const cookieParser = require("cookie-parser");
 const moment = require("moment-timezone");
 const topwinner = require("./models/topwinner.js");
+const PartnerPerformance = require("./models/PartnerPerformance.js");
 
 config({
   path: "./data/config.env",
@@ -36,7 +37,7 @@ app.use(cookieParser());
 app.use(
   cors({
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE","PATCH"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     origin: [
       process.env.FRONTEND_URL_1,
       process.env.FRONTEND_URL_2,
@@ -150,16 +151,15 @@ function addLeadingZero(value) {
   return stringValue;
 }
 
-
 const getCurrentDate = () => {
-  return moment.tz('Asia/Kolkata').format('DD-MM-YYYY');
+  return moment.tz("Asia/Kolkata").format("DD-MM-YYYY");
 };
 
 const getNextDate = () => {
-  return moment.tz('Asia/Kolkata').add(1, 'days').format('DD-MM-YYYY');
+  return moment.tz("Asia/Kolkata").add(1, "days").format("DD-MM-YYYY");
 };
 
-// COMMENTING CRON JOB FOR NOW 
+// COMMENTING CRON JOB FOR NOW
 // cron.schedule("*/2 * * * *", async () => {
 //   console.log("Running scheduled task to add LotDates and Playzones");
 //   try {
@@ -489,7 +489,6 @@ const getNextDate = () => {
 // let existingWalletOne = await WalletOne.findOne().sort({ _id: 1 }); // Sort by _id to get the first created
 // let walletOneName = existingWalletOne ? existingWalletOne.walletName : 'Wallet One';
 
-
 //                       // Create a new AppBalanceSheet document
 //                       const appBalanceSheet = new AppBalanceSheet({
 //                         amount: playnumberEntry.distributiveamount,
@@ -507,7 +506,6 @@ const getNextDate = () => {
 //                       // Save the AppBalanceSheet document
 //                       await appBalanceSheet.save();
 //                       console.log("AppBalanceSheet Created Successfully");
-                    
 
 //                       // END BALANCE SHEET
 

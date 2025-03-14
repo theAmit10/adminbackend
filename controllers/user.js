@@ -28,6 +28,7 @@ const PowerDate = require("../models/PowerDate.js");
 const PowerballGameTickets = require("../models/PowerballGameTickets.js");
 const Settings = require("../models/Settings.js");
 const PartnerPerformancePowerball = require("../models/PartnerPerformancePowerball.jsx");
+const { use } = require("../routes/user.js");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -1583,46 +1584,87 @@ const getUserNotifications = asyncError(async (req, res, next) => {
   const { userId } = req.params;
   const { page, limit } = req.query;
 
-  // Check if the provided userId is a valid MongoDB ObjectId
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return next(new ErrorHandler("Invalid user ID", 400));
-  }
+  if (userId == 1000) {
+    // Check if the provided userId is a valid MongoDB ObjectId
 
-  // Set default values for pagination if not provided
-  const currentPage = parseInt(page) || 1;
-  const itemsPerPage = parseInt(limit) || 10;
-  const skip = (currentPage - 1) * itemsPerPage;
+    // Set default values for pagination if not provided
+    const currentPage = parseInt(page) || 1;
+    const itemsPerPage = parseInt(limit) || 10;
+    const skip = (currentPage - 1) * itemsPerPage;
 
-  try {
-    // Find the user by ID and populate the notifications array with pagination
-    const user = await User.findById(userId).populate({
-      path: "notifications",
-      options: {
-        sort: { createdAt: -1 },
-        skip: skip,
-        limit: itemsPerPage,
-      },
-    });
+    try {
+      // Find the user by ID and populate the notifications array with pagination
+      const user = await User.findOne({ userId }).populate({
+        path: "notifications",
+        options: {
+          sort: { createdAt: -1 },
+          skip: skip,
+          limit: itemsPerPage,
+        },
+      });
 
-    if (!user) {
-      return next(new ErrorHandler("User not found", 404));
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      // Get the total count of notifications for pagination
+      const totalNotifications = await User.countDocuments({
+        _id: user._id,
+      });
+
+      // Return the populated notifications array with pagination info
+      res.status(200).json({
+        success: true,
+        notifications: user.notifications,
+        totalNotifications,
+        totalPages: Math.ceil(totalNotifications / itemsPerPage),
+        currentPage,
+      });
+    } catch (error) {
+      next(new ErrorHandler(error.message, 500));
+    }
+  } else {
+    // Check if the provided userId is a valid MongoDB ObjectId
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return next(new ErrorHandler("Invalid user ID", 400));
     }
 
-    // Get the total count of notifications for pagination
-    const totalNotifications = await User.countDocuments({
-      _id: userId,
-    });
+    // Set default values for pagination if not provided
+    const currentPage = parseInt(page) || 1;
+    const itemsPerPage = parseInt(limit) || 10;
+    const skip = (currentPage - 1) * itemsPerPage;
 
-    // Return the populated notifications array with pagination info
-    res.status(200).json({
-      success: true,
-      notifications: user.notifications,
-      totalNotifications,
-      totalPages: Math.ceil(totalNotifications / itemsPerPage),
-      currentPage,
-    });
-  } catch (error) {
-    next(new ErrorHandler(error.message, 500));
+    try {
+      // Find the user by ID and populate the notifications array with pagination
+      const user = await User.findById(userId).populate({
+        path: "notifications",
+        options: {
+          sort: { createdAt: -1 },
+          skip: skip,
+          limit: itemsPerPage,
+        },
+      });
+
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      // Get the total count of notifications for pagination
+      const totalNotifications = await User.countDocuments({
+        _id: userId,
+      });
+
+      // Return the populated notifications array with pagination info
+      res.status(200).json({
+        success: true,
+        notifications: user.notifications,
+        totalNotifications,
+        totalPages: Math.ceil(totalNotifications / itemsPerPage),
+        currentPage,
+      });
+    } catch (error) {
+      next(new ErrorHandler(error.message, 500));
+    }
   }
 });
 
@@ -2591,377 +2633,6 @@ const getAllDeposit = asyncError(async (req, res, next) => {
   });
 });
 
-// UPDATE PAYMENT STATUS
-// const updateDepositStatus = asyncError(async (req, res, next) => {
-//   const {
-//     transactionId,
-//     paymentStatus,
-//     paymentUpdateNote,
-//     paymentupdatereceipt,
-//     amount: reqAmount,
-//   } = req.body;
-
-//   // Validate required fields
-//   if (!transactionId) {
-//     return next(new ErrorHandler("Transaction ID missing", 400));
-//   }
-//   if (!paymentStatus) {
-//     return next(new ErrorHandler("Payment status missing", 400));
-//   }
-//   if (!reqAmount) {
-//     return next(new ErrorHandler("Amount not found", 400));
-//   }
-
-//   // Validate payment status value
-//   const validStatuses = ["Pending", "Completed", "Cancelled"];
-//   if (!validStatuses.includes(paymentStatus)) {
-//     return next(new ErrorHandler("Invalid payment status", 400));
-//   }
-
-//   const transaction = await Transaction.findById(transactionId);
-
-//   if (!transaction) {
-//     return next(new ErrorHandler("Transaction not found", 404));
-//   }
-
-//   // FOR PAYMENT COMPLETED FOR DEPOSIT
-//   if (
-//     paymentStatus === "Completed" &&
-//     transaction.transactionType === "Deposit"
-//   ) {
-//     const userId = transaction.userId;
-//     // const amount = parseInt(transaction.amount);
-//     let amount = parseInt(reqAmount);
-
-//     const user = await User.findOne({ userId });
-
-//     if (!user) {
-//       return next(new ErrorHandler("User not found", 404));
-//     }
-
-//     // FOR DEPOSITING MONEY IN USER WALLET ONE
-//     console.log("Deposit request of user :: " + user);
-
-//     const currency = await Currency.findById(user.country._id);
-//     if (!currency) {
-//       return next(new ErrorHandler("Currency not found", 404));
-//     }
-
-//     const currencyconverter = parseFloat(
-//       currency.countrycurrencyvaluecomparedtoinr
-//     );
-
-//     amount = amount / currencyconverter;
-
-//     transaction.amount = amount;
-
-//     const walletId = user.walletTwo._id;
-//     console.log("wallet one 2 id :: " + walletId);
-
-//     const wallet = await WalletTwo.findById(walletId);
-
-//     console.log("Wallet one 2 ::  " + wallet);
-//     console.log("Before User Wallet Two balance :: " + wallet.balance);
-//     console.log("Amount to Add :: " + amount);
-
-//     const totalBalanceAmount = parseFloat(wallet.balance);
-
-//     console.log("Float User Wallet One balance :: " + totalBalanceAmount);
-
-//     const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
-//     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
-
-//     // // Update wallet
-//     // const updatedWallet = await WalletOne.findByIdAndUpdate(
-//     //   walletId,
-//     //   { balance: remainingWalletBalance },
-//     //   { new: true }
-//     // );
-
-//     // console.log("User's walletOne updated successfully :: " + updatedWallet);
-
-//     // Search for the "INR" countrycurrencysymbol in the Currency Collection
-//     // const currency = await Currency.findById(user.country._id);
-//     // if (!currency) {
-//     //   return next(new ErrorHandler("Currency not found", 404));
-//     // }
-
-//     // const currencyconverter = parseFloat(
-//     //   currency.countrycurrencyvaluecomparedtoinr
-//     // );
-
-//     // FOR BALANCE SHEET
-
-//     // Create AppBalanceSheet entry
-//     // Calculate gameBalance as the total sum of all walletTwo balances
-
-//     // const walletTwoBalances = await WalletOne.find({});
-//     // const gameBalance = walletTwoBalances.reduce(
-//     //   (sum, wallet) => sum + wallet.balance,
-//     //   0
-//     // );
-
-//     // // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
-//     // const walletOneBalances = await WalletTwo.find({});
-//     // const withdrawalBalance =
-//     //   walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) +
-//     //   parseFloat(amount * currencyconverter);
-
-//     // // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
-//     // const totalBalance = withdrawalBalance + gameBalance;
-
-//     // Fetch all WalletTwo balances and populate currencyId
-//     const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
-//     let gameBalance = 0;
-
-//     walletTwoBalances.forEach((wallet) => {
-//       const walletCurrencyConverter = parseFloat(
-//         wallet.currencyId.countrycurrencyvaluecomparedtoinr
-//       );
-//       gameBalance += wallet.balance * walletCurrencyConverter;
-//     });
-
-//     // Fetch all WalletOne balances and populate currencyId
-//     const walletOneBalances = await WalletOne.find({}).populate("currencyId");
-//     let withdrawalBalance = 0;
-
-//     walletOneBalances.forEach((wallet) => {
-//       const walletCurrencyConverter = parseFloat(
-//         wallet.currencyId.countrycurrencyvaluecomparedtoinr
-//       );
-//       withdrawalBalance += wallet.balance * walletCurrencyConverter;
-//     });
-
-//     // Add the additional amount with currency conversion
-//     gameBalance += parseFloat(amount * currencyconverter);
-
-//     // Calculate total balance as the sum of walletOne and walletTwo balances
-//     const totalBalance = withdrawalBalance + gameBalance;
-
-//     // Update wallet
-//     const updatedWallet = await WalletTwo.findByIdAndUpdate(
-//       walletId,
-//       { balance: remainingWalletBalance },
-//       { new: true }
-//     );
-
-//     console.log("User's walletOne updated successfully :: " + updatedWallet);
-
-//     // Create a new AppBalanceSheet document
-//     const appBalanceSheet = new AppBalanceSheet({
-//       amount: parseFloat(amount * currencyconverter),
-//       withdrawalbalance: withdrawalBalance,
-//       gamebalance: gameBalance,
-//       totalbalance: totalBalance,
-//       usercurrency: user.country._id.toString(),
-//       activityType: "Deposit",
-//       userId: userId,
-//       transactionId: transaction._id,
-//       paymentProcessType: "Credit",
-//       walletName: wallet.walletName,
-//     });
-
-//     // Save the AppBalanceSheet document
-//     await appBalanceSheet.save();
-//     console.log("AppBalanceSheet Created Successfully");
-
-//     // Create notification for deposit completion
-//     const notification = new Notification({
-//       title: "Deposit Completed",
-//       description: `Your deposit of ${amount} has been completed successfully.`,
-//     });
-//     await notification.save();
-
-//     // Add notification to user's notification list
-//     user.notifications.push(notification._id);
-//     await user.save();
-
-//     console.log("Notification created and added to user successfully");
-
-//     // END BALANCE SHEET
-//   }
-
-//   // FOR PAYMENT COMPLETED FOR WITHDRAW
-//   if (
-//     paymentStatus === "Completed" &&
-//     transaction.transactionType === "Withdraw"
-//   ) {
-//     const userId = transaction.userId;
-//     // const amount = parseInt(transaction.amount);
-//     let amount = parseInt(reqAmount);
-
-//     const user = await User.findOne({ userId });
-
-//     if (!user) {
-//       return next(new ErrorHandler("User not found", 404));
-//     }
-
-//     // FOR DEPOSITING MONEY IN USER WALLET ONE
-//     console.log("Deposit request of user :: " + user);
-
-//     const currency = await Currency.findById(user.country._id);
-//     if (!currency) {
-//       return next(new ErrorHandler("Currency not found", 404));
-//     }
-
-//     const currencyconverter = parseFloat(
-//       currency.countrycurrencyvaluecomparedtoinr
-//     );
-
-//     amount = amount / currencyconverter;
-
-//     transaction.amount = amount;
-
-//     const walletId = user.walletOne._id;
-//     console.log("wallet one id :: " + walletId);
-
-//     const wallet = await WalletOne.findById(walletId);
-
-//     console.log("Wallet one ::  " + wallet);
-//     console.log("Before User Wallet Two balance :: " + wallet.balance);
-//     console.log("Amount to Add :: " + amount);
-
-//     if (wallet.balance < amount) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Insufficient balance",
-//       });
-//     }
-
-//     const totalBalanceAmount = parseFloat(wallet.balance);
-
-//     console.log("Float User Wallet One balance :: " + totalBalanceAmount);
-
-//     const remainingWalletBalance = totalBalanceAmount - parseFloat(amount);
-//     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
-
-//     // Update wallet
-//     // const updatedWallet = await WalletOne.findByIdAndUpdate(
-//     //   walletId,
-//     //   { balance: remainingWalletBalance },
-//     //   { new: true }
-//     // );
-
-//     // console.log("User's walletOne updated successfully :: " + updatedWallet);
-
-//     // FOR BALANCE SHEET
-
-//     // const currency = await Currency.findById(user.country._id);
-//     // if (!currency) {
-//     //   return next(new ErrorHandler("Currency not found", 404));
-//     // }
-
-//     // const currencyconverter = parseFloat(
-//     //   currency.countrycurrencyvaluecomparedtoinr
-//     // );
-
-//     // Create AppBalanceSheet entry
-//     // Calculate gameBalance as the total sum of all walletTwo balances
-
-//     // const walletTwoBalances = await WalletTwo.find({});
-//     // const gameBalance = walletTwoBalances.reduce(
-//     //   (sum, wallet) => sum + wallet.balance,
-//     //   0
-//     // );
-
-//     // // Calculate walletOneBalances as the total sum of all walletOne balances add totalAmount
-//     // const walletOneBalances = await WalletOne.find({});
-//     // const withdrawalBalance =
-//     //   walletOneBalances.reduce((sum, wallet) => sum + wallet.balance, 0) -
-//     //   parseFloat(amount * currencyconverter);
-
-//     // // Calculate totalbalance as the total sum of walletOne and walletTwo balances add totalAmount
-//     // const totalBalance = withdrawalBalance + gameBalance;
-
-//     // Fetch all WalletTwo balances and populate currencyId
-//     const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
-//     let gameBalance = 0;
-
-//     walletTwoBalances.forEach((wallet) => {
-//       const walletCurrencyConverter = parseFloat(
-//         wallet.currencyId.countrycurrencyvaluecomparedtoinr
-//       );
-//       gameBalance += wallet.balance * walletCurrencyConverter;
-//     });
-
-//     // Fetch all WalletOne balances and populate currencyId
-//     const walletOneBalances = await WalletOne.find({}).populate("currencyId");
-//     let withdrawalBalance = 0;
-
-//     walletOneBalances.forEach((wallet) => {
-//       const walletCurrencyConverter = parseFloat(
-//         wallet.currencyId.countrycurrencyvaluecomparedtoinr
-//       );
-//       withdrawalBalance += wallet.balance * walletCurrencyConverter;
-//     });
-
-//     // Add the additional amount with currency conversion
-//     withdrawalBalance -= parseFloat(amount * currencyconverter);
-
-//     // Calculate total balance as the sum of walletOne and walletTwo balances
-//     const totalBalance = withdrawalBalance + gameBalance;
-
-//     const updatedWallet = await WalletOne.findByIdAndUpdate(
-//       walletId,
-//       { balance: remainingWalletBalance },
-//       { new: true }
-//     );
-
-//     console.log("User's walletOne updated successfully :: " + updatedWallet);
-
-//     // Create a new AppBalanceSheet document
-//     const appBalanceSheet = new AppBalanceSheet({
-//       amount: parseFloat(amount * currencyconverter),
-//       withdrawalbalance: withdrawalBalance,
-//       gamebalance: gameBalance,
-//       totalbalance: totalBalance,
-//       usercurrency: user.country._id.toString(),
-//       activityType: "Withdraw",
-//       userId: userId,
-//       transactionId: transaction._id,
-//       paymentProcessType: "Debit",
-//       walletName: wallet.walletName,
-//     });
-
-//     // Save the AppBalanceSheet document
-//     await appBalanceSheet.save();
-//     console.log("AppBalanceSheet Created Successfully");
-
-//     // END BALANCE SHEET
-
-//     // Create notification for deposit completion
-//     const notification = new Notification({
-//       title: "Withdraw Completed",
-//       description: `Your withdraw of ${amount} has been completed successfully.`,
-//     });
-//     await notification.save();
-
-//     // Add notification to user's notification list
-//     user.notifications.push(notification._id);
-//     await user.save();
-
-//     console.log("Notification created and added to user successfully");
-//   }
-
-//   if (paymentStatus) transaction.paymentStatus = paymentStatus;
-//   if (paymentUpdateNote) transaction.paymentUpdateNote = paymentUpdateNote;
-
-//   if (req.file)
-//     transaction.paymentupdatereceipt = req.file ? req.file.filename : undefined;
-
-//   if (reqAmount) {
-//     transaction.convertedAmount = reqAmount;
-//   }
-
-//   await transaction.save();
-
-//   res.status(200).json({
-//     success: true,
-//     message: "Payment status updated successfully",
-//     transaction,
-//   });
-// });
-
 const updateDepositStatus = asyncError(async (req, res, next) => {
   const {
     transactionId,
@@ -2999,6 +2670,24 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     paymentStatus === "Completed" &&
     transaction.transactionType === "Recharge"
   ) {
+    // GETTING PARENT USER
+    // Get the parentUser using req.user._id
+    const parentUser = await User.findById(req.user._id);
+
+    if (!parentUser) {
+      return next(new ErrorHandler("Parent user not found", 404));
+    }
+
+    // Get the walletTwo ID from the parentUser
+    const parentwalletTwoId = parentUser.walletTwo._id;
+
+    // Fetch the walletTwo details
+    const parentwalletTwo = await WalletTwo.findById(parentwalletTwoId);
+
+    if (!parentwalletTwo) {
+      return next(new ErrorHandler("parent wallet not found", 404));
+    }
+
     const userId = transaction.userId;
     // const amount = parseInt(transaction.amount);
     let amount = parseInt(reqAmount);
@@ -3010,8 +2699,6 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     }
 
     // FOR DEPOSITING MONEY IN USER WALLET ONE
-    console.log("Deposit request of user :: " + user);
-
     const currency = await Currency.findById(user.country._id);
     if (!currency) {
       return next(new ErrorHandler("Currency not found", 404));
@@ -3023,24 +2710,21 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     amount = amount / currencyconverter;
 
+    // Check if the wallet balance is sufficient
+    const parentwalletBalance = parseFloat(parentwalletTwo.balance);
+    //  const parentamount = parseFloat(reqAmount);
+
+    if (parentwalletBalance < amount) {
+      return next(new ErrorHandler("Insufficient balance", 400));
+    }
+
     transaction.amount = amount;
 
+    // ADDING BALANCE TO USER WALLET
     const walletId = user.walletTwo._id;
-    console.log("wallet one 2 id :: " + walletId);
-
     const wallet = await WalletTwo.findById(walletId);
-
-    console.log("Wallet one 2 ::  " + wallet);
-    console.log("Before User Wallet Two balance :: " + wallet.balance);
-    console.log("Amount to Add :: " + amount);
-
     const totalBalanceAmount = parseFloat(wallet.balance);
-
-    console.log("Float User Wallet One balance :: " + totalBalanceAmount);
-
     const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
-    console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
-
     // Update wallet
     const updatedWallet = await WalletTwo.findByIdAndUpdate(
       walletId,
@@ -3048,7 +2732,15 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
       { new: true }
     );
 
-    console.log("User's walletOne updated successfully :: " + updatedWallet);
+    // DEDUCTING AMOUNT FROM PARENT WALLET
+    const parentremainingWalletBalance =
+      parentwalletBalance - parseFloat(amount);
+    // Update wallet
+    const parentupdatedWallet = await WalletTwo.findByIdAndUpdate(
+      parentwalletTwoId,
+      { balance: parentremainingWalletBalance },
+      { new: true }
+    );
 
     // Create notification for deposit completion
     const notification = new Notification({
@@ -3326,6 +3018,371 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     transaction,
   });
 });
+
+// const updateDepositStatus = asyncError(async (req, res, next) => {
+//   const {
+//     transactionId,
+//     paymentStatus,
+//     paymentUpdateNote,
+//     paymentupdatereceipt,
+//     amount: reqAmount,
+//   } = req.body;
+
+//   // Validate required fields
+//   if (!transactionId) {
+//     return next(new ErrorHandler("Transaction ID missing", 400));
+//   }
+//   if (!paymentStatus) {
+//     return next(new ErrorHandler("Payment status missing", 400));
+//   }
+//   if (!reqAmount) {
+//     return next(new ErrorHandler("Amount not found", 400));
+//   }
+
+//   // Validate payment status value
+//   const validStatuses = ["Pending", "Completed", "Cancelled"];
+//   if (!validStatuses.includes(paymentStatus)) {
+//     return next(new ErrorHandler("Invalid payment status", 400));
+//   }
+
+//   const transaction = await Transaction.findById(transactionId);
+
+//   if (!transaction) {
+//     return next(new ErrorHandler("Transaction not found", 404));
+//   }
+
+//   // FOR PAYMENT RECHARGE COMPLETED
+//   if (
+//     paymentStatus === "Completed" &&
+//     transaction.transactionType === "Recharge"
+//   ) {
+//     const userId = transaction.userId;
+//     // const amount = parseInt(transaction.amount);
+//     let amount = parseInt(reqAmount);
+
+//     const user = await User.findOne({ userId });
+
+//     if (!user) {
+//       return next(new ErrorHandler("User not found", 404));
+//     }
+
+//     // FOR DEPOSITING MONEY IN USER WALLET ONE
+//     console.log("Deposit request of user :: " + user);
+
+//     const currency = await Currency.findById(user.country._id);
+//     if (!currency) {
+//       return next(new ErrorHandler("Currency not found", 404));
+//     }
+
+//     const currencyconverter = parseFloat(
+//       currency.countrycurrencyvaluecomparedtoinr
+//     );
+
+//     amount = amount / currencyconverter;
+
+//     transaction.amount = amount;
+
+//     const walletId = user.walletTwo._id;
+//     console.log("wallet one 2 id :: " + walletId);
+
+//     const wallet = await WalletTwo.findById(walletId);
+
+//     console.log("Wallet one 2 ::  " + wallet);
+//     console.log("Before User Wallet Two balance :: " + wallet.balance);
+//     console.log("Amount to Add :: " + amount);
+
+//     const totalBalanceAmount = parseFloat(wallet.balance);
+
+//     console.log("Float User Wallet One balance :: " + totalBalanceAmount);
+
+//     const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
+//     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
+
+//     // Update wallet
+//     const updatedWallet = await WalletTwo.findByIdAndUpdate(
+//       walletId,
+//       { balance: remainingWalletBalance },
+//       { new: true }
+//     );
+
+//     console.log("User's walletOne updated successfully :: " + updatedWallet);
+
+//     // Create notification for deposit completion
+//     const notification = new Notification({
+//       title: "Deposit Completed",
+//       description: `Your deposit of ${amount} has been completed successfully.`,
+//     });
+//     await notification.save();
+
+//     // Add notification to user's notification list
+//     user.notifications.push(notification._id);
+//     await user.save();
+
+//     console.log("Notification created and added to user successfully");
+
+//     // END RECHARGE COMPLETED
+//   }
+
+//   // FOR PAYMENT COMPLETED FOR DEPOSIT
+//   if (
+//     paymentStatus === "Completed" &&
+//     transaction.transactionType === "Deposit"
+//   ) {
+//     const userId = transaction.userId;
+//     // const amount = parseInt(transaction.amount);
+//     let amount = parseInt(reqAmount);
+
+//     const user = await User.findOne({ userId });
+
+//     if (!user) {
+//       return next(new ErrorHandler("User not found", 404));
+//     }
+
+//     // FOR DEPOSITING MONEY IN USER WALLET ONE
+//     console.log("Deposit request of user :: " + user);
+
+//     const currency = await Currency.findById(user.country._id);
+//     if (!currency) {
+//       return next(new ErrorHandler("Currency not found", 404));
+//     }
+
+//     const currencyconverter = parseFloat(
+//       currency.countrycurrencyvaluecomparedtoinr
+//     );
+
+//     amount = amount / currencyconverter;
+
+//     transaction.amount = amount;
+
+//     const walletId = user.walletTwo._id;
+//     console.log("wallet one 2 id :: " + walletId);
+
+//     const wallet = await WalletTwo.findById(walletId);
+
+//     console.log("Wallet one 2 ::  " + wallet);
+//     console.log("Before User Wallet Two balance :: " + wallet.balance);
+//     console.log("Amount to Add :: " + amount);
+
+//     const totalBalanceAmount = parseFloat(wallet.balance);
+
+//     console.log("Float User Wallet One balance :: " + totalBalanceAmount);
+
+//     const remainingWalletBalance = totalBalanceAmount + parseFloat(amount);
+//     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
+
+//     // Fetch all WalletTwo balances and populate currencyId
+//     const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+//     let gameBalance = 0;
+
+//     walletTwoBalances.forEach((wallet) => {
+//       const walletCurrencyConverter = parseFloat(
+//         wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//       );
+//       gameBalance += wallet.balance * walletCurrencyConverter;
+//     });
+
+//     // Fetch all WalletOne balances and populate currencyId
+//     const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+//     let withdrawalBalance = 0;
+
+//     walletOneBalances.forEach((wallet) => {
+//       const walletCurrencyConverter = parseFloat(
+//         wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//       );
+//       withdrawalBalance += wallet.balance * walletCurrencyConverter;
+//     });
+
+//     // Add the additional amount with currency conversion
+//     gameBalance += parseFloat(amount * currencyconverter);
+
+//     // Calculate total balance as the sum of walletOne and walletTwo balances
+//     const totalBalance = withdrawalBalance + gameBalance;
+
+//     // Update wallet
+//     const updatedWallet = await WalletTwo.findByIdAndUpdate(
+//       walletId,
+//       { balance: remainingWalletBalance },
+//       { new: true }
+//     );
+
+//     console.log("User's walletOne updated successfully :: " + updatedWallet);
+
+//     // Create a new AppBalanceSheet document
+//     const appBalanceSheet = new AppBalanceSheet({
+//       amount: parseFloat(amount * currencyconverter),
+//       withdrawalbalance: withdrawalBalance,
+//       gamebalance: gameBalance,
+//       totalbalance: totalBalance,
+//       usercurrency: user.country._id.toString(),
+//       activityType: "Deposit",
+//       userId: userId,
+//       transactionId: transaction._id,
+//       paymentProcessType: "Credit",
+//       walletName: wallet.walletName,
+//     });
+
+//     // Save the AppBalanceSheet document
+//     await appBalanceSheet.save();
+//     console.log("AppBalanceSheet Created Successfully");
+
+//     // Create notification for deposit completion
+//     const notification = new Notification({
+//       title: "Deposit Completed",
+//       description: `Your deposit of ${amount} has been completed successfully.`,
+//     });
+//     await notification.save();
+
+//     // Add notification to user's notification list
+//     user.notifications.push(notification._id);
+//     await user.save();
+
+//     console.log("Notification created and added to user successfully");
+
+//     // END BALANCE SHEET
+//   }
+
+//   // FOR PAYMENT COMPLETED FOR WITHDRAW
+//   if (
+//     paymentStatus === "Completed" &&
+//     transaction.transactionType === "Withdraw"
+//   ) {
+//     const userId = transaction.userId;
+//     // const amount = parseInt(transaction.amount);
+//     let amount = parseInt(reqAmount);
+
+//     const user = await User.findOne({ userId });
+
+//     if (!user) {
+//       return next(new ErrorHandler("User not found", 404));
+//     }
+
+//     // FOR DEPOSITING MONEY IN USER WALLET ONE
+//     console.log("Deposit request of user :: " + user);
+
+//     const currency = await Currency.findById(user.country._id);
+//     if (!currency) {
+//       return next(new ErrorHandler("Currency not found", 404));
+//     }
+
+//     const currencyconverter = parseFloat(
+//       currency.countrycurrencyvaluecomparedtoinr
+//     );
+
+//     amount = amount / currencyconverter;
+
+//     transaction.amount = amount;
+
+//     const walletId = user.walletOne._id;
+//     console.log("wallet one id :: " + walletId);
+
+//     const wallet = await WalletOne.findById(walletId);
+
+//     console.log("Wallet one ::  " + wallet);
+//     console.log("Before User Wallet Two balance :: " + wallet.balance);
+//     console.log("Amount to Add :: " + amount);
+
+//     if (wallet.balance < amount) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Insufficient balance",
+//       });
+//     }
+
+//     const totalBalanceAmount = parseFloat(wallet.balance);
+
+//     console.log("Float User Wallet One balance :: " + totalBalanceAmount);
+
+//     const remainingWalletBalance = totalBalanceAmount - parseFloat(amount);
+//     console.log("REMAINING AMOUNT AFTER ADDITION :: " + remainingWalletBalance);
+
+//     // Fetch all WalletTwo balances and populate currencyId
+//     const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+//     let gameBalance = 0;
+
+//     walletTwoBalances.forEach((wallet) => {
+//       const walletCurrencyConverter = parseFloat(
+//         wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//       );
+//       gameBalance += wallet.balance * walletCurrencyConverter;
+//     });
+
+//     // Fetch all WalletOne balances and populate currencyId
+//     const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+//     let withdrawalBalance = 0;
+
+//     walletOneBalances.forEach((wallet) => {
+//       const walletCurrencyConverter = parseFloat(
+//         wallet.currencyId.countrycurrencyvaluecomparedtoinr
+//       );
+//       withdrawalBalance += wallet.balance * walletCurrencyConverter;
+//     });
+
+//     // Add the additional amount with currency conversion
+//     withdrawalBalance -= parseFloat(amount * currencyconverter);
+
+//     // Calculate total balance as the sum of walletOne and walletTwo balances
+//     const totalBalance = withdrawalBalance + gameBalance;
+
+//     const updatedWallet = await WalletOne.findByIdAndUpdate(
+//       walletId,
+//       { balance: remainingWalletBalance },
+//       { new: true }
+//     );
+
+//     console.log("User's walletOne updated successfully :: " + updatedWallet);
+
+//     // Create a new AppBalanceSheet document
+//     const appBalanceSheet = new AppBalanceSheet({
+//       amount: parseFloat(amount * currencyconverter),
+//       withdrawalbalance: withdrawalBalance,
+//       gamebalance: gameBalance,
+//       totalbalance: totalBalance,
+//       usercurrency: user.country._id.toString(),
+//       activityType: "Withdraw",
+//       userId: userId,
+//       transactionId: transaction._id,
+//       paymentProcessType: "Debit",
+//       walletName: wallet.walletName,
+//     });
+
+//     // Save the AppBalanceSheet document
+//     await appBalanceSheet.save();
+//     console.log("AppBalanceSheet Created Successfully");
+
+//     // END BALANCE SHEET
+
+//     // Create notification for deposit completion
+//     const notification = new Notification({
+//       title: "Withdraw Completed",
+//       description: `Your withdraw of ${amount} has been completed successfully.`,
+//     });
+//     await notification.save();
+
+//     // Add notification to user's notification list
+//     user.notifications.push(notification._id);
+//     await user.save();
+
+//     console.log("Notification created and added to user successfully");
+//   }
+
+//   if (paymentStatus) transaction.paymentStatus = paymentStatus;
+//   if (paymentUpdateNote) transaction.paymentUpdateNote = paymentUpdateNote;
+
+//   if (req.file)
+//     transaction.paymentupdatereceipt = req.file ? req.file.filename : undefined;
+
+//   if (reqAmount) {
+//     transaction.convertedAmount = reqAmount;
+//   }
+
+//   await transaction.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Payment status updated successfully",
+//     transaction,
+//   });
+// });
 
 // ##########################################
 // WITHDRAW
@@ -4816,6 +4873,52 @@ const updateRechargePermission = asyncError(async (req, res, next) => {
 });
 
 // GET PARTNER RECHARGE LIST
+// const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
+//   const { userId } = req.params;
+//   let { page, limit } = req.query;
+
+//   // Convert page and limit to integers and set default values
+//   page = parseInt(page) || 1;
+//   limit = parseInt(limit) || 10;
+//   const skip = (page - 1) * limit;
+
+//   // Step 3: Find the partner using userId
+//   const partner = await PartnerModule.findOne({ userId });
+//   if (!partner) {
+//     return next(new ErrorHandler("Partner not found", 404));
+//   }
+
+//   // Step 4: Find the rechargeModule from RechargeModule
+//   const rechargeModule = await RechargeModule.findById(
+//     partner.rechargeModule
+//   ).populate({
+//     path: "rechargeList",
+//     options: {
+//       sort: { createdAt: -1 }, // Sort in descending order
+//       skip: skip, // Skip based on page number
+//       limit: limit, // Limit the number of recharges per page
+//     },
+//   });
+
+//   if (!rechargeModule) {
+//     return next(new ErrorHandler("Recharge Module not found", 404));
+//   }
+
+//   // Get total number of recharges for this partner
+//   const totalRecharges = await RechargeModule.countDocuments({
+//     _id: partner.rechargeModule,
+//   });
+
+//   // Step 5: Return populated rechargeList with pagination data
+//   res.status(200).json({
+//     success: true,
+//     recharges: rechargeModule.rechargeList,
+//     totalRecharges,
+//     totalPages: Math.ceil(totalRecharges / limit),
+//     currentPage: page,
+//   });
+// });
+
 const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
   const { userId } = req.params;
   let { page, limit } = req.query;
@@ -4831,11 +4934,15 @@ const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Partner not found", 404));
   }
 
-  // Step 4: Find the rechargeModule from RechargeModule
+  // Step 4: Find the rechargeModule from RechargeModule and populate rechargeList with currency
   const rechargeModule = await RechargeModule.findById(
     partner.rechargeModule
   ).populate({
     path: "rechargeList",
+    populate: {
+      path: "currency", // Populate the currency field in rechargeList
+      model: "Currency", // Assuming the model name is "Currency"
+    },
     options: {
       sort: { createdAt: -1 }, // Sort in descending order
       skip: skip, // Skip based on page number
@@ -4861,38 +4968,6 @@ const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
     currentPage: page,
   });
 });
-
-// const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
-//   const { userId } = req.params;
-
-//   // Step 3: Find the partner using rechargePaymentId
-//   const partner = await PartnerModule.findOne({
-//     userId,
-//   });
-//   if (!partner) {
-//     return next(new ErrorHandler("Partner not found", 404));
-//   }
-
-//   console.log(partner.rechargeModule);
-
-//   // Step 4: Find the rechargeModule from RechargeModule
-//   const rechargeModule = await RechargeModule.findById(
-//     partner.rechargeModule
-//   ).populate({
-//     path: "rechargeList",
-//     options: { sort: { createdAt: -1 } }, // Sort in descending order
-//   });
-
-//   if (!rechargeModule) {
-//     return next(new ErrorHandler("Recharge Module not found", 404));
-//   }
-
-//   // Step 5: Return populated rechargeList
-//   res.status(200).json({
-//     success: true,
-//     recharges: rechargeModule.rechargeList,
-//   });
-// });
 
 const getAllRechargeTransactions = asyncError(async (req, res, next) => {
   // Get page and limit from query params or set default values

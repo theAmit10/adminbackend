@@ -3993,6 +3993,7 @@ const addUpiPayment = asyncError(async (req, res, next) => {
     upiid,
     qrcode: req.file ? req.file.filename : undefined,
     paymentnote,
+    userId: userId ? userId : 1000,
   });
 
   if (userId) {
@@ -4226,6 +4227,7 @@ const addCryptoPayment = asyncError(async (req, res, next) => {
     networktype,
     qrcode: req.file ? req.file.filename : undefined,
     paymentnote,
+    userId: userId ? userId : 1000,
   });
 
   if (userId) {
@@ -6220,6 +6222,8 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
         { path: "lotdate", model: "LotDate" },
         { path: "lottime", model: "LotTime" },
         { path: "lotlocation", model: "LotLocation" },
+        { path: "powerdate", model: "PowerDate" },
+        { path: "powertime", model: "PowerTime" },
         { path: "currency", model: "Currency" },
       ],
     });
@@ -6306,6 +6310,7 @@ const getUserPlaybets = asyncError(async (req, res, next) => {
 //     });
 //   }
 // });
+
 const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
   const userId = req.params.userid;
   let { page, limit } = req.query;
@@ -6327,10 +6332,6 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
         { path: "lotlocation", model: "LotLocation" },
         { path: "currency", model: "Currency" },
       ],
-      options: {
-        skip: skip, // Skip based on page number
-        limit: limit, // Limit the number of playbets per page
-      },
     });
 
     if (!user) {
@@ -6339,9 +6340,6 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
         message: "User not found",
       });
     }
-
-    // Get the total number of playbets for the user
-    const totalPlaybets = await User.countDocuments({ userId });
 
     // Get the playbetHistory array from the user document
     let playbets = user.playbetHistory;
@@ -6352,13 +6350,19 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
       createdAt: new Date(bet.createdAt),
     }));
 
-    // Reverse the order to get the oldest first
+    // Reverse the array to get the latest data first
     playbets.reverse();
+
+    // Apply pagination after reversing the array
+    const paginatedPlaybets = playbets.slice(skip, skip + limit);
+
+    // Get the total number of playbets for the user
+    const totalPlaybets = playbets.length;
 
     // Return paginated response
     res.status(200).json({
       success: true,
-      playbets,
+      playbets: paginatedPlaybets,
       totalPlaybets,
       totalPages: Math.ceil(totalPlaybets / limit),
       currentPage: page,
@@ -6371,6 +6375,72 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
     });
   }
 });
+
+// const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
+//   const userId = req.params.userid;
+//   let { page, limit } = req.query;
+
+//   // Convert page and limit to integers and set default values
+//   page = parseInt(page) || 1;
+//   limit = parseInt(limit) || 10;
+//   const skip = (page - 1) * limit;
+
+//   try {
+//     // Find the user by ID to get the playbetHistory
+//     const user = await User.findOne({ userId }).populate({
+//       path: "playbetHistory",
+//       populate: [
+//         { path: "lotdate", model: "LotDate" },
+//         { path: "lottime", model: "LotTime" },
+//         { path: "powerdate", model: "PowerDate" },
+//         { path: "powertime", model: "PowerTime" },
+//         { path: "lotlocation", model: "LotLocation" },
+//         { path: "currency", model: "Currency" },
+//       ],
+//       options: {
+//         skip: skip, // Skip based on page number
+//         limit: limit, // Limit the number of playbets per page
+//       },
+//     });
+
+//     if (!user) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "User not found",
+//       });
+//     }
+
+//     // Get the total number of playbets for the user
+//     const totalPlaybets = await User.countDocuments({ userId });
+
+//     // Get the playbetHistory array from the user document
+//     let playbets = user.playbetHistory;
+
+//     // Ensure createdAt is treated as a date
+//     playbets = playbets.map((bet) => ({
+//       ...bet.toObject(), // Ensure it's a plain object
+//       createdAt: new Date(bet.createdAt),
+//     }));
+
+//     // Reverse the order to get the oldest first
+//     playbets.reverse();
+
+//     // Return paginated response
+//     res.status(200).json({
+//       success: true,
+//       playbets,
+//       totalPlaybets,
+//       totalPages: Math.ceil(totalPlaybets / limit),
+//       currentPage: page,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to retrieve playbets",
+//       error: error.message,
+//     });
+//   }
+// });
 
 const createCurrency = asyncError(async (req, res, next) => {
   const {
@@ -7858,19 +7928,19 @@ const getUserCryptoPayments = asyncError(async (req, res, next) => {
   try {
     if (numericUserId === 1000) {
       // Fetch all payments for userId 1000
-      cryptoPayments = await UpiPaymentType.find({ userId: 1000 }).sort({
+      cryptoPayments = await CryptoPaymentType.find({ userId: 1000 }).sort({
         createdAt: -1,
       });
     } else {
       // Fetch payments for the specified userId with activationStatus: true
-      cryptoPayments = await UpiPaymentType.find({
+      cryptoPayments = await CryptoPaymentType.find({
         userId: numericUserId,
         activationStatus: true,
       }).sort({ createdAt: -1 });
 
       if (cryptoPayments.length === 0) {
         // If no active payments found, fetch all payments for userId 1000
-        cryptoPayments = await UpiPaymentType.find({ userId: 1000 }).sort({
+        cryptoPayments = await CryptoPaymentType.find({ userId: 1000 }).sort({
           createdAt: -1,
         });
       }
