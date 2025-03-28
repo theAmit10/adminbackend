@@ -3670,6 +3670,7 @@ const makeUserSubPartner = asyncError(async (req, res, next) => {
   // Assign the created PartnerModule to the user
   user.partnerModule = partnerModule._id;
   user.partnerType = "subpartner";
+  user.partnerStatus = true;
 
   // user.partnerStatus = true; // Mark the user as a partner
 

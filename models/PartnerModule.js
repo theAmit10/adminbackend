@@ -13,7 +13,7 @@ const partnerModuleSchema = new mongoose.Schema(
     topParentId: { type: Number, default: 1000 },
     playHistoryPermission: { type: Boolean, default: false },
     transactionHistoryPermission: { type: Boolean, default: false },
-    partnerStatus: { type: Boolean, default: false },
+    partnerStatus: { type: Boolean, default: true },
     rechargePaymentId: { type: Number, default: 1000 },
     country: {
       type: mongoose.Schema.Types.ObjectId,
