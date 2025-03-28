@@ -6059,6 +6059,46 @@ const updateSettings = async (req, res) => {
   }
 };
 
+// [UPDATE OTHER PAYMENT INPUT NAME]
+const updateInputNames = async (req, res) => {
+  try {
+    const { firstInputName, secondInputName, thirdInputName, fourthInputName } =
+      req.body;
+
+    let settings = await Settings.findOne();
+    if (!settings) {
+      settings = new Settings();
+    }
+
+    if (firstInputName !== undefined) {
+      settings.firstInputName = firstInputName;
+    }
+
+    if (secondInputName !== undefined) {
+      settings.secondInputName = secondInputName;
+    }
+
+    if (thirdInputName !== undefined) {
+      settings.thirdInputName = thirdInputName;
+    }
+
+    if (fourthInputName !== undefined) {
+      settings.fourthInputName = fourthInputName;
+    }
+
+    await settings.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Input names updated successfully",
+      data: settings,
+    });
+  } catch (error) {
+    console.error("Error updating input names:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
 const getSettings = asyncError(async (req, res, next) => {
   // Fetch the settings from the database
   const settings = await Settings.findOne();
@@ -6082,7 +6122,44 @@ const getSettings = asyncError(async (req, res, next) => {
   });
 });
 
+const getInputNames = async (req, res) => {
+  try {
+    // Fetch the settings from the database
+    const settings = await Settings.findOne();
+
+    // If no settings found, return default values
+    if (!settings) {
+      return res.status(200).json({
+        success: true,
+        message: "Settings not found, returning default values.",
+        inputNames: {
+          firstInputName: null, // Default to null
+          secondInputName: null, // Default to null
+          thirdInputName: null, // Default to null
+          fourthInputName: null, // Default to null
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Input names retrieved successfully.",
+      inputNames: {
+        firstInputName: settings.firstInputName || null,
+        secondInputName: settings.secondInputName || null,
+        thirdInputName: settings.thirdInputName || null,
+        fourthInputName: settings.fourthInputName || null,
+      },
+    });
+  } catch (error) {
+    console.error("Error retrieving input names:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
 module.exports = {
+  getInputNames,
+  updateInputNames,
   getSettings,
   updateSettings,
   getPowerballGameTicketsByDateAndTime,

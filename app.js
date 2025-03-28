@@ -925,3 +925,6 @@ app.listen(process.env.PORT, () => {
 module.exports = {
   app,
 };
+
+// MONGO_URI=mongodb://root:root1234@95.169.196.62:27017/sinceapp?authSource=admin
+// MONGO_URI=mongodb+srv://whoami:whoami@cluster0.utfo6lu.mongodb.net/?retryWrites=true&w=majority&appName=sinceapp
