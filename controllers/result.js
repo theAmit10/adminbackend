@@ -4185,7 +4185,7 @@ const addPaypalPayment = asyncError(async (req, res, next) => {
 });
 
 const getAllPaypalPayments = asyncError(async (req, res, next) => {
-  const payments = await PaypalPaymentType.find();
+  const payments = await PaypalPaymentType.find().sort({ createdAt: -1 });
 
   res.status(200).json({
     success: true,

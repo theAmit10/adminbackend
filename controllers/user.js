@@ -197,6 +197,11 @@ const register = asyncError(async (req, res, next) => {
       );
     }
 
+    const parentUser = await User.findOne({ userId: parentId });
+    if (!parentUser) {
+      return next(new ErrorHandler("partner user not found", 400));
+    }
+
     // Set hierarchical parent IDs
     parentPartnerId = partner.userId;
     parentParentPartnerId = partner.parentPartnerId;
@@ -204,7 +209,7 @@ const register = asyncError(async (req, res, next) => {
     if (partner.rechargeStatus) {
       rechargePaymentId = partner.userId;
     } else {
-      rechargePaymentId = partner.rechargePaymentId;
+      rechargePaymentId = parentUser.rechargePaymentId;
     }
   }
 
@@ -2412,7 +2417,38 @@ const addDeposit = asyncError(async (req, res, next) => {
   if (numericRechargeId === 1000) {
     transactiontype = "Deposit";
   } else {
-    transactiontype = "Recharge";
+    // transactiontype = "Recharge";
+    const partneruser = await PartnerModule.findOne({
+      userId: numericRechargeId,
+    }).populate("rechargeModule");
+
+    if (!partneruser || !partneruser.rechargeModule) {
+      return next(new ErrorHandler("Partner not found", 404));
+    }
+
+    const rechargeModule = partneruser.rechargeModule;
+
+    if (paymenttype === "Upi") {
+      transactiontype = rechargeModule.upiPermission ? "Recharge" : "Deposit";
+    } else if (paymenttype === "Bank") {
+      transactiontype = rechargeModule.bankPermission ? "Recharge" : "Deposit";
+    } else if (paymenttype === "Paypal") {
+      transactiontype = rechargeModule.paypalPermission
+        ? "Recharge"
+        : "Deposit";
+    } else if (paymenttype === "Crypto") {
+      transactiontype = rechargeModule.cryptoPermission
+        ? "Recharge"
+        : "Deposit";
+    } else if (paymenttype === "Skrill") {
+      transactiontype = rechargeModule.skrillPermission
+        ? "Recharge"
+        : "Deposit";
+    } else if (paymenttype === "Other") {
+      transactiontype = rechargeModule.otherPaymentPermission
+        ? "Recharge"
+        : "Deposit";
+    }
   }
 
   // Step 5: Create a transaction
@@ -2452,6 +2488,26 @@ const addDeposit = asyncError(async (req, res, next) => {
 
     // Save the updated rechargeModule
     await rechargeModule.save();
+
+    // Sending a notification for recharge
+
+    const partnerUser = await User.findOne({ userId: partner.userId });
+    if (!partnerUser) {
+      return next(new ErrorHandler("Partner user not found", 404));
+    }
+
+    // Create notification for deposit completion
+    const notification = new Notification({
+      title: "Recharge Request",
+      description: `New recharge request of $${amount} received.`,
+    });
+    await notification.save();
+
+    // Add notification to user's notification list
+    partnerUser.notifications.push(notification._id);
+    await partnerUser.save();
+
+    console.log("Notification created and added to user successfully");
   }
 
   // Step 8: Return success response
@@ -6158,7 +6214,28 @@ const getInputNames = async (req, res) => {
   }
 };
 
+// Get total count for Users and Partners
+const getTotalCounts = asyncError(async (req, res, next) => {
+  const allUserCount = await User.countDocuments({ role: "user" });
+
+  const partnerCount = await PartnerModule.countDocuments({
+    partnerType: "partner",
+  });
+
+  const subPartnerCount = await PartnerModule.countDocuments({
+    partnerType: "subpartner",
+  });
+
+  res.status(200).json({
+    success: true,
+    allUserCount,
+    partnerCount,
+    subPartnerCount,
+  });
+});
+
 module.exports = {
+  getTotalCounts,
   getInputNames,
   updateInputNames,
   getSettings,
