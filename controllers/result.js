@@ -3951,12 +3951,39 @@ const addOtherPayment = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllOtherPayments = asyncError(async (req, res, next) => {
+//   const payments = await OtherPayment.find();
+
+//   res.status(200).json({
+//     success: true,
+//     payments,
+//   });
+// });
+
 const getAllOtherPayments = asyncError(async (req, res, next) => {
-  const payments = await OtherPayment.find();
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Execute count and find operations in parallel
+  const [totalPayments, payments] = await Promise.all([
+    OtherPayment.countDocuments(),
+    OtherPayment.find()
+      .sort({ createdAt: -1 }) // Newest payments first
+      .skip(skip)
+      .limit(limit),
+  ]);
 
   res.status(200).json({
     success: true,
     payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
   });
 });
 
@@ -4021,12 +4048,39 @@ const addUpiPayment = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllUPIPayments = asyncError(async (req, res, next) => {
+//   const payments = await UpiPaymentType.find();
+
+//   res.status(200).json({
+//     success: true,
+//     payments,
+//   });
+// });
+
 const getAllUPIPayments = asyncError(async (req, res, next) => {
-  const payments = await UpiPaymentType.find();
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Get total count and payments in parallel for better performance
+  const [totalPayments, payments] = await Promise.all([
+    UpiPaymentType.countDocuments(),
+    UpiPaymentType.find()
+      .sort({ createdAt: -1 }) // Newest first
+      .skip(skip)
+      .limit(limit),
+  ]);
 
   res.status(200).json({
     success: true,
     payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
   });
 });
 
@@ -4123,15 +4177,40 @@ const addBankPayment = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllBankPayments = asyncError(async (req, res, next) => {
+//   const payments = await BankPaymentType.find();
+
+//   res.status(200).json({
+//     success: true,
+//     payments,
+//   });
+// });
 const getAllBankPayments = asyncError(async (req, res, next) => {
-  const payments = await BankPaymentType.find();
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Get total count and payments in parallel
+  const [totalPayments, payments] = await Promise.all([
+    BankPaymentType.countDocuments(),
+    BankPaymentType.find()
+      .sort({ createdAt: -1 }) // Newest first
+      .skip(skip)
+      .limit(limit),
+  ]);
 
   res.status(200).json({
     success: true,
     payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
   });
 });
-
 const deleteBankPayment = asyncError(async (req, res, next) => {
   const { id } = req.params;
 
@@ -4184,12 +4263,39 @@ const addPaypalPayment = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllPaypalPayments = asyncError(async (req, res, next) => {
+//   const payments = await PaypalPaymentType.find().sort({ createdAt: -1 });
+
+//   res.status(200).json({
+//     success: true,
+//     payments,
+//   });
+// });
+
 const getAllPaypalPayments = asyncError(async (req, res, next) => {
-  const payments = await PaypalPaymentType.find().sort({ createdAt: -1 });
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Get total count and payments in parallel
+  const [totalPayments, payments] = await Promise.all([
+    PaypalPaymentType.countDocuments(),
+    PaypalPaymentType.find()
+      .sort({ createdAt: -1 }) // Newest first (keeping your existing sort)
+      .skip(skip)
+      .limit(limit),
+  ]);
 
   res.status(200).json({
     success: true,
     payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
   });
 });
 
@@ -4255,12 +4361,39 @@ const addCryptoPayment = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllCryptoPayments = asyncError(async (req, res, next) => {
+//   const payments = await CryptoPaymentType.find();
+
+//   res.status(200).json({
+//     success: true,
+//     payments,
+//   });
+// });
+
 const getAllCryptoPayments = asyncError(async (req, res, next) => {
-  const payments = await CryptoPaymentType.find();
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Get total count and payments in parallel for optimal performance
+  const [totalPayments, payments] = await Promise.all([
+    CryptoPaymentType.countDocuments(),
+    CryptoPaymentType.find()
+      .sort({ createdAt: -1 }) // Newest records first
+      .skip(skip)
+      .limit(limit),
+  ]);
 
   res.status(200).json({
     success: true,
     payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
   });
 });
 
@@ -4318,12 +4451,39 @@ const addSkrillPayment = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAllSkrillPayments = asyncError(async (req, res, next) => {
+//   const payments = await SkrillPaymentType.find();
+
+//   res.status(200).json({
+//     success: true,
+//     payments,
+//   });
+// });
+
 const getAllSkrillPayments = asyncError(async (req, res, next) => {
-  const payments = await SkrillPaymentType.find();
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Execute count and find operations in parallel
+  const [totalPayments, payments] = await Promise.all([
+    SkrillPaymentType.countDocuments(),
+    SkrillPaymentType.find()
+      .sort({ createdAt: -1 }) // Newest payments first
+      .skip(skip)
+      .limit(limit),
+  ]);
 
   res.status(200).json({
     success: true,
     payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
   });
 });
 
