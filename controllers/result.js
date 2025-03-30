@@ -6077,25 +6077,37 @@ const searchPowerBet = async (req, res) => {
       });
     }
 
-    // Convert and validate jackpot numbers
-    const jackpotNumbers = jackpot.split(" ").map(Number);
-    if (jackpotNumbers.some(isNaN)) {
+    // Validate MongoDB ID format
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
-        message: "Jackpot numbers must be valid numbers separated by spaces",
+        message: "Invalid game ID format",
       });
     }
 
-    // Pagination setup
+    // Convert and validate jackpot numbers
+    const jackpotNumbers = jackpot.split(" ").map(Number);
+    if (jackpotNumbers.some(isNaN) || jackpotNumbers.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Jackpot must contain valid numbers separated by spaces",
+      });
+    }
+
+    // Configure pagination with safe defaults
     const pageNumber = Math.max(1, parseInt(page, 10));
     const limitNumber = Math.min(100, Math.max(1, parseInt(limit, 10)));
     const skip = (pageNumber - 1) * limitNumber;
 
-    // Find the power game by ID with necessary populations
+    // Find the power game with optimized population
     const powerGame = await PowerballGameTickets.findById(id)
-      .populate("alltickets.userId")
+      .populate({
+        path: "alltickets.userId",
+        select: "username currency", // Only get necessary fields
+      })
       .populate("powerdate")
-      .populate("powertime");
+      .populate("powertime")
+      .lean(); // Convert to plain JS object for better performance
 
     if (!powerGame) {
       return res.status(404).json({
@@ -6104,18 +6116,18 @@ const searchPowerBet = async (req, res) => {
       });
     }
 
-    // Process tickets to find matches
-    let matchedTickets = [];
+    // Process tickets efficiently
+    const allMatchedTickets = [];
     let totalMatchedTickets = 0;
 
-    powerGame.alltickets.forEach((ticketEntry) => {
+    for (const ticketEntry of powerGame.alltickets) {
       const userTickets = ticketEntry.tickets.filter((ticket) =>
         jackpotNumbers.every((num) => ticket.usernumber.includes(num))
       );
 
       if (userTickets.length > 0) {
         totalMatchedTickets += userTickets.length;
-        matchedTickets.push({
+        allMatchedTickets.push({
           userId: ticketEntry.userId._id,
           username: ticketEntry.userId.username,
           currency: ticketEntry.userId.currency,
@@ -6125,44 +6137,165 @@ const searchPowerBet = async (req, res) => {
           updatedAt: ticketEntry.updatedAt,
         });
       }
-    });
+    }
 
-    // Apply pagination to the matched tickets
-    const paginatedTickets = matchedTickets
-      .map((user) => ({
-        ...user,
-        tickets: user.tickets.slice(skip, skip + limitNumber),
-      }))
-      .filter((user) => user.tickets.length > 0);
+    // Apply pagination
+    const paginatedResults = [];
+    let ticketsProcessed = 0;
+    let ticketsToSkip = skip;
+    let ticketsToTake = limitNumber;
+
+    for (const user of allMatchedTickets) {
+      if (ticketsToSkip >= user.tickets.length) {
+        ticketsToSkip -= user.tickets.length;
+        continue;
+      }
+
+      const startIdx = ticketsToSkip;
+      const endIdx = Math.min(startIdx + ticketsToTake, user.tickets.length);
+      const paginatedTickets = user.tickets.slice(startIdx, endIdx);
+
+      if (paginatedTickets.length > 0) {
+        paginatedResults.push({
+          ...user,
+          tickets: paginatedTickets,
+        });
+      }
+
+      ticketsToTake -= endIdx - startIdx;
+      ticketsToSkip = 0; // Reset after first adjustment
+
+      if (ticketsToTake <= 0) break;
+    }
 
     const totalPages = Math.ceil(totalMatchedTickets / limitNumber);
+
+    // Prepare final response
+    const response = {
+      _id: powerGame._id,
+      powerdate: powerGame.powerdate,
+      powertime: powerGame.powertime,
+      alltickets: paginatedResults,
+      createdAt: powerGame.createdAt,
+      updatedAt: powerGame.updatedAt,
+      __v: powerGame.__v,
+    };
 
     res.status(200).json({
       success: true,
       page: pageNumber,
       totalPages,
       totalRecords: totalMatchedTickets,
-      tickets: [
-        {
-          _id: powerGame._id,
-          powerdate: powerGame.powerdate,
-          powertime: powerGame.powertime,
-          alltickets: paginatedTickets,
-          createdAt: powerGame.createdAt,
-          updatedAt: powerGame.updatedAt,
-          __v: powerGame.__v,
-        },
-      ],
+      tickets: [response], // Maintain array structure for consistency
     });
   } catch (error) {
     console.error("Error in searchPowerBet:", error);
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
-      error: error.message,
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
+
+// const searchPowerBet = async (req, res) => {
+//   try {
+//     const { id, jackpot, page = 1, limit = 10 } = req.query;
+
+//     // Validate required parameters
+//     if (!id || !jackpot) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "ID and jackpot are required",
+//       });
+//     }
+
+//     // Convert and validate jackpot numbers
+//     const jackpotNumbers = jackpot.split(" ").map(Number);
+//     if (jackpotNumbers.some(isNaN)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Jackpot numbers must be valid numbers separated by spaces",
+//       });
+//     }
+
+//     // Pagination setup
+//     const pageNumber = Math.max(1, parseInt(page, 10));
+//     const limitNumber = Math.min(100, Math.max(1, parseInt(limit, 10)));
+//     const skip = (pageNumber - 1) * limitNumber;
+
+//     // Find the power game by ID with necessary populations
+//     const powerGame = await PowerballGameTickets.findById(id)
+//       .populate("alltickets.userId")
+//       .populate("powerdate")
+//       .populate("powertime");
+
+//     if (!powerGame) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Powerball game not found",
+//       });
+//     }
+
+//     // Process tickets to find matches
+//     let matchedTickets = [];
+//     let totalMatchedTickets = 0;
+
+//     powerGame.alltickets.forEach((ticketEntry) => {
+//       const userTickets = ticketEntry.tickets.filter((ticket) =>
+//         jackpotNumbers.every((num) => ticket.usernumber.includes(num))
+//       );
+
+//       if (userTickets.length > 0) {
+//         totalMatchedTickets += userTickets.length;
+//         matchedTickets.push({
+//           userId: ticketEntry.userId._id,
+//           username: ticketEntry.userId.username,
+//           currency: ticketEntry.userId.currency,
+//           tickets: userTickets,
+//           _id: ticketEntry._id,
+//           createdAt: ticketEntry.createdAt,
+//           updatedAt: ticketEntry.updatedAt,
+//         });
+//       }
+//     });
+
+//     // Apply pagination to the matched tickets
+//     const paginatedTickets = matchedTickets
+//       .map((user) => ({
+//         ...user,
+//         tickets: user.tickets.slice(skip, skip + limitNumber),
+//       }))
+//       .filter((user) => user.tickets.length > 0);
+
+//     const totalPages = Math.ceil(totalMatchedTickets / limitNumber);
+
+//     res.status(200).json({
+//       success: true,
+//       page: pageNumber,
+//       totalPages,
+//       totalRecords: totalMatchedTickets,
+//       tickets: [
+//         {
+//           _id: powerGame._id,
+//           powerdate: powerGame.powerdate,
+//           powertime: powerGame.powertime,
+//           alltickets: paginatedTickets,
+//           createdAt: powerGame.createdAt,
+//           updatedAt: powerGame.updatedAt,
+//           __v: powerGame.__v,
+//         },
+//       ],
+//     });
+//   } catch (error) {
+//     console.error("Error in searchPowerBet:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal Server Error",
+//       error: error.message,
+//     });
+//   }
+// };
 
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id;
