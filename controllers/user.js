@@ -5733,14 +5733,6 @@ const getAllPowerballGameTickets = asyncError(async (req, res, next) => {
 //         .skip(skip)
 //         .limit(limitNumber);
 
-//       if (!tickets.length) {
-//         return res.status(404).json({
-//           success: false,
-//           message:
-//             "No PowerballGameTickets found for the given powerdate and powertime",
-//         });
-//       }
-
 //       // Get total count for pagination info
 //       const total = await PowerballGameTickets.countDocuments({
 //         powerdate: powerdateId,
@@ -5760,61 +5752,13 @@ const getAllPowerballGameTickets = asyncError(async (req, res, next) => {
 //     }
 //   }
 // );
-const getPowerballGameTicketsByDateAndTime = asyncError(
-  async (req, res, next) => {
-    const { powerdateId, powertimeId } = req.params;
-    const { page = 1, limit = 10 } = req.query; // Pagination parameters
-
-    try {
-      // Validate the provided IDs
-      if (
-        !mongoose.Types.ObjectId.isValid(powerdateId) ||
-        !mongoose.Types.ObjectId.isValid(powertimeId)
-      ) {
-        return next(new ErrorHandler("Invalid powerdate or powertime ID", 400));
-      }
-
-      const pageNumber = parseInt(page, 10);
-      const limitNumber = parseInt(limit, 10);
-      const skip = (pageNumber - 1) * limitNumber;
-
-      // Find the PowerballGameTickets based on powerdate and powertime with pagination and sorting
-      const tickets = await PowerballGameTickets.find({
-        powerdate: powerdateId,
-        powertime: powertimeId,
-      })
-        .populate("powerdate")
-        .populate("powertime")
-        .sort({ createdAt: -1 }) // Sorting by newest first
-        .skip(skip)
-        .limit(limitNumber);
-
-      // Get total count for pagination info
-      const total = await PowerballGameTickets.countDocuments({
-        powerdate: powerdateId,
-        powertime: powertimeId,
-      });
-      const totalPages = Math.ceil(total / limitNumber);
-
-      res.status(200).json({
-        success: true,
-        page: pageNumber,
-        totalPages,
-        totalRecords: total,
-        tickets,
-      });
-    } catch (error) {
-      next(new ErrorHandler(error.message, 500));
-    }
-  }
-);
 
 // const getPowerballGameTicketsByDateAndTime = asyncError(
 //   async (req, res, next) => {
 //     const { powerdateId, powertimeId } = req.params;
+//     const { page = 1, limit = 10 } = req.query;
 
 //     try {
-//       // Validate the provided IDs
 //       if (
 //         !mongoose.Types.ObjectId.isValid(powerdateId) ||
 //         !mongoose.Types.ObjectId.isValid(powertimeId)
@@ -5822,24 +5766,42 @@ const getPowerballGameTicketsByDateAndTime = asyncError(
 //         return next(new ErrorHandler("Invalid powerdate or powertime ID", 400));
 //       }
 
-//       // Find the PowerballGameTickets based on powerdate and powertime
-//       const tickets = await PowerballGameTickets.findOne({
+//       const pageNumber = parseInt(page, 10);
+//       const limitNumber = parseInt(limit, 10);
+//       const skip = (pageNumber - 1) * limitNumber;
+
+//       // Find tickets with pagination
+//       const tickets = await PowerballGameTickets.find({
 //         powerdate: powerdateId,
 //         powertime: powertimeId,
 //       })
 //         .populate("powerdate")
-//         .populate("powertime");
+//         .populate("powertime")
+//         .sort({ createdAt: -1 })
+//         .skip(skip)
+//         .limit(limitNumber);
 
-//       if (!tickets) {
-//         return res.status(404).json({
-//           success: false,
-//           message:
-//             "No PowerballGameTickets found for the given powerdate and powertime",
-//         });
-//       }
+//       // Get total count of individual tickets using aggregation
+//       const totalTicketsAggregate = await PowerballGameTickets.aggregate([
+//         {
+//           $match: {
+//             powerdate: new mongoose.Types.ObjectId(powerdateId),
+//             powertime: new mongoose.Types.ObjectId(powertimeId),
+//           },
+//         },
+//         { $unwind: "$alltickets" },
+//         { $unwind: "$alltickets.tickets" },
+//         { $count: "total" },
+//       ]);
+
+//       const total = totalTicketsAggregate[0]?.total || 0;
+//       const totalPages = Math.ceil(total / limitNumber);
 
 //       res.status(200).json({
 //         success: true,
+//         page: pageNumber,
+//         totalPages,
+//         totalRecords: total,
 //         tickets,
 //       });
 //     } catch (error) {
@@ -5847,6 +5809,104 @@ const getPowerballGameTicketsByDateAndTime = asyncError(
 //     }
 //   }
 // );
+
+const getPowerballGameTicketsByDateAndTime = asyncError(
+  async (req, res, next) => {
+    const { powerdateId, powertimeId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    try {
+      // Validate IDs
+      if (
+        !mongoose.Types.ObjectId.isValid(powerdateId) ||
+        !mongoose.Types.ObjectId.isValid(powertimeId)
+      ) {
+        return next(new ErrorHandler("Invalid powerdate or powertime ID", 400));
+      }
+
+      const pageNumber = Math.max(1, parseInt(page, 10));
+      const limitNumber = Math.min(100, Math.max(1, parseInt(limit, 10))); // Limit max 100 per page
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // PHASE 1: Get total count (optimized)
+      const [totalResult] = await PowerballGameTickets.aggregate([
+        {
+          $match: {
+            powerdate: new mongoose.Types.ObjectId(powerdateId),
+            powertime: new mongoose.Types.ObjectId(powertimeId),
+          },
+        },
+        {
+          $project: {
+            ticketCount: {
+              $size: {
+                $reduce: {
+                  input: "$alltickets",
+                  initialValue: [],
+                  in: { $concatArrays: ["$$value", "$$this.tickets"] },
+                },
+              },
+            },
+          },
+        },
+      ]);
+
+      const total = totalResult?.ticketCount || 0;
+      const totalPages = Math.ceil(total / limitNumber);
+
+      // PHASE 2: Get paginated data (optimized)
+      const tickets = await PowerballGameTickets.aggregate([
+        {
+          $match: {
+            powerdate: new mongoose.Types.ObjectId(powerdateId),
+            powertime: new mongoose.Types.ObjectId(powertimeId),
+          },
+        },
+        { $unwind: "$alltickets" },
+        { $unwind: "$alltickets.tickets" },
+        { $sort: { "alltickets.tickets.createdAt": -1 } },
+        { $skip: skip },
+        { $limit: limitNumber },
+        {
+          $group: {
+            _id: "$_id",
+            powerdate: { $first: "$powerdate" },
+            powertime: { $first: "$powertime" },
+            alltickets: {
+              $push: {
+                userId: "$alltickets.userId",
+                username: "$alltickets.username",
+                currency: "$alltickets.currency",
+                tickets: ["$alltickets.tickets"],
+                createdAt: "$alltickets.createdAt",
+                updatedAt: "$alltickets.updatedAt",
+              },
+            },
+            createdAt: { $first: "$createdAt" },
+            updatedAt: { $first: "$updatedAt" },
+          },
+        },
+      ]);
+
+      // Populate references
+      const populatedTickets = await PowerballGameTickets.populate(tickets, [
+        { path: "powerdate" },
+        { path: "powertime" },
+        { path: "alltickets.currency" },
+      ]);
+
+      res.status(200).json({
+        success: true,
+        page: pageNumber,
+        totalPages,
+        totalRecords: total,
+        tickets: populatedTickets,
+      });
+    } catch (error) {
+      next(new ErrorHandler(error.message, 500));
+    }
+  }
+);
 
 const searchUser = asyncError(async (req, res, next) => {
   const searchTerm = req.query.searchTerm; // This will be the string passed

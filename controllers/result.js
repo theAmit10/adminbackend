@@ -5986,154 +5986,7 @@ const addPowerBet = async (req, res) => {
 
 // const searchPowerBet = async (req, res) => {
 //   try {
-//     const { id, jackpot } = req.body;
-
-//     if (!id || !jackpot) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "ID and jackpot are required",
-//       });
-//     }
-
-//     // Convert jackpot string into an array of numbers
-//     const jackpotNumbers = jackpot.split(" ").map(Number);
-
-//     if (jackpotNumbers.some(isNaN)) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Jackpot numbers must be valid numbers separated by spaces",
-//       });
-//     }
-
-//     // Find the power game by ID
-//     const powerGame = await PowerballGameTickets.findById(id).populate(
-//       "alltickets.userId"
-//     );
-
-//     if (!powerGame) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Powerball game not found",
-//       });
-//     }
-
-//     // Extract users who have matching numbers in their tickets
-//     let matchingUsers = [];
-
-//     powerGame.alltickets.forEach((ticketEntry) => {
-//       ticketEntry.tickets.forEach((ticket) => {
-//         const userNumbers = ticket.usernumber;
-
-//         // Check if all jackpotNumbers are in userNumbers
-//         if (jackpotNumbers.every((num) => userNumbers.includes(num))) {
-//           matchingUsers.push({
-//             userId: ticketEntry.userId,
-//             username: ticketEntry.username,
-//             matchedNumbers: userNumbers.filter((num) =>
-//               jackpotNumbers.includes(num)
-//             ),
-//           });
-//         }
-//       });
-//     });
-
-//     res.status(200).json({
-//       success: true,
-//       matchingUsers,
-//     });
-//   } catch (error) {
-//     console.error("Error in searchPowerBet:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Internal Server Error",
-//       error: error.message,
-//     });
-//   }
-// };
-const searchPowerBet = async (req, res) => {
-  try {
-    const { id, jackpot } = req.query; // Extract from query params
-
-    if (!id || !jackpot) {
-      return res.status(400).json({
-        success: false,
-        message: "ID and jackpot are required",
-      });
-    }
-
-    // Convert jackpot string into an array of numbers
-    const jackpotNumbers = jackpot.split(" ").map(Number);
-
-    if (jackpotNumbers.some(isNaN)) {
-      return res.status(400).json({
-        success: false,
-        message: "Jackpot numbers must be valid numbers separated by spaces",
-      });
-    }
-
-    // Find the power game by ID
-    const powerGame = await PowerballGameTickets.findById(id)
-      .populate("alltickets.userId")
-      .populate("powerdate")
-      .populate("powertime");
-
-    if (!powerGame) {
-      return res.status(404).json({
-        success: false,
-        message: "Powerball game not found",
-      });
-    }
-
-    // Extract matching tickets
-    let matchingUsers = [];
-    powerGame.alltickets.forEach((ticketEntry) => {
-      let matchedTickets = ticketEntry.tickets.filter((ticket) =>
-        jackpotNumbers.every((num) => ticket.usernumber.includes(num))
-      );
-
-      if (matchedTickets.length > 0) {
-        matchingUsers.push({
-          userId: ticketEntry.userId._id,
-          username: ticketEntry.userId.username,
-          currency: ticketEntry.userId.currency,
-          tickets: matchedTickets,
-          _id: ticketEntry._id,
-          createdAt: ticketEntry.createdAt,
-          updatedAt: ticketEntry.updatedAt,
-        });
-      }
-    });
-
-    res.status(200).json({
-      success: true,
-      page: 1, // Assuming single-page results
-      totalPages: 1,
-      totalRecords: matchingUsers.length,
-      tickets: [
-        {
-          _id: powerGame._id,
-          powerdate: powerGame.powerdate,
-          powertime: powerGame.powertime,
-          alltickets: matchingUsers,
-          createdAt: powerGame.createdAt,
-          updatedAt: powerGame.updatedAt,
-          __v: powerGame.__v,
-        },
-      ],
-    });
-  } catch (error) {
-    console.error("Error in searchPowerBet:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: error.message,
-    });
-  }
-};
-
-// const searchPowerBet = async (req, res) => {
-//   try {
-//     const { id, jackpot } = req.body;
+//     const { id, jackpot } = req.query; // Extract from query params
 
 //     if (!id || !jackpot) {
 //       return res.status(400).json({
@@ -6211,6 +6064,105 @@ const searchPowerBet = async (req, res) => {
 //     });
 //   }
 // };
+
+const searchPowerBet = async (req, res) => {
+  try {
+    const { id, jackpot, page = 1, limit = 10 } = req.query;
+
+    // Validate required parameters
+    if (!id || !jackpot) {
+      return res.status(400).json({
+        success: false,
+        message: "ID and jackpot are required",
+      });
+    }
+
+    // Convert and validate jackpot numbers
+    const jackpotNumbers = jackpot.split(" ").map(Number);
+    if (jackpotNumbers.some(isNaN)) {
+      return res.status(400).json({
+        success: false,
+        message: "Jackpot numbers must be valid numbers separated by spaces",
+      });
+    }
+
+    // Pagination setup
+    const pageNumber = Math.max(1, parseInt(page, 10));
+    const limitNumber = Math.min(100, Math.max(1, parseInt(limit, 10)));
+    const skip = (pageNumber - 1) * limitNumber;
+
+    // Find the power game by ID with necessary populations
+    const powerGame = await PowerballGameTickets.findById(id)
+      .populate("alltickets.userId")
+      .populate("powerdate")
+      .populate("powertime");
+
+    if (!powerGame) {
+      return res.status(404).json({
+        success: false,
+        message: "Powerball game not found",
+      });
+    }
+
+    // Process tickets to find matches
+    let matchedTickets = [];
+    let totalMatchedTickets = 0;
+
+    powerGame.alltickets.forEach((ticketEntry) => {
+      const userTickets = ticketEntry.tickets.filter((ticket) =>
+        jackpotNumbers.every((num) => ticket.usernumber.includes(num))
+      );
+
+      if (userTickets.length > 0) {
+        totalMatchedTickets += userTickets.length;
+        matchedTickets.push({
+          userId: ticketEntry.userId._id,
+          username: ticketEntry.userId.username,
+          currency: ticketEntry.userId.currency,
+          tickets: userTickets,
+          _id: ticketEntry._id,
+          createdAt: ticketEntry.createdAt,
+          updatedAt: ticketEntry.updatedAt,
+        });
+      }
+    });
+
+    // Apply pagination to the matched tickets
+    const paginatedTickets = matchedTickets
+      .map((user) => ({
+        ...user,
+        tickets: user.tickets.slice(skip, skip + limitNumber),
+      }))
+      .filter((user) => user.tickets.length > 0);
+
+    const totalPages = Math.ceil(totalMatchedTickets / limitNumber);
+
+    res.status(200).json({
+      success: true,
+      page: pageNumber,
+      totalPages,
+      totalRecords: totalMatchedTickets,
+      tickets: [
+        {
+          _id: powerGame._id,
+          powerdate: powerGame.powerdate,
+          powertime: powerGame.powertime,
+          alltickets: paginatedTickets,
+          createdAt: powerGame.createdAt,
+          updatedAt: powerGame.updatedAt,
+          __v: powerGame.__v,
+        },
+      ],
+    });
+  } catch (error) {
+    console.error("Error in searchPowerBet:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
 
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id;
