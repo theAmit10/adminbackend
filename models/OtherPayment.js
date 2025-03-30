@@ -3,6 +3,10 @@ const mongoose = require("mongoose");
 const schema = new mongoose.Schema(
   {
     paymentId: Number,
+    paymentName: {
+      type: String,
+      required: [true, "Please enter payment name"],
+    },
     firstInput: {
       type: String,
     },
@@ -13,6 +17,18 @@ const schema = new mongoose.Schema(
       type: String,
     },
     qrcode: {
+      type: String,
+    },
+    firstInputName: {
+      type: String,
+    },
+    secondInputName: {
+      type: String,
+    },
+    thirdInputName: {
+      type: String,
+    },
+    qrcodeName: {
       type: String,
     },
     paymentnote: {

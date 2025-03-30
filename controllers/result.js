@@ -3914,16 +3914,86 @@ const deletePayment = asyncError(async (req, res, next) => {
 // [####################]
 // [### OTHER PAYMENT ####]
 
+// const addOtherPayment = asyncError(async (req, res, next) => {
+//   const { firstInput, secondInput, thirdInput, paymentnote, userId } = req.body;
+
+//   // Create the document with only the provided fields
+//   const newotherPayment = await OtherPayment.create({
+//     ...(req.file && { qrcode: req.file.filename }), // Add qrcode only if file exists
+//     ...(firstInput && { firstInput }), // Add firstinput only if provided
+//     ...(secondInput && { secondInput }), // Add secondInput only if provided
+//     ...(thirdInput && { thirdInput }), // Add thirdInput only if provided
+//     paymentnote,
+//   });
+
+//   if (userId) {
+//     // Fetch the PartnerModule by userId
+//     const partner = await PartnerModule.findOne({ userId }).populate(
+//       "rechargeModule"
+//     );
+
+//     if (!partner) {
+//       return next(new ErrorHandler("Partner not found", 404));
+//     }
+
+//     if (!partner.rechargeModule) {
+//       return next(new ErrorHandler("Recharge Module not found", 404));
+//     }
+
+//     // Push the new bank ID into the rechargeModule's otherList array
+//     partner.rechargeModule.otherList.push(newotherPayment._id);
+//     await partner.rechargeModule.save();
+//   }
+
+//   res.status(201).json({
+//     success: true,
+//     message: "Payment Added Successfully",
+//   });
+// });
+
 const addOtherPayment = asyncError(async (req, res, next) => {
-  const { firstInput, secondInput, thirdInput, paymentnote, userId } = req.body;
+  const {
+    paymentName,
+    firstInput,
+    secondInput,
+    thirdInput,
+    firstInputName,
+    secondInputName,
+    thirdInputName,
+    qrcodeName,
+    paymentnote,
+    userId,
+    activationStatus,
+    paymentStatus,
+  } = req.body;
+
+  if (!paymentName) {
+    return next(new ErrorHandler("Payment name is missing", 404));
+  }
+
+  // Determine activationStatus based on userId presence
+  const shouldActivate = !userId;
+  const finalActivationStatus = shouldActivate
+    ? true
+    : activationStatus !== undefined
+    ? activationStatus
+    : false;
 
   // Create the document with only the provided fields
   const newotherPayment = await OtherPayment.create({
-    ...(req.file && { qrcode: req.file.filename }), // Add qrcode only if file exists
-    ...(firstInput && { firstInput }), // Add firstinput only if provided
-    ...(secondInput && { secondInput }), // Add secondInput only if provided
-    ...(thirdInput && { thirdInput }), // Add thirdInput only if provided
-    paymentnote,
+    paymentName,
+    ...(req.file && { qrcode: req.file.filename }),
+    ...(firstInput && { firstInput }),
+    ...(secondInput && { secondInput }),
+    ...(thirdInput && { thirdInput }),
+    ...(firstInputName && { firstInputName }),
+    ...(secondInputName && { secondInputName }),
+    ...(thirdInputName && { thirdInputName }),
+    ...(qrcodeName && { qrcodeName }),
+    ...(paymentnote && { paymentnote }),
+    ...(userId && { userId }),
+    activationStatus: finalActivationStatus, // Set based on our logic above
+    ...(paymentStatus && { paymentStatus }),
   });
 
   if (userId) {
@@ -3948,6 +4018,7 @@ const addOtherPayment = asyncError(async (req, res, next) => {
   res.status(201).json({
     success: true,
     message: "Payment Added Successfully",
+    data: newotherPayment,
   });
 });
 
@@ -4021,6 +4092,7 @@ const addUpiPayment = asyncError(async (req, res, next) => {
     qrcode: req.file ? req.file.filename : undefined,
     paymentnote,
     userId: userId ? userId : 1000,
+    activationStatus: userId ? false : true,
   });
 
   if (userId) {
@@ -4138,6 +4210,7 @@ const addBankPayment = asyncError(async (req, res, next) => {
     accountnumber,
     swiftcode,
     paymentnote,
+    activationStatus, // Added this to handle if it comes in req.body
   } = req.body;
 
   // Validations
@@ -4148,8 +4221,14 @@ const addBankPayment = asyncError(async (req, res, next) => {
   if (!accountnumber)
     return next(new ErrorHandler("Account number is missing", 400));
 
-  // Create a new BankPaymentType
-  const newBank = await BankPaymentType.create(req.body);
+  // Determine activationStatus based on userId presence
+  const finalActivationStatus = userId ? false : true;
+
+  // Create a new BankPaymentType with modified activationStatus
+  const newBank = await BankPaymentType.create({
+    ...req.body,
+    activationStatus: finalActivationStatus, // Override with our logic
+  });
 
   if (userId) {
     // Fetch the PartnerModule by userId
@@ -4233,10 +4312,18 @@ const deleteBankPayment = asyncError(async (req, res, next) => {
 const addPaypalPayment = asyncError(async (req, res, next) => {
   const { emailaddress, paymentnote, userId } = req.body;
 
-  if (!emailaddress)
-    return next(new ErrorHandler("Email address is missing", 404));
+  if (!emailaddress) {
+    return next(new ErrorHandler("Email address is missing", 400));
+  }
 
-  const newpaypal = await PaypalPaymentType.create(req.body);
+  // Determine activationStatus based on userId presence
+  const activationStatus = userId ? false : true;
+
+  // Create a new PaypalPayment with proper activationStatus
+  const newpaypal = await PaypalPaymentType.create({
+    ...req.body,
+    activationStatus, // Override with our logic
+  });
 
   if (userId) {
     // Fetch the PartnerModule by userId
@@ -4252,7 +4339,7 @@ const addPaypalPayment = asyncError(async (req, res, next) => {
       return next(new ErrorHandler("Recharge Module not found", 404));
     }
 
-    // Push the new bank ID into the rechargeModule's paypalList array
+    // Push the new paypal ID into the rechargeModule's paypalList array
     partner.rechargeModule.paypalList.push(newpaypal._id);
     await partner.rechargeModule.save();
   }
@@ -4260,6 +4347,7 @@ const addPaypalPayment = asyncError(async (req, res, next) => {
   res.status(201).json({
     success: true,
     message: "Paypal Added Successfully",
+    data: newpaypal, // Include the created document in response
   });
 });
 
@@ -4321,19 +4409,28 @@ const deletePaypalPayment = asyncError(async (req, res, next) => {
 const addCryptoPayment = asyncError(async (req, res, next) => {
   const { walletaddress, networktype, paymentnote, userId } = req.body;
 
-  if (!walletaddress)
-    return next(new ErrorHandler("Wallet address is missing", 404));
-  if (!networktype)
-    return next(new ErrorHandler("Network type is missing", 404));
+  // Validations
+  if (!walletaddress) {
+    return next(new ErrorHandler("Wallet address is missing", 400)); // Changed to 400 (Bad Request)
+  }
+  if (!networktype) {
+    return next(new ErrorHandler("Network type is missing", 400)); // Changed to 400 (Bad Request)
+  }
+  if (!req.file) {
+    return next(new ErrorHandler("Crypto QR Code is missing", 400)); // Changed message and status code
+  }
 
-  if (!req.file) return next(new ErrorHandler("UPI QR Code is missing", 404));
+  // Determine activationStatus based on userId presence
+  const activationStatus = userId ? false : true;
 
+  // Create new crypto payment
   const newCrypto = await CryptoPaymentType.create({
     walletaddress,
     networktype,
-    qrcode: req.file ? req.file.filename : undefined,
+    qrcode: req.file.filename, // Simplified since we already validated req.file exists
     paymentnote,
-    userId: userId ? userId : 1000,
+    userId: userId ? userId : 1000, // Keep your default userId logic
+    activationStatus, // Add our activation logic
   });
 
   if (userId) {
@@ -4350,14 +4447,15 @@ const addCryptoPayment = asyncError(async (req, res, next) => {
       return next(new ErrorHandler("Recharge Module not found", 404));
     }
 
-    // Push the new bank ID into the rechargeModule's upiList array
+    // Push the new crypto ID into the rechargeModule's cryptoList array
     partner.rechargeModule.cryptoList.push(newCrypto._id);
     await partner.rechargeModule.save();
   }
 
   res.status(201).json({
     success: true,
-    message: "Crypto Added Successfully",
+    message: "Crypto Payment Added Successfully",
+    data: newCrypto, // Include the created document in response
   });
 });
 
@@ -4419,12 +4517,20 @@ const deleteCryptoPayment = asyncError(async (req, res, next) => {
 const addSkrillPayment = asyncError(async (req, res, next) => {
   const { address, paymentnote, userId } = req.body;
 
-  if (!address)
+  if (!address) {
     return next(
-      new ErrorHandler("Email address or phone number is missing", 404)
+      new ErrorHandler("Email address or phone number is missing", 400) // Changed to 400 (Bad Request)
     );
+  }
 
-  const newBank = await SkrillPaymentType.create(req.body);
+  // Determine activationStatus based on userId presence
+  const activationStatus = userId ? false : true;
+
+  // Create new Skrill payment with activationStatus
+  const newSkrill = await SkrillPaymentType.create({
+    ...req.body,
+    activationStatus, // Add our activation logic
+  });
 
   if (userId) {
     // Fetch the PartnerModule by userId
@@ -4440,17 +4546,17 @@ const addSkrillPayment = asyncError(async (req, res, next) => {
       return next(new ErrorHandler("Recharge Module not found", 404));
     }
 
-    // Push the new bank ID into the rechargeModule's bankList array
-    partner.rechargeModule.skrillList.push(newBank._id);
+    // Push the new Skrill ID into the rechargeModule's skrillList array
+    partner.rechargeModule.skrillList.push(newSkrill._id);
     await partner.rechargeModule.save();
   }
 
   res.status(201).json({
     success: true,
-    message: "Skrill Added Successfully",
+    message: "Skrill Payment Added Successfully",
+    data: newSkrill, // Include the created document in response
   });
 });
-
 // const getAllSkrillPayments = asyncError(async (req, res, next) => {
 //   const payments = await SkrillPaymentType.find();
 
