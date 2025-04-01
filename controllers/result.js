@@ -36,6 +36,7 @@ const PowerballGameTickets = require("../models/PowerballGameTickets.js");
 const powerresult = require("../models/powerresult.js");
 const OtherPayment = require("../models/OtherPayment.js");
 const PartnerPerformancePowerball = require("../models/PartnerPerformancePowerball.jsx");
+const user = require("../models/user.js");
 
 // ####################
 // RESULTS
@@ -3980,6 +3981,24 @@ const addOtherPayment = asyncError(async (req, res, next) => {
     : false;
 
   // Create the document with only the provided fields
+  // const newotherPayment = await OtherPayment.create({
+  //   paymentName,
+  //   ...(req.file && { qrcode: req.file.filename }),
+  //   ...(firstInput && { firstInput }),
+  //   ...(secondInput && { secondInput }),
+  //   ...(thirdInput && { thirdInput }),
+  //   ...(firstInputName && { firstInputName }),
+  //   ...(secondInputName && { secondInputName }),
+  //   ...(thirdInputName && { thirdInputName }),
+  //   ...(qrcodeName && { qrcodeName }),
+  //   ...(paymentnote && { paymentnote }),
+  //   ...(userId && { userId }),
+  //   activationStatus: finalActivationStatus, // Set based on our logic above
+  //   paymentStatus: userId ? "Pending" : "Approved",
+  //   ...(paymentStatus && { paymentStatus }),
+  // });
+
+  // Create the document with only the provided fields
   const newotherPayment = await OtherPayment.create({
     paymentName,
     ...(req.file && { qrcode: req.file.filename }),
@@ -3993,7 +4012,7 @@ const addOtherPayment = asyncError(async (req, res, next) => {
     ...(paymentnote && { paymentnote }),
     ...(userId && { userId }),
     activationStatus: finalActivationStatus, // Set based on our logic above
-    ...(paymentStatus && { paymentStatus }),
+    paymentStatus: userId ? "Pending" : "Approved",
   });
 
   if (userId) {
@@ -4093,6 +4112,7 @@ const addUpiPayment = asyncError(async (req, res, next) => {
     paymentnote,
     userId: userId ? userId : 1000,
     activationStatus: userId ? false : true,
+    paymentStatus: userId ? "Pending" : "Approved",
   });
 
   if (userId) {
@@ -4228,6 +4248,7 @@ const addBankPayment = asyncError(async (req, res, next) => {
   const newBank = await BankPaymentType.create({
     ...req.body,
     activationStatus: finalActivationStatus, // Override with our logic
+    paymentStatus: userId ? "Pending" : "Approved",
   });
 
   if (userId) {
@@ -4323,6 +4344,7 @@ const addPaypalPayment = asyncError(async (req, res, next) => {
   const newpaypal = await PaypalPaymentType.create({
     ...req.body,
     activationStatus, // Override with our logic
+    paymentStatus: userId ? "Pending" : "Approved",
   });
 
   if (userId) {
@@ -4431,6 +4453,7 @@ const addCryptoPayment = asyncError(async (req, res, next) => {
     paymentnote,
     userId: userId ? userId : 1000, // Keep your default userId logic
     activationStatus, // Add our activation logic
+    paymentStatus: userId ? "Pending" : "Approved",
   });
 
   if (userId) {
@@ -4530,6 +4553,7 @@ const addSkrillPayment = asyncError(async (req, res, next) => {
   const newSkrill = await SkrillPaymentType.create({
     ...req.body,
     activationStatus, // Add our activation logic
+    paymentStatus: userId ? "Pending" : "Approved",
   });
 
   if (userId) {
