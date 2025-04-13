@@ -7538,9 +7538,24 @@ const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
       const partner = await PartnerModule.findOne({ userId }).populate(
         "userList partnerList"
       );
+
       if (!partner) {
         return next(new ErrorHandler("Partner not found", 404));
       }
+
+      await PartnerModule.findByIdAndUpdate(partner._id, {
+        rechargeStatus: false,
+      });
+
+      const user = await User.findOne({ userId });
+
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+
+      await User.findByIdAndUpdate(user._id, {
+        rechargeStatus: false,
+      });
 
       // 3️⃣ Update rechargePaymentId for each user in userList
       await Promise.all(

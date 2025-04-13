@@ -4352,6 +4352,9 @@ const searchPartnerPartnerList = asyncError(async (req, res, next) => {
 //   // Find the PartnerModule entry for the given userId and populate the partnerList with pagination
 //   const partner = await PartnerModule.findOne({ userId }).populate({
 //     path: "partnerList",
+//     populate: {
+//       path: "walletTwo", // ✅ Only populating walletTwo inside partnerList
+//     },
 //     options: {
 //       sort: { _id: -1 }, // Sorting by _id in descending order
 //       skip: skip, // Skip based on page number
@@ -4373,56 +4376,135 @@ const searchPartnerPartnerList = asyncError(async (req, res, next) => {
 //   res.status(200).json({
 //     success: true,
 //     message: "Populated partner list fetched successfully",
-//     partnerList: partner.partnerList, // Populated partner list in descending order
+//     partnerList: partner.partnerList, // Populated partner list with walletTwo
 //     totalPartners,
 //     totalPages: Math.ceil(totalPartners / limit),
 //     currentPage: page,
 //   });
 // });
-
 const getPartnerPartnerList = asyncError(async (req, res, next) => {
   const { userId } = req.params;
-  let { page, limit } = req.query;
+  let { page, limit, sortBy, sortOrder } = req.query;
 
   // Convert page and limit to integers and set default values
   page = parseInt(page) || 1;
   limit = parseInt(limit) || 10;
   const skip = (page - 1) * limit;
 
-  // Find the PartnerModule entry for the given userId and populate the partnerList with pagination
-  const partner = await PartnerModule.findOne({ userId }).populate({
+  // Default sort (newest first)
+  let sortCriteria = { createdAt: -1 };
+  let needsInMemorySorting = false;
+
+  // Handle custom sorting
+  if (sortBy) {
+    sortOrder = sortOrder === "desc" ? -1 : 1;
+
+    switch (sortBy) {
+      case "profit":
+        sortCriteria = { profitPercentage: sortOrder };
+        break;
+      case "recharge":
+        sortCriteria = { rechargePercentage: sortOrder };
+        break;
+      case "walletBalance":
+        // Special handling needed for populated field
+        needsInMemorySorting = true;
+        sortCriteria = { createdAt: -1 }; // Temporary default
+        break;
+      case "userCount":
+        needsInMemorySorting = true;
+        sortCriteria = { createdAt: -1 }; // Temporary default
+        break;
+      case "name":
+        sortCriteria = { name: sortOrder };
+        break;
+      case "createdAt":
+        sortCriteria = { createdAt: sortOrder };
+        break;
+      default:
+        break;
+    }
+  }
+
+  // Find the partner to get total count
+  const partnerTotal = await PartnerModule.findOne({ userId }).populate({
     path: "partnerList",
     populate: {
-      path: "walletTwo", // ✅ Only populating walletTwo inside partnerList
-    },
-    options: {
-      sort: { _id: -1 }, // Sorting by _id in descending order
-      skip: skip, // Skip based on page number
-      limit: limit, // Limit the number of partners per page
+      path: "walletTwo",
     },
   });
 
-  if (!partner) {
+  if (!partnerTotal) {
     return next(new ErrorHandler("Partner not found", 404));
   }
 
-  // ✅ Find the partner and get total user count BEFORE pagination
-  const partnerTotal = await PartnerModule.findOne({ userId }).populate(
-    "partnerList"
-  );
+  const totalPartners = partnerTotal.partnerList.length;
 
-  const totalPartners = partnerTotal.userList.length; // ✅ Total count before pagination
+  let partnerList;
+  if (needsInMemorySorting) {
+    // First get ALL partners with walletTwo populated
+    const partner = await PartnerModule.findOne({ userId }).populate({
+      path: "partnerList",
+      populate: {
+        path: "walletTwo",
+      },
+    });
+
+    if (!partner) {
+      return next(new ErrorHandler("Partner not found", 404));
+    }
+
+    // Apply in-memory sorting
+    partner.partnerList.sort((a, b) => {
+      if (sortBy === "walletBalance") {
+        const aBalance = a.walletTwo?.balance || 0;
+        const bBalance = b.walletTwo?.balance || 0;
+        return sortOrder === 1 ? aBalance - bBalance : bBalance - aBalance;
+      } else if (sortBy === "userCount") {
+        const aCount = a.userList?.length || 0;
+        const bCount = b.userList?.length || 0;
+        return sortOrder === 1 ? aCount - bCount : bCount - aCount;
+      }
+      // Default fallback
+      return sortOrder === 1
+        ? a.createdAt - b.createdAt
+        : b.createdAt - a.createdAt;
+    });
+
+    // Apply pagination after sorting
+    partnerList = partner.partnerList.slice(skip, skip + limit);
+  } else {
+    // For cases where we can sort at database level
+    const partner = await PartnerModule.findOne({ userId }).populate({
+      path: "partnerList",
+      populate: {
+        path: "walletTwo",
+      },
+      options: {
+        sort: sortCriteria,
+        skip: skip,
+        limit: limit,
+      },
+    });
+
+    if (!partner) {
+      return next(new ErrorHandler("Partner not found", 404));
+    }
+
+    partnerList = partner.partnerList;
+  }
 
   res.status(200).json({
     success: true,
     message: "Populated partner list fetched successfully",
-    partnerList: partner.partnerList, // Populated partner list with walletTwo
+    partnerList,
     totalPartners,
     totalPages: Math.ceil(totalPartners / limit),
     currentPage: page,
+    sortBy,
+    sortOrder: sortOrder === -1 ? "desc" : "asc",
   });
 });
-
 const increasePartnerProfit = asyncError(async (req, res, next) => {
   const { partnerId, profitPercentage } = req.body;
 
@@ -4503,6 +4585,9 @@ const createProfitDeduction = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Parent Partner not found", 404));
   }
 
+  const newPP =
+    partnerUser.profitPercentage - Number.parseInt(profitPercentage);
+
   // Create the ProfitDeduction entry
   const profitDeduction = await ProfitDeduction.create({
     userId,
@@ -4511,6 +4596,8 @@ const createProfitDeduction = asyncError(async (req, res, next) => {
     profitPercentage,
     reason,
     status: "Pending", // Default status
+    oldProfitPercentage: partnerUser.profitPercentage,
+    newProfitPercentage: newPP,
   });
 
   // Add the ProfitDeduction _id to the partner's profitDeduction array

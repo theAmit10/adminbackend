@@ -12,6 +12,8 @@ const profitDeductModuleSchema = new mongoose.Schema(
       enum: ["Pending", "Completed", "Cancelled"],
       default: "Pending",
     },
+    oldProfitPercentage: { type: Number },
+    newProfitPercentage: { type: Number },
   },
   { timestamps: true }
 );
