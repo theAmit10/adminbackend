@@ -3778,39 +3778,105 @@ const updateSubPartnerStatus = asyncError(async (req, res, next) => {
 });
 
 // const getAllPartners = asyncError(async (req, res, next) => {
-//   let { page, limit } = req.query;
+//   let { page, limit, sortBy, sortOrder } = req.query;
 
 //   // Convert page and limit to integers and set default values
 //   page = parseInt(page) || 1;
 //   limit = parseInt(limit) || 10;
 //   const skip = (page - 1) * limit;
 
+//   // Default sort (newest first)
+//   let sortCriteria = { createdAt: -1 };
+//   let needsInMemorySorting = false;
+
+//   // Handle custom sorting
+//   if (sortBy) {
+//     sortOrder = sortOrder === "desc" ? -1 : 1;
+
+//     switch (sortBy) {
+//       case "profit":
+//         sortCriteria = { profitPercentage: sortOrder };
+//         break;
+//       case "recharge":
+//         sortCriteria = { rechargePercentage: sortOrder };
+//         break;
+//       case "walletBalance":
+//         // Special handling needed for populated field
+//         needsInMemorySorting = true;
+//         sortCriteria = { createdAt: -1 }; // Temporary default
+//         break;
+//       case "userCount":
+//         needsInMemorySorting = true;
+//         sortCriteria = { createdAt: -1 }; // Temporary default
+//         break;
+//       case "name":
+//         sortCriteria = { name: sortOrder };
+//         break;
+//       case "createdAt":
+//         sortCriteria = { createdAt: sortOrder };
+//         break;
+//       default:
+//         break;
+//     }
+//   }
+
 //   // Get total number of partners
 //   const totalPartners = await PartnerModule.countDocuments({
 //     partnerType: "partner",
 //   });
 
-//   // Fetch partners with pagination
-//   const partners = await PartnerModule.find({ partnerType: "partner" })
-//     .sort({ createdAt: -1 })
-//     .skip(skip)
-//     .limit(limit)
-//     .populate("walletTwo");
+//   // First get ALL partners with walletTwo populated
+//   let partners = await PartnerModule.find({ partnerType: "partner" })
+//     .populate("walletTwo")
+//     .lean(); // Convert to plain JS objects for better sorting performance
 
 //   if (!partners || partners.length === 0) {
 //     return next(new ErrorHandler("No partners found", 404));
 //   }
 
+//   // Apply in-memory sorting if needed
+//   if (needsInMemorySorting) {
+//     partners.sort((a, b) => {
+//       if (sortBy === "walletBalance") {
+//         const aBalance = a.walletTwo?.balance || 0;
+//         const bBalance = b.walletTwo?.balance || 0;
+//         return sortOrder === 1 ? aBalance - bBalance : bBalance - aBalance;
+//       } else if (sortBy === "userCount") {
+//         const aCount = a.userList?.length || 0;
+//         const bCount = b.userList?.length || 0;
+//         return sortOrder === 1 ? aCount - bCount : bCount - aCount;
+//       }
+//       // Default fallback
+//       return sortOrder === 1
+//         ? a.createdAt - b.createdAt
+//         : b.createdAt - a.createdAt;
+//     });
+//   } else {
+//     // For cases where we can sort at database level
+//     partners = await PartnerModule.find({ partnerType: "partner" })
+//       .sort(sortCriteria)
+//       .skip(skip)
+//       .limit(limit)
+//       .populate("walletTwo")
+//       .lean();
+//   }
+
+//   // Apply pagination AFTER all sorting is complete
+//   const paginatedPartners = needsInMemorySorting
+//     ? partners.slice(skip, skip + limit)
+//     : partners;
+
 //   res.status(200).json({
 //     success: true,
 //     message: "Partners fetched successfully",
-//     partners,
+//     partners: paginatedPartners,
 //     totalPartners,
 //     totalPages: Math.ceil(totalPartners / limit),
 //     currentPage: page,
+//     sortBy,
+//     sortOrder: sortOrder === -1 ? "desc" : "asc",
 //   });
 // });
-
 const getAllPartners = asyncError(async (req, res, next) => {
   let { page, limit, sortBy, sortOrder } = req.query;
 
@@ -3848,6 +3914,12 @@ const getAllPartners = asyncError(async (req, res, next) => {
         break;
       case "createdAt":
         sortCriteria = { createdAt: sortOrder };
+        break;
+      case "partnerStatus":
+        sortCriteria = { partnerStatus: sortOrder };
+        break;
+      case "rechargeStatus":
+        sortCriteria = { rechargeStatus: sortOrder };
         break;
       default:
         break;
@@ -3911,175 +3983,6 @@ const getAllPartners = asyncError(async (req, res, next) => {
     sortOrder: sortOrder === -1 ? "desc" : "asc",
   });
 });
-
-// const getAllPartners = asyncError(async (req, res, next) => {
-//   const { page = 1, limit = 10, sortBy, sortOrder = "desc" } = req.query;
-//   const pageNum = Math.max(1, parseInt(page));
-//   const limitNum = Math.min(parseInt(limit) || 10, 100);
-//   const skip = (pageNum - 1) * limitNum;
-//   const sortDirection = sortOrder === "asc" ? 1 : -1;
-
-//   // Get total count
-//   const totalPartners = await PartnerModule.countDocuments({
-//     partnerType: "partner",
-//   });
-
-//   // Handle wallet balance sorting with aggregation (to preserve all fields)
-//   if (sortBy === "walletBalance") {
-//     const aggregationPipeline = [
-//       { $match: { partnerType: "partner" } },
-//       {
-//         $lookup: {
-//           from: "wallets",
-//           localField: "walletTwo",
-//           foreignField: "_id",
-//           as: "walletTwo",
-//         },
-//       },
-//       { $unwind: { path: "$walletTwo", preserveNullAndEmptyArrays: true } },
-//       {
-//         $addFields: {
-//           // Temporary field for sorting only
-//           _sortBalance: { $ifNull: ["$walletTwo.balance", 0] },
-//         },
-//       },
-//       { $sort: { _sortBalance: sortDirection } },
-//       {
-//         $group: {
-//           _id: null,
-//           allPartners: { $push: "$$ROOT" },
-//         },
-//       },
-//       {
-//         $project: {
-//           partners: {
-//             $slice: ["$allPartners", skip, limitNum],
-//           },
-//           totalCount: { $size: "$allPartners" },
-//         },
-//       },
-//       { $unwind: "$partners" },
-//       { $replaceRoot: { newRoot: "$partners" } },
-//       { $project: { _sortBalance: 0 } }, // Only remove temporary sort field
-//     ];
-
-//     const partners = await PartnerModule.aggregate(aggregationPipeline);
-
-//     if (!partners.length) {
-//       return next(new ErrorHandler("No partners found", 404));
-//     }
-
-//     return res.status(200).json({
-//       success: true,
-//       message: "Partners fetched successfully",
-//       partners,
-//       totalPartners: totalPartners,
-//       totalPages: Math.ceil(totalPartners / limitNum),
-//       currentPage: pageNum,
-//       sortBy,
-//       sortOrder,
-//     });
-//   }
-
-//   // For all other sorting cases
-//   let partners = await PartnerModule.find({ partnerType: "partner" })
-//     .populate("walletTwo")
-//     .lean();
-
-//   // Apply sorting if needed
-//   if (sortBy) {
-//     partners.sort((a, b) => {
-//       let aValue, bValue;
-
-//       switch (sortBy) {
-//         case "profit":
-//           aValue = a.profitPercentage;
-//           bValue = b.profitPercentage;
-//           break;
-//         case "recharge":
-//           aValue = a.rechargePercentage;
-//           bValue = b.rechargePercentage;
-//           break;
-//         case "userCount":
-//           aValue = a.userList?.length || 0;
-//           bValue = b.userList?.length || 0;
-//           break;
-//         case "partnerCount":
-//           aValue = a.partnerList?.length || 0;
-//           bValue = b.partnerList?.length || 0;
-//           break;
-//         case "name":
-//           aValue = a.name?.toLowerCase();
-//           bValue = b.name?.toLowerCase();
-//           return aValue.localeCompare(bValue) * sortDirection;
-//         case "status":
-//           aValue = a.partnerStatus;
-//           bValue = b.partnerStatus;
-//           break;
-//         case "createdAt":
-//           aValue = new Date(a.createdAt);
-//           bValue = new Date(b.createdAt);
-//           break;
-//         default:
-//           return 0;
-//       }
-
-//       return (aValue > bValue ? 1 : aValue < bValue ? -1 : 0) * sortDirection;
-//     });
-//   }
-
-//   if (!partners.length) {
-//     return next(new ErrorHandler("No partners found", 404));
-//   }
-
-//   // Apply pagination after all sorting is done
-//   const paginatedPartners = partners.slice(skip, skip + limitNum);
-
-//   res.status(200).json({
-//     success: true,
-//     message: "Partners fetched successfully",
-//     partners: paginatedPartners,
-//     totalPartners,
-//     totalPages: Math.ceil(totalPartners / limitNum),
-//     currentPage: pageNum,
-//     sortBy,
-//     sortOrder,
-//   });
-// });
-// const getAllSubpartners = asyncError(async (req, res, next) => {
-//   let { page, limit } = req.query;
-
-//   // Convert page and limit to integers and set default values
-//   page = parseInt(page) || 1;
-//   limit = parseInt(limit) || 10;
-//   const skip = (page - 1) * limit;
-
-//   // Get total number of subpartners
-//   const totalSubpartners = await PartnerModule.countDocuments({
-//     partnerType: "subpartner",
-//   });
-
-//   // Fetch subpartners with pagination
-//   const subpartners = await PartnerModule.find({ partnerType: "subpartner" })
-//     .sort({ createdAt: -1 })
-//     .skip(skip)
-//     .limit(limit)
-//     .populate("walletTwo");
-
-//   if (!subpartners || subpartners.length === 0) {
-//     return next(new ErrorHandler("No subpartners found", 404));
-//   }
-
-//   res.status(200).json({
-//     success: true,
-//     message: "Subpartners fetched successfully",
-//     subpartners,
-//     totalSubpartners,
-//     totalPages: Math.ceil(totalSubpartners / limit),
-//     currentPage: page,
-//   });
-// });
-
 const getAllSubpartners = asyncError(async (req, res, next) => {
   let { page, limit, sortBy, sortOrder } = req.query;
 
