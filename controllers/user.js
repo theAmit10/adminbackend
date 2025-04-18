@@ -3983,6 +3983,106 @@ const getAllPartners = asyncError(async (req, res, next) => {
     sortOrder: sortOrder === -1 ? "desc" : "asc",
   });
 });
+// const getAllSubpartners = asyncError(async (req, res, next) => {
+//   let { page, limit, sortBy, sortOrder } = req.query;
+
+//   // Convert page and limit to integers and set default values
+//   page = parseInt(page) || 1;
+//   limit = parseInt(limit) || 10;
+//   const skip = (page - 1) * limit;
+
+//   // Default sort (newest first)
+//   let sortCriteria = { createdAt: -1 };
+//   let needsInMemorySorting = false;
+
+//   // Handle custom sorting
+//   if (sortBy) {
+//     sortOrder = sortOrder === "desc" ? -1 : 1;
+
+//     switch (sortBy) {
+//       case "profit":
+//         sortCriteria = { profitPercentage: sortOrder };
+//         break;
+//       case "recharge":
+//         sortCriteria = { rechargePercentage: sortOrder };
+//         break;
+//       case "walletBalance":
+//         // Special handling needed for populated field
+//         needsInMemorySorting = true;
+//         sortCriteria = { createdAt: -1 }; // Temporary default
+//         break;
+//       case "userCount":
+//         needsInMemorySorting = true;
+//         sortCriteria = { createdAt: -1 }; // Temporary default
+//         break;
+//       case "name":
+//         sortCriteria = { name: sortOrder };
+//         break;
+//       case "createdAt":
+//         sortCriteria = { createdAt: sortOrder };
+//         break;
+//       default:
+//         break;
+//     }
+//   }
+
+//   // Get total number of subpartners
+//   const totalSubpartners = await PartnerModule.countDocuments({
+//     partnerType: "subpartner",
+//   });
+
+//   // First get ALL subpartners with walletTwo populated
+//   let subpartners = await PartnerModule.find({ partnerType: "subpartner" })
+//     .populate("walletTwo")
+//     .lean(); // Convert to plain JS objects for better sorting performance
+
+//   if (!subpartners || subpartners.length === 0) {
+//     return next(new ErrorHandler("No subpartners found", 404));
+//   }
+
+//   // Apply in-memory sorting if needed
+//   if (needsInMemorySorting) {
+//     subpartners.sort((a, b) => {
+//       if (sortBy === "walletBalance") {
+//         const aBalance = a.walletTwo?.balance || 0;
+//         const bBalance = b.walletTwo?.balance || 0;
+//         return sortOrder === 1 ? aBalance - bBalance : bBalance - aBalance;
+//       } else if (sortBy === "userCount") {
+//         const aCount = a.userList?.length || 0;
+//         const bCount = b.userList?.length || 0;
+//         return sortOrder === 1 ? aCount - bCount : bCount - aCount;
+//       }
+//       // Default fallback
+//       return sortOrder === 1
+//         ? a.createdAt - b.createdAt
+//         : b.createdAt - a.createdAt;
+//     });
+//   } else {
+//     // For cases where we can sort at database level
+//     subpartners = await PartnerModule.find({ partnerType: "subpartner" })
+//       .sort(sortCriteria)
+//       .skip(skip)
+//       .limit(limit)
+//       .populate("walletTwo")
+//       .lean();
+//   }
+
+//   // Apply pagination AFTER all sorting is complete
+//   const paginatedSubpartners = needsInMemorySorting
+//     ? subpartners.slice(skip, skip + limit)
+//     : subpartners;
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Subpartners fetched successfully",
+//     subpartners: paginatedSubpartners,
+//     totalSubpartners,
+//     totalPages: Math.ceil(totalSubpartners / limit),
+//     currentPage: page,
+//     sortBy,
+//     sortOrder: sortOrder === -1 ? "desc" : "asc",
+//   });
+// });
 const getAllSubpartners = asyncError(async (req, res, next) => {
   let { page, limit, sortBy, sortOrder } = req.query;
 
@@ -4020,6 +4120,12 @@ const getAllSubpartners = asyncError(async (req, res, next) => {
         break;
       case "createdAt":
         sortCriteria = { createdAt: sortOrder };
+        break;
+      case "partnerStatus":
+        sortCriteria = { partnerStatus: sortOrder };
+        break;
+      case "rechargeStatus":
+        sortCriteria = { rechargeStatus: sortOrder };
         break;
       default:
         break;
@@ -4083,7 +4189,6 @@ const getAllSubpartners = asyncError(async (req, res, next) => {
     sortOrder: sortOrder === -1 ? "desc" : "asc",
   });
 });
-
 const getPartnerByUserId = asyncError(async (req, res, next) => {
   const { userId } = req.params;
   // Find the partner in PartnerModule using userId
