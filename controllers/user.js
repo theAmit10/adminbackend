@@ -4348,6 +4348,130 @@ const searchPartnerPartnerList = asyncError(async (req, res, next) => {
   });
 });
 
+// const getPartnerPartnerList = asyncError(async (req, res, next) => {
+//   const { userId } = req.params;
+//   let { page, limit, sortBy, sortOrder } = req.query;
+
+//   // Convert page and limit to integers and set default values
+//   page = parseInt(page) || 1;
+//   limit = parseInt(limit) || 10;
+//   const skip = (page - 1) * limit;
+
+//   // Default sort (newest first)
+//   let sortCriteria = { createdAt: -1 };
+//   let needsInMemorySorting = false;
+
+//   // Handle custom sorting
+//   if (sortBy) {
+//     sortOrder = sortOrder === "desc" ? -1 : 1;
+
+//     switch (sortBy) {
+//       case "profit":
+//         sortCriteria = { profitPercentage: sortOrder };
+//         break;
+//       case "recharge":
+//         sortCriteria = { rechargePercentage: sortOrder };
+//         break;
+//       case "walletBalance":
+//         // Special handling needed for populated field
+//         needsInMemorySorting = true;
+//         sortCriteria = { createdAt: -1 }; // Temporary default
+//         break;
+//       case "userCount":
+//         needsInMemorySorting = true;
+//         sortCriteria = { createdAt: -1 }; // Temporary default
+//         break;
+//       case "name":
+//         sortCriteria = { name: sortOrder };
+//         break;
+//       case "createdAt":
+//         sortCriteria = { createdAt: sortOrder };
+//         break;
+//       default:
+//         break;
+//     }
+//   }
+
+//   // Find the partner to get total count
+//   const partnerTotal = await PartnerModule.findOne({ userId }).populate({
+//     path: "partnerList",
+//     populate: {
+//       path: "walletTwo",
+//     },
+//   });
+
+//   if (!partnerTotal) {
+//     return next(new ErrorHandler("Partner not found", 404));
+//   }
+
+//   const totalPartners = partnerTotal.partnerList.length;
+
+//   let partnerList;
+//   if (needsInMemorySorting) {
+//     // First get ALL partners with walletTwo populated
+//     const partner = await PartnerModule.findOne({ userId }).populate({
+//       path: "partnerList",
+//       populate: {
+//         path: "walletTwo",
+//       },
+//     });
+
+//     if (!partner) {
+//       return next(new ErrorHandler("Partner not found", 404));
+//     }
+
+//     // Apply in-memory sorting
+//     partner.partnerList.sort((a, b) => {
+//       if (sortBy === "walletBalance") {
+//         const aBalance = a.walletTwo?.balance || 0;
+//         const bBalance = b.walletTwo?.balance || 0;
+//         return sortOrder === 1 ? aBalance - bBalance : bBalance - aBalance;
+//       } else if (sortBy === "userCount") {
+//         const aCount = a.userList?.length || 0;
+//         const bCount = b.userList?.length || 0;
+//         return sortOrder === 1 ? aCount - bCount : bCount - aCount;
+//       }
+//       // Default fallback
+//       return sortOrder === 1
+//         ? a.createdAt - b.createdAt
+//         : b.createdAt - a.createdAt;
+//     });
+
+//     // Apply pagination after sorting
+//     partnerList = partner.partnerList.slice(skip, skip + limit);
+//   } else {
+//     // For cases where we can sort at database level
+//     const partner = await PartnerModule.findOne({ userId }).populate({
+//       path: "partnerList",
+//       populate: {
+//         path: "walletTwo",
+//       },
+//       options: {
+//         sort: sortCriteria,
+//         skip: skip,
+//         limit: limit,
+//       },
+//     });
+
+//     if (!partner) {
+//       return next(new ErrorHandler("Partner not found", 404));
+//     }
+
+//     partnerList = partner.partnerList;
+//   }
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Populated partner list fetched successfully",
+//     partnerList,
+//     totalPartners,
+//     totalPages: Math.ceil(totalPartners / limit),
+//     currentPage: page,
+//     sortBy,
+//     sortOrder: sortOrder === -1 ? "desc" : "asc",
+//   });
+// });
+
 const getPartnerPartnerList = asyncError(async (req, res, next) => {
   const { userId } = req.params;
   let { page, limit, sortBy, sortOrder } = req.query;
@@ -4386,6 +4510,12 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
         break;
       case "createdAt":
         sortCriteria = { createdAt: sortOrder };
+        break;
+      case "partnerStatus":
+        sortCriteria = { partnerStatus: sortOrder };
+        break;
+      case "rechargeStatus":
+        sortCriteria = { rechargeStatus: sortOrder };
         break;
       default:
         break;
@@ -4471,6 +4601,7 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
     sortOrder: sortOrder === -1 ? "desc" : "asc",
   });
 });
+
 const increasePartnerProfit = asyncError(async (req, res, next) => {
   const { partnerId, profitPercentage } = req.body;
 
