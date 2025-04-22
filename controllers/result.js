@@ -37,6 +37,7 @@ const powerresult = require("../models/powerresult.js");
 const OtherPayment = require("../models/OtherPayment.js");
 const PartnerPerformancePowerball = require("../models/PartnerPerformancePowerball.jsx");
 const user = require("../models/user.js");
+const PowerTime = require("../models/PowerTime.js");
 
 // ####################
 // RESULTS
@@ -3636,6 +3637,29 @@ const updateLiveResultAndTimerForTime = asyncError(async (req, res, next) => {
     message: "Time Updated Successfully",
   });
 });
+const updateLiveResultAndTimerForTimeForPowerball = asyncError(
+  async (req, res, next) => {
+    const { liveresultlink, liveresulttimer } = req.body;
+
+    if (!liveresultlink) {
+      return next(new ErrorHandler("Please add live result link", 404));
+    }
+
+    const ltime = await PowerTime.findById(req.params.id);
+
+    if (!ltime) return next(new ErrorHandler("Time not found", 404));
+
+    if (liveresultlink) ltime.liveresultlink = liveresultlink;
+    if (liveresulttimer) ltime.liveresulttimer = liveresulttimer;
+
+    await ltime.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Time Updated Successfully",
+    });
+  }
+);
 
 // ####################
 // LOT LOCATION
@@ -8821,4 +8845,5 @@ module.exports = {
   getAllOtherPayments,
   deleteOtherPayment,
   getSinglePartnerPerformancePowerball,
+  updateLiveResultAndTimerForTimeForPowerball,
 };

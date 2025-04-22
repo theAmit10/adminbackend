@@ -109,6 +109,7 @@ const {
   deleteSingleOther,
   getPowerResultByTimeAndDate,
   getSinglePartnerPerformancePowerball,
+  updateLiveResultAndTimerForTimeForPowerball,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -194,6 +195,11 @@ router.put(
   "/updateresultelink/:id",
   isAuthenticated,
   updateLiveResultAndTimerForTime
+);
+router.put(
+  "/updateresultelinkpowerball/:id",
+  isAuthenticated,
+  updateLiveResultAndTimerForTimeForPowerball
 );
 router.get("/searchtime", isAuthenticated, getAllLotTimeAccordindLocation);
 
