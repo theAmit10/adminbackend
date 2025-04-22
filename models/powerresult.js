@@ -20,11 +20,11 @@ const schema = new mongoose.Schema(
     },
     prize: {
       firstprize: {
-        amount: { type: Number, required: true },
+        amount: { type: String, required: true },
         totaluser: { type: Number, required: true },
       },
       secondprize: {
-        amount: { type: Number, required: true },
+        amount: { type: String, required: true },
         totaluser: { type: Number, required: true },
       },
       thirdprize: {

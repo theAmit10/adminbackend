@@ -5139,6 +5139,10 @@ const addUserToUserList = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("User not found", 404));
   }
 
+  if (user.parentPartnerId !== 1000) {
+    return next(new ErrorHandler("User already have partner", 404));
+  }
+
   // Update the user's hierarchy
   user.parentPartnerId = partner.userId;
   user.parentParentPartnerId = partner.parentPartnerId;
