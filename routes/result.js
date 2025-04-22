@@ -110,6 +110,12 @@ const {
   getPowerResultByTimeAndDate,
   getSinglePartnerPerformancePowerball,
   updateLiveResultAndTimerForTimeForPowerball,
+  getUPIPaymentsByUserId,
+  getBankPaymentsByUserId,
+  getPaypalPaymentsByUserId,
+  getCryptoPaymentsByUserId,
+  getSkrillPaymentsByUserId,
+  getOtherPaymentsByUserId,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -237,6 +243,11 @@ router.post(
   addUpiPayment
 );
 router.get("/allupipaymets", isAuthenticated, getAllUPIPayments);
+router.get(
+  "/allupipaymetsbyid/:userId",
+  isAuthenticated,
+  getUPIPaymentsByUserId
+);
 router.delete("/removeupipayment/:id", isAuthenticated, deleteUPIPayment);
 
 router.get("/getuserupipaymets/:userId", isAuthenticated, getUserUpiPayments);
@@ -250,6 +261,11 @@ router.put(
 router.delete("/deletesingleupi/:id", isAuthenticated, deleteSingleUpi);
 
 // FOR  BANK PAYMENT
+router.get(
+  "/allbankpaymetsbyid/:userId",
+  isAuthenticated,
+  getBankPaymentsByUserId
+);
 router.post("/addbankpayment", isAuthenticated, addBankPayment);
 router.get("/allbankpaymets", isAuthenticated, getAllBankPayments);
 router.get("/getuserbankpaymets/:userId", isAuthenticated, getUserBankPayments);
@@ -269,6 +285,11 @@ router.delete("/deletesinglebank/:id", isAuthenticated, deleteSingleBank);
 router.delete("/removebankpayment/:id", isAuthenticated, deleteBankPayment);
 
 // FOR  PAYPAL PAYMENT
+router.get(
+  "/allpaypalpaymetsbyid/:userId",
+  isAuthenticated,
+  getPaypalPaymentsByUserId
+);
 router.post("/addpaypalpayment", isAuthenticated, addPaypalPayment);
 router.get("/allpaypalpaymets", isAuthenticated, getAllPaypalPayments);
 router.delete("/removepaypalpayment/:id", isAuthenticated, deletePaypalPayment);
@@ -292,6 +313,11 @@ router.put(
 router.delete("/deletesinglepaypal/:id", isAuthenticated, deleteSinglePaypal);
 
 // FOR  CRYPTO PAYMENT
+router.get(
+  "/allcryptopaymetsbyid/:userId",
+  isAuthenticated,
+  getCryptoPaymentsByUserId
+);
 router.post(
   "/addcryptopayment",
   isAuthenticated,
@@ -320,6 +346,11 @@ router.put(
 router.delete("/deletesinglecrypto/:id", isAuthenticated, deleteSingleCrypto);
 
 // FOR  SKRILL PAYMENT
+router.get(
+  "/allskrillpaymetsbyid/:userId",
+  isAuthenticated,
+  getSkrillPaymentsByUserId
+);
 router.post("/addskrillpayment", isAuthenticated, addSkrillPayment);
 router.get("/allskrillpaymets", isAuthenticated, getAllSkrillPayments);
 router.delete("/removeskrillpayment/:id", isAuthenticated, deleteSkrillPayment);
@@ -343,6 +374,11 @@ router.put(
 router.delete("/deletesingleskrill/:id", isAuthenticated, deleteSingleSkrill);
 
 // FOR OTHER PAYMENT
+router.get(
+  "/allotherpaymetsbyid/:userId",
+  isAuthenticated,
+  getOtherPaymentsByUserId
+);
 router.get(
   "/getuserotherpaymets/:userId",
   isAuthenticated,

@@ -4101,6 +4101,42 @@ const getAllOtherPayments = asyncError(async (req, res, next) => {
   });
 });
 
+const getOtherPaymentsByUserId = asyncError(async (req, res, next) => {
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Get userId from request params
+  const userId = parseInt(req.params.userId);
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Create query filter
+  const filter = { userId };
+
+  // Execute count and find operations in parallel for optimal performance
+  const [totalPayments, payments] = await Promise.all([
+    OtherPayment.countDocuments(filter),
+    OtherPayment.find(filter)
+      .sort({ createdAt: -1 }) // Newest payments first
+      .skip(skip)
+      .limit(limit),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
+  });
+});
+
 const deleteOtherPayment = asyncError(async (req, res, next) => {
   const { id } = req.params;
 
@@ -4183,6 +4219,42 @@ const getAllUPIPayments = asyncError(async (req, res, next) => {
   const [totalPayments, payments] = await Promise.all([
     UpiPaymentType.countDocuments(),
     UpiPaymentType.find()
+      .sort({ createdAt: -1 }) // Newest first
+      .skip(skip)
+      .limit(limit),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
+  });
+});
+
+const getUPIPaymentsByUserId = asyncError(async (req, res, next) => {
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Get userId from request params
+  const userId = parseInt(req.params.userId);
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Create query filter
+  const filter = { userId };
+
+  // Get total count and payments in parallel for better performance
+  const [totalPayments, payments] = await Promise.all([
+    UpiPaymentType.countDocuments(filter),
+    UpiPaymentType.find(filter)
       .sort({ createdAt: -1 }) // Newest first
       .skip(skip)
       .limit(limit),
@@ -4335,6 +4407,42 @@ const getAllBankPayments = asyncError(async (req, res, next) => {
     },
   });
 });
+
+const getBankPaymentsByUserId = asyncError(async (req, res, next) => {
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Get userId from request params
+  const userId = parseInt(req.params.userId);
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Create query filter
+  const filter = { userId };
+
+  // Get total count and payments in parallel for better performance
+  const [totalPayments, payments] = await Promise.all([
+    BankPaymentType.countDocuments(filter),
+    BankPaymentType.find(filter)
+      .sort({ createdAt: -1 }) // Newest first
+      .skip(skip)
+      .limit(limit),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
+  });
+});
 const deleteBankPayment = asyncError(async (req, res, next) => {
   const { id } = req.params;
 
@@ -4432,7 +4540,41 @@ const getAllPaypalPayments = asyncError(async (req, res, next) => {
     },
   });
 });
+const getPaypalPaymentsByUserId = asyncError(async (req, res, next) => {
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
 
+  // Get userId from request params
+  const userId = parseInt(req.params.userId);
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Create query filter
+  const filter = { userId };
+
+  // Get total count and payments in parallel for better performance
+  const [totalPayments, payments] = await Promise.all([
+    PaypalPaymentType.countDocuments(filter),
+    PaypalPaymentType.find(filter)
+      .sort({ createdAt: -1 }) // Newest first
+      .skip(skip)
+      .limit(limit),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
+  });
+});
 const deletePaypalPayment = asyncError(async (req, res, next) => {
   const { id } = req.params;
 
@@ -4525,6 +4667,42 @@ const getAllCryptoPayments = asyncError(async (req, res, next) => {
   const [totalPayments, payments] = await Promise.all([
     CryptoPaymentType.countDocuments(),
     CryptoPaymentType.find()
+      .sort({ createdAt: -1 }) // Newest records first
+      .skip(skip)
+      .limit(limit),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
+  });
+});
+
+const getCryptoPaymentsByUserId = asyncError(async (req, res, next) => {
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
+
+  // Get userId from request params
+  const userId = parseInt(req.params.userId);
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Create query filter
+  const filter = { userId };
+
+  // Get total count and payments in parallel for optimal performance
+  const [totalPayments, payments] = await Promise.all([
+    CryptoPaymentType.countDocuments(filter),
+    CryptoPaymentType.find(filter)
       .sort({ createdAt: -1 }) // Newest records first
       .skip(skip)
       .limit(limit),
@@ -4640,7 +4818,41 @@ const getAllSkrillPayments = asyncError(async (req, res, next) => {
     },
   });
 });
+const getSkrillPaymentsByUserId = asyncError(async (req, res, next) => {
+  // Parse and validate pagination parameters
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100); // Max 100 items per page
+  const skip = (page - 1) * limit;
 
+  // Get userId from request params
+  const userId = parseInt(req.params.userId);
+  if (!userId) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+
+  // Create query filter
+  const filter = { userId };
+
+  // Execute count and find operations in parallel for optimal performance
+  const [totalPayments, payments] = await Promise.all([
+    SkrillPaymentType.countDocuments(filter),
+    SkrillPaymentType.find(filter)
+      .sort({ createdAt: -1 }) // Newest payments first
+      .skip(skip)
+      .limit(limit),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    payments,
+    pagination: {
+      total: totalPayments,
+      pages: Math.ceil(totalPayments / limit),
+      current: page,
+      limit,
+    },
+  });
+});
 const deleteSkrillPayment = asyncError(async (req, res, next) => {
   const { id } = req.params;
 
@@ -8846,4 +9058,10 @@ module.exports = {
   deleteOtherPayment,
   getSinglePartnerPerformancePowerball,
   updateLiveResultAndTimerForTimeForPowerball,
+  getUPIPaymentsByUserId,
+  getBankPaymentsByUserId,
+  getPaypalPaymentsByUserId,
+  getCryptoPaymentsByUserId,
+  getSkrillPaymentsByUserId,
+  getOtherPaymentsByUserId,
 };
