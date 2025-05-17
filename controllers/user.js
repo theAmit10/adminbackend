@@ -29,6 +29,7 @@ const PowerballGameTickets = require("../models/PowerballGameTickets.js");
 const Settings = require("../models/Settings.js");
 const PartnerPerformancePowerball = require("../models/PartnerPerformancePowerball.jsx");
 const { use } = require("../routes/user.js");
+const moment = require("moment-timezone");
 
 const login = asyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -1714,7 +1715,11 @@ const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
 
   try {
     // Create a new notification in the database
-    const notification = await Notification.create({ title, description });
+    const notification = await Notification.create({
+      title,
+      description,
+      userId: req.user.userId,
+    });
 
     // Find the user and add the notification to their notification list
     // const user = await User.findByIdAndUpdate(
@@ -5295,6 +5300,19 @@ const updateRechargeStatus = async (req, res) => {
   }
 };
 
+const getAllPendingRechargeCount = asyncError(async (req, res, next) => {
+  // Count all transactions with type "Recharge" and status "Pending"
+  const pendingRechargeCount = await Transaction.countDocuments({
+    transactionType: "Recharge",
+    paymentStatus: "Pending",
+  });
+
+  res.status(200).json({
+    success: true,
+    pendingRechargeCount,
+  });
+});
+
 const getAllRecharge = asyncError(async (req, res, next) => {
   let { page, limit } = req.query;
 
@@ -5744,6 +5762,22 @@ const getAllPowerBallGames = asyncError(async (req, res, next) => {
 // POWERBALL TIME
 
 // ✅ Create a New PowerTime
+// const createPowerTime = asyncError(async (req, res, next) => {
+//   const { powertime } = req.body;
+
+//   if (!powertime) {
+//     return next(new ErrorHandler("Power time is required", 400));
+//   }
+
+//   const newPowerTime = await PowerTime.create({ powertime });
+
+//   res.status(201).json({
+//     success: true,
+//     message: "PowerTime created successfully",
+//     powerTime: newPowerTime,
+//   });
+// });
+
 const createPowerTime = asyncError(async (req, res, next) => {
   const { powertime } = req.body;
 
@@ -5751,12 +5785,43 @@ const createPowerTime = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Power time is required", 400));
   }
 
+  // 1. Create PowerTime
   const newPowerTime = await PowerTime.create({ powertime });
+
+  // 2. Get current date in 'DD-MM-YYYY' format using IST timezone
+  const powerdate = moment().tz("Asia/Kolkata").format("DD-MM-YYYY");
+
+  // 3. Create PowerDate
+  const newPowerDate = await PowerDate.create({
+    powerdate,
+    powertime: newPowerTime._id,
+  });
+
+  // 4. Create PowerballGameTickets
+  const newGameEntry = await PowerballGameTickets.create({
+    powerdate: newPowerDate._id,
+    powertime: newPowerTime._id,
+    alltickets: [],
+  });
+
+  // 5. Create PartnerPerformancePowerball if not already existing
+  let partnerPerformance = await PartnerPerformancePowerball.findOne({
+    powertime: newPowerTime._id,
+    powerdate: newPowerDate._id,
+  });
+
+  if (!partnerPerformance) {
+    partnerPerformance = new PartnerPerformancePowerball({
+      powertime: newPowerTime._id,
+      powerdate: newPowerDate._id,
+      performances: [],
+    });
+    await partnerPerformance.save();
+  }
 
   res.status(201).json({
     success: true,
-    message: "PowerTime created successfully",
-    powerTime: newPowerTime,
+    message: "PowerTime and all related entries created successfully",
   });
 });
 
@@ -6893,4 +6958,5 @@ module.exports = {
   searchPartnerPartnerList,
   increasePartnerRecharge,
   getAllRechargeAdmin,
+  getAllPendingRechargeCount,
 };

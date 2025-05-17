@@ -109,6 +109,7 @@ const {
   getInputNames,
   updateInputNames,
   getTotalCounts,
+  getAllPendingRechargeCount,
 } = require("../controllers/user.js");
 const { isAuthenticated, verifyToken } = require("../middlewares/auth.js");
 const { singleUpload } = require("../middlewares/multer.js");
@@ -234,6 +235,11 @@ router.put(
 );
 router.get("/getalldeposit", isAuthenticated, getAllDeposit);
 router.get("/getallrechargeadmin", isAuthenticated, getAllRechargeAdmin);
+router.get(
+  "/getpendingrechargecount",
+  isAuthenticated,
+  getAllPendingRechargeCount
+);
 
 //FOR WITHDRAW
 router.post("/createwithdraw", isAuthenticated, addWithdraw);

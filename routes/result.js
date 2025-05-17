@@ -116,6 +116,7 @@ const {
   getCryptoPaymentsByUserId,
   getSkrillPaymentsByUserId,
   getOtherPaymentsByUserId,
+  getAllPendingPaymentsCount,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -243,6 +244,7 @@ router.post(
   addUpiPayment
 );
 router.get("/allupipaymets", isAuthenticated, getAllUPIPayments);
+router.get("/pendingpaymentcount", isAuthenticated, getAllPendingPaymentsCount);
 router.get(
   "/allupipaymetsbyid/:userId",
   isAuthenticated,

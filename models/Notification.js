@@ -14,23 +14,25 @@
 
 // module.exports = mongoose.model("Notification", schema);
 
-
 const mongoose = require("mongoose");
 
-const notificationSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: [true, "Please enter a title"]
+const notificationSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, "Please enter a title"],
+    },
+    description: {
+      type: String,
+      required: [true, "Please enter a description"],
+    },
+    seennow: {
+      type: Boolean,
+      default: false,
+    },
+    userId: Number,
   },
-  description: {
-    type: String,
-    required: [true, "Please enter a description"]
-  },
-  seennow: {
-    type: Boolean,
-    default: false
-  }
-
-}, { timestamps: true });
+  { timestamps: true }
+);
 
 module.exports = mongoose.model("Notification", notificationSchema);

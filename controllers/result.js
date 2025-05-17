@@ -38,6 +38,7 @@ const OtherPayment = require("../models/OtherPayment.js");
 const PartnerPerformancePowerball = require("../models/PartnerPerformancePowerball.jsx");
 const user = require("../models/user.js");
 const PowerTime = require("../models/PowerTime.js");
+const PowerBallGame = require("../models/PowerBallGame.js");
 
 // ####################
 // RESULTS
@@ -2094,7 +2095,6 @@ const createResult = asyncError(async (req, res, next) => {
 //       "Result Created and Wallets Updated Successfully, Notifications sent, and Playbet History Updated",
 //   });
 // });
-
 const createPowerResult = asyncError(async (req, res, next) => {
   const { jackpotnumber, powerdate, powertime, prize } = req.body;
 
@@ -2135,6 +2135,17 @@ const createPowerResult = asyncError(async (req, res, next) => {
       `New PowerResult Created: ID: ${powerResult._id}, Created At: ${powerResult.createdAt}`
     );
 
+    const games = await PowerBallGame.find().sort({ createdAt: -1 });
+
+    if (games.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No Powerball Game winner rule found.",
+      });
+    }
+
+    const game = games[0];
+
     // Step 2: Find the PowerballGameTickets for the given powerdate and powertime
     const powerGame = await PowerballGameTickets.findOne({
       powerdate,
@@ -2155,106 +2166,196 @@ const createPowerResult = asyncError(async (req, res, next) => {
 
     let winningAmount = 0;
 
-    // Function to distribute prize
-    const distributePrize = async (matchCount, prizeAmount) => {
-      for (let ticketHolder of allTickets) {
-        for (let ticket of ticketHolder.tickets) {
-          // Count the number of matching numbers
-          const matches = ticket.usernumber.filter((num) =>
-            jackpotnumber.includes(num)
-          ).length;
+    // Distribute prize
+    for (let holder of allTickets) {
+      for (let ticket of holder.tickets) {
+        const user = await User.findOne({ userId: holder.userId });
+        if (!user) continue;
 
-          if (matches === matchCount) {
-            const user = await User.findOne({ userId: ticketHolder.userId });
+        const wallet = await WalletOne.findById(user.walletOne._id);
+        if (!wallet) continue;
 
-            if (user) {
-              const walletId = user.walletOne._id;
-              const wallet = await WalletOne.findById(walletId);
-              const totalBalanceAmount = parseFloat(wallet.balance);
+        const isMatch = (count) =>
+          ticket.usernumber
+            .slice(0, count)
+            .every((n, i) => n === jackpotnumber[i]);
 
-              let wonAmount = 0;
+        let wonAmount = 0;
+        if (isMatch(6)) {
+          wonAmount = prize.winnerPrize.firstprize * ticket.multiplier;
+          console.log("First Prize");
+          console.log(wonAmount);
+        } else if (isMatch(5)) {
+          wonAmount = prize.winnerPrize.secondPrize * ticket.multiplier;
+          console.log("2 Prize");
+          console.log(wonAmount);
+        } else if (isMatch(4)) {
+          wonAmount = prize.winnerPrize.thirdprize * ticket.multiplier;
+          console.log("3 Prize");
+          console.log(wonAmount);
+        } else if (isMatch(3)) {
+          wonAmount =
+            ticket.convertedAmount * parseFloat(prize.winnerPrize.fourthPrize);
+          console.log("4 Prize");
+          console.log(wonAmount);
+        } else if (isMatch(2)) {
+          wonAmount =
+            ticket.convertedAmount * parseFloat(prize.winnerPrize.fifthprize);
+          console.log("5 Prize");
+          console.log(wonAmount);
+        } else if (isMatch(1)) {
+          wonAmount =
+            ticket.convertedAmount * parseFloat(game.winnerPrize.sixthPrize);
+          console.log("6 Prize");
+          console.log(wonAmount);
+          console.log(ticket);
+          console.log(jackpotnumber);
+          console.log(ticket.convertedAmount);
+          console.log(game.winnerPrize.sixthPrize);
+        }
 
-              // Calculate wonAmount based on matchCount
-              if (matchCount === 6) {
-                wonAmount = prize.firstprize.amount * ticket.multiplier;
-              } else if (matchCount === 5) {
-                wonAmount = prize.secondprize.amount * ticket.multiplier;
-              } else if (matchCount === 4) {
-                wonAmount = prize.thirdprize.amount * ticket.multiplier;
-              } else if (matchCount === 3) {
-                wonAmount =
-                  ticket.convertedAmount * parseFloat(prize.fourthprize.amount);
-              } else if (matchCount === 2) {
-                wonAmount =
-                  ticket.convertedAmount * parseFloat(prize.fifthprize.amount);
-              } else if (matchCount === 1) {
-                wonAmount =
-                  ticket.convertedAmount * parseFloat(prize.sixthprize.amount);
-              }
+        if (wonAmount > 0) {
+          winningAmount += wonAmount;
+          await WalletOne.findByIdAndUpdate(wallet._id, {
+            balance: wallet.balance + wonAmount,
+          });
 
-              // Accumulate winningAmount
-              winningAmount += wonAmount;
+          const notification = await Notification.create({
+            title: "Congratulations! You won!",
+            description: `You have won an amount of ${wonAmount}.`,
+          });
 
-              // Log the wonAmount for debugging
-              console.log(
-                `User: ${ticketHolder.username}, Ticket: ${ticket._id}, Matches: ${matchCount}, Won Amount: ${wonAmount}`
-              );
+          user.notifications.push(notification._id);
+          await user.save();
 
-              const remainingWalletBalance =
-                totalBalanceAmount + parseFloat(wonAmount);
+          const playbet = await Playbet.create({
+            tickets: [
+              {
+                amount: wonAmount,
+                convertedAmount: wonAmount,
+                multiplier: ticket.multiplier,
+                usernumber: jackpotnumber,
+              },
+            ],
+            username: user.name,
+            userid: user.userId,
+            currency: user.country._id.toString(),
+            powerdate,
+            powertime,
+            gameType: "powerball",
+            walletName: wallet.walletName,
+          });
 
-              // Update wallet
-              await WalletOne.findByIdAndUpdate(
-                walletId,
-                { balance: remainingWalletBalance },
-                { new: true }
-              );
-
-              // FOR NOTIFICATION
-              const notification = await Notification.create({
-                title: "Congratulations! You won!",
-                description: `You have won an amount of ${wonAmount}.`,
-              });
-
-              // Add notification to the user's notifications array
-              user.notifications.push(notification._id);
-              await user.save();
-
-              // FOR PLAYBET HISTORY
-              const playbet = await Playbet.create({
-                tickets: [
-                  {
-                    amount: wonAmount,
-                    convertedAmount: wonAmount,
-                    multiplier: ticket.multiplier,
-                    usernumber: jackpotnumber,
-                  },
-                ],
-                username: user.name,
-                userid: user.userId,
-                currency: user.country._id.toString(),
-                powerdate: powerdate,
-                powertime: powertime,
-                gameType: "powerball",
-                walletName: wallet.walletName,
-              });
-
-              // Add playbet history to the user's playbetHistory array
-              user.playbetHistory.push(playbet._id);
-              await user.save();
-            }
-          }
+          user.playbetHistory.push(playbet._id);
+          await user.save();
         }
       }
-    };
+    }
 
-    // Step 5: Distribute prizes based on matches
-    await distributePrize(6, prize.firstprize.amount);
-    await distributePrize(5, prize.secondprize.amount);
-    await distributePrize(4, prize.thirdprize.amount);
-    await distributePrize(3, prize.fourthprize.amount);
-    await distributePrize(2, prize.fifthprize.amount);
-    await distributePrize(1, prize.sixthprize.amount);
+    // Function to distribute prize
+    // const distributePrize = async (matchCount, prizeAmount) => {
+    //   for (let ticketHolder of allTickets) {
+    //     for (let ticket of ticketHolder.tickets) {
+    //       // Count the number of matching numbers
+    //       // const matches = ticket.usernumber.filter((num) =>
+    //       //   jackpotnumber.includes(num)
+    //       // ).length;
+
+    //       const matches = ticket.usernumber.filter((num) =>
+    //         jackpotnumber.includes(num)
+    //       ).length;
+
+    //       if (matches === matchCount) {
+    //         const user = await User.findOne({ userId: ticketHolder.userId });
+
+    //         if (user) {
+    //           const walletId = user.walletOne._id;
+    //           const wallet = await WalletOne.findById(walletId);
+    //           const totalBalanceAmount = parseFloat(wallet.balance);
+
+    //           let wonAmount = 0;
+
+    //           // Calculate wonAmount based on matchCount
+    //           if (matchCount === 6) {
+    //             wonAmount = prize.firstprize.amount * ticket.multiplier;
+    //           } else if (matchCount === 5) {
+    //             wonAmount = prize.secondprize.amount * ticket.multiplier;
+    //           } else if (matchCount === 4) {
+    //             wonAmount = prize.thirdprize.amount * ticket.multiplier;
+    //           } else if (matchCount === 3) {
+    //             wonAmount =
+    //               ticket.convertedAmount * parseFloat(prize.fourthprize.amount);
+    //           } else if (matchCount === 2) {
+    //             wonAmount =
+    //               ticket.convertedAmount * parseFloat(prize.fifthprize.amount);
+    //           } else if (matchCount === 1) {
+    //             wonAmount =
+    //               ticket.convertedAmount * parseFloat(prize.sixthprize.amount);
+    //           }
+
+    //           // Accumulate winningAmount
+    //           winningAmount += wonAmount;
+
+    //           // Log the wonAmount for debugging
+    //           console.log(
+    //             `User: ${ticketHolder.username}, Ticket: ${ticket._id}, Matches: ${matchCount}, Won Amount: ${wonAmount}`
+    //           );
+
+    //           const remainingWalletBalance =
+    //             totalBalanceAmount + parseFloat(wonAmount);
+
+    //           // Update wallet
+    //           await WalletOne.findByIdAndUpdate(
+    //             walletId,
+    //             { balance: remainingWalletBalance },
+    //             { new: true }
+    //           );
+
+    //           // FOR NOTIFICATION
+    //           const notification = await Notification.create({
+    //             title: "Congratulations! You won!",
+    //             description: `You have won an amount of ${wonAmount}.`,
+    //           });
+
+    //           // Add notification to the user's notifications array
+    //           user.notifications.push(notification._id);
+    //           await user.save();
+
+    //           // FOR PLAYBET HISTORY
+    //           const playbet = await Playbet.create({
+    //             tickets: [
+    //               {
+    //                 amount: wonAmount,
+    //                 convertedAmount: wonAmount,
+    //                 multiplier: ticket.multiplier,
+    //                 usernumber: jackpotnumber,
+    //               },
+    //             ],
+    //             username: user.name,
+    //             userid: user.userId,
+    //             currency: user.country._id.toString(),
+    //             powerdate: powerdate,
+    //             powertime: powertime,
+    //             gameType: "powerball",
+    //             walletName: wallet.walletName,
+    //           });
+
+    //           // Add playbet history to the user's playbetHistory array
+    //           user.playbetHistory.push(playbet._id);
+    //           await user.save();
+    //         }
+    //       }
+    //     }
+    //   }
+    // };
+
+    // // Step 5: Distribute prizes based on matches
+    // await distributePrize(6, prize.firstprize.amount);
+    // await distributePrize(5, prize.secondprize.amount);
+    // await distributePrize(4, prize.thirdprize.amount);
+    // await distributePrize(3, prize.fourthprize.amount);
+    // await distributePrize(2, prize.fifthprize.amount);
+    // await distributePrize(1, prize.sixthprize.amount);
 
     // [FOR PARTNER PAYOUT]
 
@@ -2646,6 +2747,7 @@ const createPowerResult = asyncError(async (req, res, next) => {
     });
   }
 });
+
 // const createPowerResult = asyncError(async (req, res, next) => {
 //   const { jackpotnumber, powerdate, powertime, prize } = req.body;
 
@@ -2706,6 +2808,7 @@ const createPowerResult = asyncError(async (req, res, next) => {
 
 //     let winningAmount = 0;
 
+//     // Function to distribute prize
 //     const distributePrize = async (matchCount, prizeAmount) => {
 //       for (let ticketHolder of allTickets) {
 //         for (let ticket of ticketHolder.tickets) {
@@ -2722,16 +2825,33 @@ const createPowerResult = asyncError(async (req, res, next) => {
 //               const wallet = await WalletOne.findById(walletId);
 //               const totalBalanceAmount = parseFloat(wallet.balance);
 
-//               let wonAmount = prizeAmount * ticket.multiplier;
-//               if (matchCount === 3) {
-//                 wonAmount = ticket.convertedAmount * parseFloat(prizeAmount);
+//               let wonAmount = 0;
+
+//               // Calculate wonAmount based on matchCount
+//               if (matchCount === 6) {
+//                 wonAmount = prize.firstprize.amount * ticket.multiplier;
+//               } else if (matchCount === 5) {
+//                 wonAmount = prize.secondprize.amount * ticket.multiplier;
+//               } else if (matchCount === 4) {
+//                 wonAmount = prize.thirdprize.amount * ticket.multiplier;
+//               } else if (matchCount === 3) {
+//                 wonAmount =
+//                   ticket.convertedAmount * parseFloat(prize.fourthprize.amount);
 //               } else if (matchCount === 2) {
-//                 wonAmount = ticket.convertedAmount * parseFloat(prizeAmount);
+//                 wonAmount =
+//                   ticket.convertedAmount * parseFloat(prize.fifthprize.amount);
 //               } else if (matchCount === 1) {
-//                 wonAmount = ticket.convertedAmount * parseFloat(prizeAmount);
+//                 wonAmount =
+//                   ticket.convertedAmount * parseFloat(prize.sixthprize.amount);
 //               }
 
+//               // Accumulate winningAmount
 //               winningAmount += wonAmount;
+
+//               // Log the wonAmount for debugging
+//               console.log(
+//                 `User: ${ticketHolder.username}, Ticket: ${ticket._id}, Matches: ${matchCount}, Won Amount: ${wonAmount}`
+//               );
 
 //               const remainingWalletBalance =
 //                 totalBalanceAmount + parseFloat(wonAmount);
@@ -2765,7 +2885,7 @@ const createPowerResult = asyncError(async (req, res, next) => {
 //                 ],
 //                 username: user.name,
 //                 userid: user.userId,
-//                 currency: user.country._id.toString(), // Assuming currency is related to the user
+//                 currency: user.country._id.toString(),
 //                 powerdate: powerdate,
 //                 powertime: powertime,
 //                 gameType: "powerball",
@@ -2791,14 +2911,6 @@ const createPowerResult = asyncError(async (req, res, next) => {
 
 //     // [FOR PARTNER PAYOUT]
 
-//     // const winningAmount = playnumberEntry.distributiveamount;
-
-//     // Calculate totalBetAmount by summing all amounts in playnumberEntry.playnumbers[]
-//     // const totalBetAmount = allTickets.reduce(
-//     //   (sum, entry) => sum + parseFloat(entry.amount),
-//     //   0
-//     // );
-
 //     const totalBetAmount = allTickets.reduce((sum, user) => {
 //       return (
 //         sum +
@@ -2810,6 +2922,12 @@ const createPowerResult = asyncError(async (req, res, next) => {
 
 //     // Calculate totalProfit
 //     const totalProfit = totalBetAmount - winningAmount;
+
+//     // Log the results for debugging
+//     console.log(`Total Bet Amount: ${totalBetAmount}`);
+//     console.log(`Total Winning Amount: ${winningAmount}`);
+//     console.log(`Total Profit: ${totalProfit}`);
+
 //     // Find partner performance
 //     const partnerperformance = await PartnerPerformancePowerball.findOne({
 //       powertime,
@@ -4208,6 +4326,37 @@ const addUpiPayment = asyncError(async (req, res, next) => {
 //     payments,
 //   });
 // });
+
+const getAllPendingPaymentsCount = asyncError(async (req, res, next) => {
+  // Fetch count of pending payments from all payment models in parallel
+  const [
+    upiPending,
+    cryptoPending,
+    paypalPending,
+    skrillPending,
+    bankPending,
+    otherPending,
+  ] = await Promise.all([
+    UpiPaymentType.countDocuments({ paymentStatus: "Pending" }),
+    CryptoPaymentType.countDocuments({ paymentStatus: "Pending" }),
+    PaypalPaymentType.countDocuments({ paymentStatus: "Pending" }),
+    SkrillPaymentType.countDocuments({ paymentStatus: "Pending" }),
+    BankPaymentType.countDocuments({ paymentStatus: "Pending" }),
+    OtherPayment.countDocuments({ paymentStatus: "Pending" }),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    breakdown: {
+      upiPending,
+      cryptoPending,
+      paypalPending,
+      skrillPending,
+      bankPending,
+      otherPending,
+    },
+  });
+});
 
 const getAllUPIPayments = asyncError(async (req, res, next) => {
   // Parse and validate pagination parameters
@@ -6512,8 +6661,9 @@ const addPowerBet = async (req, res) => {
 
 // const searchPowerBet = async (req, res) => {
 //   try {
-//     const { id, jackpot } = req.query; // Extract from query params
+//     const { id, jackpot, page = 1, limit = 10 } = req.query;
 
+//     // Validate required parameters
 //     if (!id || !jackpot) {
 //       return res.status(400).json({
 //         success: false,
@@ -6521,21 +6671,37 @@ const addPowerBet = async (req, res) => {
 //       });
 //     }
 
-//     // Convert jackpot string into an array of numbers
-//     const jackpotNumbers = jackpot.split(" ").map(Number);
-
-//     if (jackpotNumbers.some(isNaN)) {
+//     // Validate MongoDB ID format
+//     if (!mongoose.Types.ObjectId.isValid(id)) {
 //       return res.status(400).json({
 //         success: false,
-//         message: "Jackpot numbers must be valid numbers separated by spaces",
+//         message: "Invalid game ID format",
 //       });
 //     }
 
-//     // Find the power game by ID
+//     // Convert and validate jackpot numbers
+//     const jackpotNumbers = jackpot.split(" ").map(Number);
+//     if (jackpotNumbers.some(isNaN) || jackpotNumbers.length === 0) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Jackpot must contain valid numbers separated by spaces",
+//       });
+//     }
+
+//     // Configure pagination with safe defaults
+//     const pageNumber = Math.max(1, parseInt(page, 10));
+//     const limitNumber = Math.min(100, Math.max(1, parseInt(limit, 10)));
+//     const skip = (pageNumber - 1) * limitNumber;
+
+//     // Find the power game with optimized population
 //     const powerGame = await PowerballGameTickets.findById(id)
-//       .populate("alltickets.userId")
+//       .populate({
+//         path: "alltickets.userId",
+//         select: "username currency", // Only get necessary fields
+//       })
 //       .populate("powerdate")
-//       .populate("powertime");
+//       .populate("powertime")
+//       .lean(); // Convert to plain JS object for better performance
 
 //     if (!powerGame) {
 //       return res.status(404).json({
@@ -6544,58 +6710,92 @@ const addPowerBet = async (req, res) => {
 //       });
 //     }
 
-//     // Extract matching tickets
-//     let matchingUsers = [];
-//     powerGame.alltickets.forEach((ticketEntry) => {
-//       let matchedTickets = ticketEntry.tickets.filter((ticket) =>
+//     // Process tickets efficiently
+//     const allMatchedTickets = [];
+//     let totalMatchedTickets = 0;
+
+//     for (const ticketEntry of powerGame.alltickets) {
+//       const userTickets = ticketEntry.tickets.filter((ticket) =>
 //         jackpotNumbers.every((num) => ticket.usernumber.includes(num))
 //       );
 
-//       if (matchedTickets.length > 0) {
-//         matchingUsers.push({
+//       if (userTickets.length > 0) {
+//         totalMatchedTickets += userTickets.length;
+//         allMatchedTickets.push({
 //           userId: ticketEntry.userId._id,
 //           username: ticketEntry.userId.username,
 //           currency: ticketEntry.userId.currency,
-//           tickets: matchedTickets,
+//           tickets: userTickets,
 //           _id: ticketEntry._id,
 //           createdAt: ticketEntry.createdAt,
 //           updatedAt: ticketEntry.updatedAt,
 //         });
 //       }
-//     });
+//     }
+
+//     // Apply pagination
+//     const paginatedResults = [];
+//     let ticketsProcessed = 0;
+//     let ticketsToSkip = skip;
+//     let ticketsToTake = limitNumber;
+
+//     for (const user of allMatchedTickets) {
+//       if (ticketsToSkip >= user.tickets.length) {
+//         ticketsToSkip -= user.tickets.length;
+//         continue;
+//       }
+
+//       const startIdx = ticketsToSkip;
+//       const endIdx = Math.min(startIdx + ticketsToTake, user.tickets.length);
+//       const paginatedTickets = user.tickets.slice(startIdx, endIdx);
+
+//       if (paginatedTickets.length > 0) {
+//         paginatedResults.push({
+//           ...user,
+//           tickets: paginatedTickets,
+//         });
+//       }
+
+//       ticketsToTake -= endIdx - startIdx;
+//       ticketsToSkip = 0; // Reset after first adjustment
+
+//       if (ticketsToTake <= 0) break;
+//     }
+
+//     const totalPages = Math.ceil(totalMatchedTickets / limitNumber);
+
+//     // Prepare final response
+//     const response = {
+//       _id: powerGame._id,
+//       powerdate: powerGame.powerdate,
+//       powertime: powerGame.powertime,
+//       alltickets: paginatedResults,
+//       createdAt: powerGame.createdAt,
+//       updatedAt: powerGame.updatedAt,
+//       __v: powerGame.__v,
+//     };
 
 //     res.status(200).json({
 //       success: true,
-//       page: 1, // Assuming single-page results
-//       totalPages: 1,
-//       totalRecords: matchingUsers.length,
-//       tickets: [
-//         {
-//           _id: powerGame._id,
-//           powerdate: powerGame.powerdate,
-//           powertime: powerGame.powertime,
-//           alltickets: matchingUsers,
-//           createdAt: powerGame.createdAt,
-//           updatedAt: powerGame.updatedAt,
-//           __v: powerGame.__v,
-//         },
-//       ],
+//       page: pageNumber,
+//       totalPages,
+//       totalRecords: totalMatchedTickets,
+//       tickets: [response], // Maintain array structure for consistency
 //     });
 //   } catch (error) {
 //     console.error("Error in searchPowerBet:", error);
 //     res.status(500).json({
 //       success: false,
 //       message: "Internal Server Error",
-//       error: error.message,
+//       error: process.env.NODE_ENV === "development" ? error.message : undefined,
 //     });
 //   }
 // };
-
 const searchPowerBet = async (req, res) => {
   try {
     const { id, jackpot, page = 1, limit = 10 } = req.query;
 
-    // Validate required parameters
+    // Validate input
     if (!id || !jackpot) {
       return res.status(400).json({
         success: false,
@@ -6603,7 +6803,6 @@ const searchPowerBet = async (req, res) => {
       });
     }
 
-    // Validate MongoDB ID format
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
         success: false,
@@ -6611,7 +6810,6 @@ const searchPowerBet = async (req, res) => {
       });
     }
 
-    // Convert and validate jackpot numbers
     const jackpotNumbers = jackpot.split(" ").map(Number);
     if (jackpotNumbers.some(isNaN) || jackpotNumbers.length === 0) {
       return res.status(400).json({
@@ -6620,20 +6818,18 @@ const searchPowerBet = async (req, res) => {
       });
     }
 
-    // Configure pagination with safe defaults
     const pageNumber = Math.max(1, parseInt(page, 10));
     const limitNumber = Math.min(100, Math.max(1, parseInt(limit, 10)));
     const skip = (pageNumber - 1) * limitNumber;
 
-    // Find the power game with optimized population
     const powerGame = await PowerballGameTickets.findById(id)
       .populate({
         path: "alltickets.userId",
-        select: "username currency", // Only get necessary fields
+        select: "username currency",
       })
       .populate("powerdate")
       .populate("powertime")
-      .lean(); // Convert to plain JS object for better performance
+      .lean();
 
     if (!powerGame) {
       return res.status(404).json({
@@ -6642,14 +6838,21 @@ const searchPowerBet = async (req, res) => {
       });
     }
 
-    // Process tickets efficiently
     const allMatchedTickets = [];
     let totalMatchedTickets = 0;
 
     for (const ticketEntry of powerGame.alltickets) {
-      const userTickets = ticketEntry.tickets.filter((ticket) =>
-        jackpotNumbers.every((num) => ticket.usernumber.includes(num))
-      );
+      const userTickets = ticketEntry.tickets.filter((ticket) => {
+        const userNumbers = ticket.usernumber;
+        if (!Array.isArray(userNumbers)) return false;
+        if (userNumbers.length < jackpotNumbers.length) return false;
+
+        // Check if starting sequence matches jackpotNumbers
+        for (let i = 0; i < jackpotNumbers.length; i++) {
+          if (userNumbers[i] !== jackpotNumbers[i]) return false;
+        }
+        return true;
+      });
 
       if (userTickets.length > 0) {
         totalMatchedTickets += userTickets.length;
@@ -6667,7 +6870,6 @@ const searchPowerBet = async (req, res) => {
 
     // Apply pagination
     const paginatedResults = [];
-    let ticketsProcessed = 0;
     let ticketsToSkip = skip;
     let ticketsToTake = limitNumber;
 
@@ -6689,14 +6891,13 @@ const searchPowerBet = async (req, res) => {
       }
 
       ticketsToTake -= endIdx - startIdx;
-      ticketsToSkip = 0; // Reset after first adjustment
+      ticketsToSkip = 0;
 
       if (ticketsToTake <= 0) break;
     }
 
     const totalPages = Math.ceil(totalMatchedTickets / limitNumber);
 
-    // Prepare final response
     const response = {
       _id: powerGame._id,
       powerdate: powerGame.powerdate,
@@ -6712,7 +6913,7 @@ const searchPowerBet = async (req, res) => {
       page: pageNumber,
       totalPages,
       totalRecords: totalMatchedTickets,
-      tickets: [response], // Maintain array structure for consistency
+      tickets: [response],
     });
   } catch (error) {
     console.error("Error in searchPowerBet:", error);
@@ -6723,105 +6924,6 @@ const searchPowerBet = async (req, res) => {
     });
   }
 };
-
-// const searchPowerBet = async (req, res) => {
-//   try {
-//     const { id, jackpot, page = 1, limit = 10 } = req.query;
-
-//     // Validate required parameters
-//     if (!id || !jackpot) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "ID and jackpot are required",
-//       });
-//     }
-
-//     // Convert and validate jackpot numbers
-//     const jackpotNumbers = jackpot.split(" ").map(Number);
-//     if (jackpotNumbers.some(isNaN)) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "Jackpot numbers must be valid numbers separated by spaces",
-//       });
-//     }
-
-//     // Pagination setup
-//     const pageNumber = Math.max(1, parseInt(page, 10));
-//     const limitNumber = Math.min(100, Math.max(1, parseInt(limit, 10)));
-//     const skip = (pageNumber - 1) * limitNumber;
-
-//     // Find the power game by ID with necessary populations
-//     const powerGame = await PowerballGameTickets.findById(id)
-//       .populate("alltickets.userId")
-//       .populate("powerdate")
-//       .populate("powertime");
-
-//     if (!powerGame) {
-//       return res.status(404).json({
-//         success: false,
-//         message: "Powerball game not found",
-//       });
-//     }
-
-//     // Process tickets to find matches
-//     let matchedTickets = [];
-//     let totalMatchedTickets = 0;
-
-//     powerGame.alltickets.forEach((ticketEntry) => {
-//       const userTickets = ticketEntry.tickets.filter((ticket) =>
-//         jackpotNumbers.every((num) => ticket.usernumber.includes(num))
-//       );
-
-//       if (userTickets.length > 0) {
-//         totalMatchedTickets += userTickets.length;
-//         matchedTickets.push({
-//           userId: ticketEntry.userId._id,
-//           username: ticketEntry.userId.username,
-//           currency: ticketEntry.userId.currency,
-//           tickets: userTickets,
-//           _id: ticketEntry._id,
-//           createdAt: ticketEntry.createdAt,
-//           updatedAt: ticketEntry.updatedAt,
-//         });
-//       }
-//     });
-
-//     // Apply pagination to the matched tickets
-//     const paginatedTickets = matchedTickets
-//       .map((user) => ({
-//         ...user,
-//         tickets: user.tickets.slice(skip, skip + limitNumber),
-//       }))
-//       .filter((user) => user.tickets.length > 0);
-
-//     const totalPages = Math.ceil(totalMatchedTickets / limitNumber);
-
-//     res.status(200).json({
-//       success: true,
-//       page: pageNumber,
-//       totalPages,
-//       totalRecords: totalMatchedTickets,
-//       tickets: [
-//         {
-//           _id: powerGame._id,
-//           powerdate: powerGame.powerdate,
-//           powertime: powerGame.powertime,
-//           alltickets: paginatedTickets,
-//           createdAt: powerGame.createdAt,
-//           updatedAt: powerGame.updatedAt,
-//           __v: powerGame.__v,
-//         },
-//       ],
-//     });
-//   } catch (error) {
-//     console.error("Error in searchPowerBet:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Internal Server Error",
-//       error: error.message,
-//     });
-//   }
-// };
 
 const getUserPlaybets = asyncError(async (req, res, next) => {
   const userId = req.user._id;
@@ -7676,7 +7778,6 @@ const getSinglePartnerPerformancePowerball = asyncError(async (req, res) => {
 });
 
 // ACTIVATE RECHARGE PAYMENT MODULE SO THAT USER CAN SEE DATA
-
 const updateShowPartnerRechargeToUserAndPartner = asyncError(
   async (req, res, next) => {
     const { userId, id } = req.body;
@@ -7695,39 +7796,53 @@ const updateShowPartnerRechargeToUserAndPartner = asyncError(
       }
 
       // 3️⃣ Update rechargePaymentId for each user in userList
-      await Promise.all(
-        partner.userList.map(async (user) => {
-          await User.findByIdAndUpdate(user._id, {
-            rechargePaymentId: partner.userId,
-          });
-        })
-      );
+      if (partner.userList && Array.isArray(partner.userList)) {
+        await Promise.all(
+          partner.userList.map(async (user) => {
+            if (user && user._id) {
+              await User.findByIdAndUpdate(user._id, {
+                rechargePaymentId: partner.userId,
+              });
+            }
+          })
+        );
+      }
 
       // 4️⃣ Recursively update rechargePaymentId for all partners and their users
       const updateRechargePaymentId = async (partners) => {
+        if (!partners || !Array.isArray(partners)) return;
+
         for (const p of partners) {
+          if (!p) continue;
+
           await PartnerModule.findByIdAndUpdate(p._id, {
             rechargePaymentId: partner.userId,
           });
 
           // Update rechargePaymentId for each user in the partner's userList
-          await Promise.all(
-            p.userList.map(async (user) => {
-              await User.findByIdAndUpdate(user._id, {
-                rechargePaymentId: partner.userId,
-              });
-            })
-          );
+          if (p.userList && Array.isArray(p.userList)) {
+            await Promise.all(
+              p.userList.map(async (user) => {
+                if (user && user._id) {
+                  await User.findByIdAndUpdate(user._id, {
+                    rechargePaymentId: partner.userId,
+                  });
+                }
+              })
+            );
+          }
 
           // If the partner has a partnerList, update them recursively
-          if (p.partnerList.length > 0) {
+          if (p.partnerList && p.partnerList.length > 0) {
             await updateRechargePaymentId(p.partnerList);
           }
         }
       };
 
       // Start recursive update for partnerList
-      await updateRechargePaymentId(partner.partnerList);
+      if (partner.partnerList && Array.isArray(partner.partnerList)) {
+        await updateRechargePaymentId(partner.partnerList);
+      }
 
       // 5️⃣ Finally, update the activationStatus of the bank payment
       const updatedDocument = await RechargeModule.findByIdAndUpdate(
@@ -7757,8 +7872,89 @@ const updateShowPartnerRechargeToUserAndPartner = asyncError(
     }
   }
 );
+// const updateShowPartnerRechargeToUserAndPartner = asyncError(
+//   async (req, res, next) => {
+//     const { userId, id } = req.body;
+
+//     if (!userId) {
+//       return next(new ErrorHandler("userId is required", 400));
+//     }
+
+//     try {
+//       // 2️⃣ Find the partner using userId
+//       const partner = await PartnerModule.findOne({ userId }).populate(
+//         "userList partnerList"
+//       );
+//       if (!partner) {
+//         return next(new ErrorHandler("Partner not found", 404));
+//       }
+
+//       // 3️⃣ Update rechargePaymentId for each user in userList
+//       await Promise.all(
+//         partner.userList.map(async (user) => {
+//           await User.findByIdAndUpdate(user._id, {
+//             rechargePaymentId: partner.userId,
+//           });
+//         })
+//       );
+
+//       // 4️⃣ Recursively update rechargePaymentId for all partners and their users
+//       const updateRechargePaymentId = async (partners) => {
+//         for (const p of partners) {
+//           await PartnerModule.findByIdAndUpdate(p._id, {
+//             rechargePaymentId: partner.userId,
+//           });
+
+//           // Update rechargePaymentId for each user in the partner's userList
+//           await Promise.all(
+//             p.userList.map(async (user) => {
+//               await User.findByIdAndUpdate(user._id, {
+//                 rechargePaymentId: partner.userId,
+//               });
+//             })
+//           );
+
+//           // If the partner has a partnerList, update them recursively
+//           if (p.partnerList.length > 0) {
+//             await updateRechargePaymentId(p.partnerList);
+//           }
+//         }
+//       };
+
+//       // Start recursive update for partnerList
+//       await updateRechargePaymentId(partner.partnerList);
+
+//       // 5️⃣ Finally, update the activationStatus of the bank payment
+//       const updatedDocument = await RechargeModule.findByIdAndUpdate(
+//         id,
+//         { activationStatus: true },
+//         { new: true, runValidators: true }
+//       );
+
+//       if (!updatedDocument) {
+//         return next(
+//           new ErrorHandler("Failed to update activation status", 500)
+//         );
+//       }
+
+//       res.status(200).json({
+//         success: true,
+//         message: "Activation status updated successfully",
+//       });
+//     } catch (error) {
+//       console.error(error);
+//       return next(
+//         new ErrorHandler(
+//           "An error occurred while updating activation status",
+//           500
+//         )
+//       );
+//     }
+//   }
+// );
 
 // DEACTIVATE RECHARGE PAYMENT MODULE SO THAT USER CAN SEE DATA
+
 const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
   async (req, res, next) => {
     const { userId, id } = req.body;
@@ -7794,39 +7990,53 @@ const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
       });
 
       // 3️⃣ Update rechargePaymentId for each user in userList
-      await Promise.all(
-        partner.userList.map(async (user) => {
-          await User.findByIdAndUpdate(user._id, {
-            rechargePaymentId: adminId,
-          });
-        })
-      );
+      if (partner.userList && Array.isArray(partner.userList)) {
+        await Promise.all(
+          partner.userList.map(async (user) => {
+            if (user && user._id) {
+              await User.findByIdAndUpdate(user._id, {
+                rechargePaymentId: adminId,
+              });
+            }
+          })
+        );
+      }
 
       // 4️⃣ Recursively update rechargePaymentId for all partners and their users
       const updateRechargePaymentId = async (partners) => {
+        if (!partners || !Array.isArray(partners)) return;
+
         for (const p of partners) {
+          if (!p) continue;
+
           await PartnerModule.findByIdAndUpdate(p._id, {
             rechargePaymentId: adminId,
           });
 
           // Update rechargePaymentId for each user in the partner's userList
-          await Promise.all(
-            p.userList.map(async (user) => {
-              await User.findByIdAndUpdate(user._id, {
-                rechargePaymentId: adminId,
-              });
-            })
-          );
+          if (p.userList && Array.isArray(p.userList)) {
+            await Promise.all(
+              p.userList.map(async (user) => {
+                if (user && user._id) {
+                  await User.findByIdAndUpdate(user._id, {
+                    rechargePaymentId: adminId,
+                  });
+                }
+              })
+            );
+          }
 
           // If the partner has a partnerList, update them recursively
-          if (p.partnerList.length > 0) {
+          if (p.partnerList && p.partnerList.length > 0) {
             await updateRechargePaymentId(p.partnerList);
           }
         }
       };
 
       // Start recursive update for partnerList
-      await updateRechargePaymentId(partner.partnerList);
+      if (partner.partnerList && Array.isArray(partner.partnerList)) {
+        await updateRechargePaymentId(partner.partnerList);
+      }
 
       // 5️⃣ Finally, update the activationStatus of the bank payment
       const updatedDocument = await RechargeModule.findByIdAndUpdate(
@@ -7856,6 +8066,104 @@ const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
     }
   }
 );
+
+// const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
+//   async (req, res, next) => {
+//     const { userId, id } = req.body;
+
+//     const adminId = 1000;
+
+//     if (!userId) {
+//       return next(new ErrorHandler("userId is required", 400));
+//     }
+
+//     try {
+//       // 2️⃣ Find the partner using userId
+//       const partner = await PartnerModule.findOne({ userId }).populate(
+//         "userList partnerList"
+//       );
+
+//       if (!partner) {
+//         return next(new ErrorHandler("Partner not found", 404));
+//       }
+
+//       await PartnerModule.findByIdAndUpdate(partner._id, {
+//         rechargeStatus: false,
+//       });
+
+//       const user = await User.findOne({ userId });
+
+//       if (!user) {
+//         return next(new ErrorHandler("User not found", 404));
+//       }
+
+//       await User.findByIdAndUpdate(user._id, {
+//         rechargeStatus: false,
+//       });
+
+//       // 3️⃣ Update rechargePaymentId for each user in userList
+//       await Promise.all(
+//         partner.userList.map(async (user) => {
+//           await User.findByIdAndUpdate(user._id, {
+//             rechargePaymentId: adminId,
+//           });
+//         })
+//       );
+
+//       // 4️⃣ Recursively update rechargePaymentId for all partners and their users
+//       const updateRechargePaymentId = async (partners) => {
+//         for (const p of partners) {
+//           await PartnerModule.findByIdAndUpdate(p._id, {
+//             rechargePaymentId: adminId,
+//           });
+
+//           // Update rechargePaymentId for each user in the partner's userList
+//           await Promise.all(
+//             p.userList.map(async (user) => {
+//               await User.findByIdAndUpdate(user._id, {
+//                 rechargePaymentId: adminId,
+//               });
+//             })
+//           );
+
+//           // If the partner has a partnerList, update them recursively
+//           if (p.partnerList.length > 0) {
+//             await updateRechargePaymentId(p.partnerList);
+//           }
+//         }
+//       };
+
+//       // Start recursive update for partnerList
+//       await updateRechargePaymentId(partner.partnerList);
+
+//       // 5️⃣ Finally, update the activationStatus of the bank payment
+//       const updatedDocument = await RechargeModule.findByIdAndUpdate(
+//         id,
+//         { activationStatus: false },
+//         { new: true, runValidators: true }
+//       );
+
+//       if (!updatedDocument) {
+//         return next(
+//           new ErrorHandler("Failed to update activation status", 500)
+//         );
+//       }
+
+//       res.status(200).json({
+//         success: true,
+//         message: "Activation status updated successfully",
+//       });
+//     } catch (error) {
+//       console.error(error);
+//       return next(
+//         new ErrorHandler(
+//           "An error occurred while updating activation status",
+//           500
+//         )
+//       );
+//     }
+//   }
+// );
 
 // FOR BANK RECHARGE
 
@@ -9064,4 +9372,5 @@ module.exports = {
   getCryptoPaymentsByUserId,
   getSkrillPaymentsByUserId,
   getOtherPaymentsByUserId,
+  getAllPendingPaymentsCount,
 };
