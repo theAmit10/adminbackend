@@ -1,11 +1,9 @@
-
-
 const mongoose = require("mongoose");
-const bcrypt = require('bcryptjs');
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const WalletOne  = require("./walletone.js");
-const WalletTwo  = require("./wallettwo.js");
-const Currency  = require("./currency.js");
+const WalletOne = require("./walletone.js");
+const WalletTwo = require("./wallettwo.js");
+const Currency = require("./currency.js");
 const ErrorHandler = require("../utils/error.js");
 const PartnerModule = require("./PartnerModule.js");
 
@@ -39,6 +37,32 @@ const subadminFeatureSchema = new mongoose.Schema({
   changepassword: { type: Boolean, default: false },
   applinks: { type: Boolean, default: false },
   aboutus: { type: Boolean, default: false },
+  partnermodule: { type: Boolean, default: false },
+  allpartner: { type: Boolean, default: false },
+  allsubpartner: { type: Boolean, default: false },
+  alluser: { type: Boolean, default: false },
+  allrechargerequest: { type: Boolean, default: false },
+  profitdecrease: { type: Boolean, default: false },
+  minimumpercentage: { type: Boolean, default: false },
+  profitactivation: { type: Boolean, default: false },
+  rechargeactivation: { type: Boolean, default: false },
+  userlist: { type: Boolean, default: false },
+  partnerlist: { type: Boolean, default: false },
+  updatepermission: { type: Boolean, default: false },
+  rechargemethod: { type: Boolean, default: false },
+  rechargepercentage: { type: Boolean, default: false },
+  profitpercentage: { type: Boolean, default: false },
+  adduser: { type: Boolean, default: false },
+  removeuser: { type: Boolean, default: false },
+  toppartner: { type: Boolean, default: false },
+  liveresult: { type: Boolean, default: false },
+  powerballmodule: { type: Boolean, default: false },
+  liveresultdesk: { type: Boolean, default: false },
+  powerballtime: { type: Boolean, default: false },
+  powerballupdatename: { type: Boolean, default: false },
+  powerballupdategamerule: { type: Boolean, default: false },
+  powerballallmultiplier: { type: Boolean, default: false },
+  powerballallresult: { type: Boolean, default: false },
 });
 
 const schema = new mongoose.Schema({
@@ -61,17 +85,17 @@ const schema = new mongoose.Schema({
     minLength: [6, "Password must be atleast 6 characters long"],
     select: false,
   },
-  walletOne: { type: mongoose.Schema.Types.ObjectId, ref: 'WalletOne' },
-  walletTwo: { type: mongoose.Schema.Types.ObjectId, ref: 'WalletTwo' },
+  walletOne: { type: mongoose.Schema.Types.ObjectId, ref: "WalletOne" },
+  walletTwo: { type: mongoose.Schema.Types.ObjectId, ref: "WalletTwo" },
   role: {
     type: String,
-    enum: ["admin", "user","subadmin"],
+    enum: ["admin", "user", "subadmin"],
     default: "user",
   },
   loginType: {
     type: String,
-    enum: ['Google', 'manual'],
-    default: 'manual'
+    enum: ["Google", "manual"],
+    default: "manual",
   },
   avatar: {
     public_id: String,
@@ -79,7 +103,7 @@ const schema = new mongoose.Schema({
   },
   country: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Currency'
+    ref: "Currency",
   },
   otp: Number,
   otp_expire: Date,
@@ -88,7 +112,11 @@ const schema = new mongoose.Schema({
   parentPartnerId: { type: Number, default: 1000 },
   parentParentPartnerId: { type: Number, default: 1000 },
   topParentId: { type: Number, default: 1000 },
-  partnerType: { type: String, enum: ["partner", "subpartner","user"], default: "user" },
+  partnerType: {
+    type: String,
+    enum: ["partner", "subpartner", "user"],
+    default: "user",
+  },
   devicetoken: {
     type: String,
     default: null,
@@ -96,25 +124,29 @@ const schema = new mongoose.Schema({
   transactionHistory: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Transaction'
-    }
+      ref: "Transaction",
+    },
   ],
-  playbetHistory: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Playbet'
-  }],
-  notifications: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Notification'
-  }],
+  playbetHistory: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Playbet",
+    },
+  ],
+  notifications: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Notification",
+    },
+  ],
   subadminfeature: subadminFeatureSchema, // New subadmin feature field
   partnerStatus: { type: Boolean, default: false },
   partnerModule: { type: mongoose.Schema.Types.ObjectId, ref: "PartnerModule" },
   rechargeStatus: { type: Boolean, default: false },
-  createdAt:{
+  createdAt: {
     type: Date,
     default: Date.now,
-  }
+  },
 });
 
 // Pre-save hook to handle additional logic for 'subadmin' role
@@ -134,8 +166,8 @@ schema.pre("save", async function (next) {
       if (!currency) {
         return next(new ErrorHandler("Currency not found", 404));
       }
-      
-       // **Fetch existing WalletOne to determine the walletName**
+
+      // **Fetch existing WalletOne to determine the walletName**
       let existingWalletOne = await WalletOne.findOne().sort({ _id: 1 }); // Sort by _id to get the first created
       let walletOneName = existingWalletOne
         ? existingWalletOne.walletName
@@ -162,7 +194,6 @@ schema.pre("save", async function (next) {
         currencyId: currency._id,
       });
 
-
       this.walletOne = walletOne._id;
       this.walletTwo = walletTwo._id;
 
@@ -188,7 +219,6 @@ schema.pre("save", async function (next) {
   }
 });
 
-
 // Partner Module Auto-Creation
 schema.pre("findOneAndUpdate", async function (next) {
   try {
@@ -209,7 +239,7 @@ schema.pre("findOneAndUpdate", async function (next) {
           transactionHistoryPermission: false,
           rechargeStatus: false,
           userList: [user._id],
-          partnerList: []
+          partnerList: [],
         });
         update.partnerModule = partnerModule._id;
       }
@@ -226,11 +256,10 @@ schema.methods.comparePassword = async function (enteredPassword) {
 };
 
 schema.methods.generateToken = function () {
-  const expirationTime = Math.floor(Date.now() / 1000) + (60 * 60); // 1 hour in seconds
-  return jwt.sign({ _id: this._id }, process.env.JWT_SECRET, { expiresIn: expirationTime });
+  const expirationTime = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour in seconds
+  return jwt.sign({ _id: this._id }, process.env.JWT_SECRET, {
+    expiresIn: expirationTime,
+  });
 };
 
 module.exports = mongoose.model("User", schema);
-
-
-
