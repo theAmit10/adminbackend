@@ -110,6 +110,7 @@ const {
   updateInputNames,
   getTotalCounts,
   getAllPendingRechargeCount,
+  getPendingRechargesCount,
 } = require("../controllers/user.js");
 const { isAuthenticated, verifyToken } = require("../middlewares/auth.js");
 const { singleUpload } = require("../middlewares/multer.js");
@@ -310,6 +311,11 @@ router.get(
   "/getsinglepartnerrecharge/:userId",
   isAuthenticated,
   getSinglePartnerRecharges
+);
+router.get(
+  "/pendinguserrechargecount/:userId",
+  isAuthenticated,
+  getPendingRechargesCount
 );
 router.get("/getrechargebyid/:id", isAuthenticated, getRechargeById);
 router.put(

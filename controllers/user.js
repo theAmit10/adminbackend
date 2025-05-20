@@ -5534,6 +5534,80 @@ const getSinglePartnerRecharges = asyncError(async (req, res, next) => {
   });
 });
 
+// const getPendingRechargesCount = asyncError(async (req, res, next) => {
+//   const { userId } = req.params;
+
+//   // Step 1: Find the partner using userId
+//   const partner = await PartnerModule.findOne({ userId });
+//   if (!partner) {
+//     return next(new ErrorHandler("Partner not found", 404));
+//   }
+
+//   // Step 2: Use aggregation to count pending recharges directly
+//   const result = await RechargeModule.aggregate([
+//     {
+//       $match: {
+//         _id: partner.rechargeModule,
+//       },
+//     },
+//     {
+//       $project: {
+//         count: {
+//           $size: {
+//             $filter: {
+//               input: "$rechargeList",
+//               as: "recharge",
+//               cond: { $eq: ["$$recharge.paymentStatus", "Pending"] },
+//             },
+//           },
+//         },
+//       },
+//     },
+//   ]);
+
+//   const pendingCount = result.length > 0 ? result[0].count : 0;
+
+//   res.status(200).json({
+//     success: true,
+//     pendingRechargesCount: pendingCount,
+//     userId,
+//     partnerId: partner._id,
+//   });
+// });
+
+const getPendingRechargesCount = asyncError(async (req, res, next) => {
+  const { userId } = req.params;
+
+  // Step 1: Find the partner using userId
+  const partner = await PartnerModule.findOne({ userId });
+  if (!partner) {
+    return next(new ErrorHandler("Partner not found", 404));
+  }
+
+  // Step 2: Find the rechargeModule and count pending recharges
+  const rechargeModule = await RechargeModule.findById(
+    partner.rechargeModule
+  ).populate({
+    path: "rechargeList",
+    match: { paymentStatus: "Pending" }, // Only match pending recharges
+    select: "_id", // We only need the count, not the actual documents
+  });
+
+  if (!rechargeModule) {
+    return next(new ErrorHandler("Recharge Module not found", 404));
+  }
+
+  // The count is the length of the filtered rechargeList
+  const pendingCount = rechargeModule.rechargeList.length;
+
+  res.status(200).json({
+    success: true,
+    pendingRechargesCount: pendingCount,
+    userId,
+    partnerId: partner._id,
+  });
+});
+
 const getAllRechargeTransactions = asyncError(async (req, res, next) => {
   // Get page and limit from query params or set default values
   const page = parseInt(req.query.page) || 1; // Default page is 1
@@ -6959,4 +7033,5 @@ module.exports = {
   increasePartnerRecharge,
   getAllRechargeAdmin,
   getAllPendingRechargeCount,
+  getPendingRechargesCount,
 };
