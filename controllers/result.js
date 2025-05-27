@@ -7955,118 +7955,6 @@ const updateShowPartnerRechargeToUserAndPartner = asyncError(
 
 // DEACTIVATE RECHARGE PAYMENT MODULE SO THAT USER CAN SEE DATA
 
-const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
-  async (req, res, next) => {
-    const { userId, id } = req.body;
-
-    const adminId = 1000;
-
-    if (!userId) {
-      return next(new ErrorHandler("userId is required", 400));
-    }
-
-    try {
-      // 2️⃣ Find the partner using userId
-      const partner = await PartnerModule.findOne({ userId }).populate(
-        "userList partnerList"
-      );
-
-      if (!partner) {
-        return next(new ErrorHandler("Partner not found", 404));
-      }
-
-      await PartnerModule.findByIdAndUpdate(partner._id, {
-        rechargeStatus: false,
-      });
-
-      const user = await User.findOne({ userId });
-
-      if (!user) {
-        return next(new ErrorHandler("User not found", 404));
-      }
-
-      await User.findByIdAndUpdate(user._id, {
-        rechargeStatus: false,
-      });
-
-      // 3️⃣ Update rechargePaymentId for each user in userList
-      if (partner.userList && Array.isArray(partner.userList)) {
-        await Promise.all(
-          partner.userList.map(async (user) => {
-            if (user && user._id) {
-              await User.findByIdAndUpdate(user._id, {
-                rechargePaymentId: adminId,
-              });
-            }
-          })
-        );
-      }
-
-      // 4️⃣ Recursively update rechargePaymentId for all partners and their users
-      const updateRechargePaymentId = async (partners) => {
-        if (!partners || !Array.isArray(partners)) return;
-
-        for (const p of partners) {
-          if (!p) continue;
-
-          await PartnerModule.findByIdAndUpdate(p._id, {
-            rechargePaymentId: adminId,
-          });
-
-          // Update rechargePaymentId for each user in the partner's userList
-          if (p.userList && Array.isArray(p.userList)) {
-            await Promise.all(
-              p.userList.map(async (user) => {
-                if (user && user._id) {
-                  await User.findByIdAndUpdate(user._id, {
-                    rechargePaymentId: adminId,
-                  });
-                }
-              })
-            );
-          }
-
-          // If the partner has a partnerList, update them recursively
-          if (p.partnerList && p.partnerList.length > 0) {
-            await updateRechargePaymentId(p.partnerList);
-          }
-        }
-      };
-
-      // Start recursive update for partnerList
-      if (partner.partnerList && Array.isArray(partner.partnerList)) {
-        await updateRechargePaymentId(partner.partnerList);
-      }
-
-      // 5️⃣ Finally, update the activationStatus of the bank payment
-      const updatedDocument = await RechargeModule.findByIdAndUpdate(
-        id,
-        { activationStatus: false },
-        { new: true, runValidators: true }
-      );
-
-      if (!updatedDocument) {
-        return next(
-          new ErrorHandler("Failed to update activation status", 500)
-        );
-      }
-
-      res.status(200).json({
-        success: true,
-        message: "Activation status updated successfully",
-      });
-    } catch (error) {
-      console.error(error);
-      return next(
-        new ErrorHandler(
-          "An error occurred while updating activation status",
-          500
-        )
-      );
-    }
-  }
-);
-
 // const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
 //   async (req, res, next) => {
 //     const { userId, id } = req.body;
@@ -8102,39 +7990,53 @@ const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
 //       });
 
 //       // 3️⃣ Update rechargePaymentId for each user in userList
-//       await Promise.all(
-//         partner.userList.map(async (user) => {
-//           await User.findByIdAndUpdate(user._id, {
-//             rechargePaymentId: adminId,
-//           });
-//         })
-//       );
+//       if (partner.userList && Array.isArray(partner.userList)) {
+//         await Promise.all(
+//           partner.userList.map(async (user) => {
+//             if (user && user._id) {
+//               await User.findByIdAndUpdate(user._id, {
+//                 rechargePaymentId: adminId,
+//               });
+//             }
+//           })
+//         );
+//       }
 
 //       // 4️⃣ Recursively update rechargePaymentId for all partners and their users
 //       const updateRechargePaymentId = async (partners) => {
+//         if (!partners || !Array.isArray(partners)) return;
+
 //         for (const p of partners) {
+//           if (!p) continue;
+
 //           await PartnerModule.findByIdAndUpdate(p._id, {
 //             rechargePaymentId: adminId,
 //           });
 
 //           // Update rechargePaymentId for each user in the partner's userList
-//           await Promise.all(
-//             p.userList.map(async (user) => {
-//               await User.findByIdAndUpdate(user._id, {
-//                 rechargePaymentId: adminId,
-//               });
-//             })
-//           );
+//           if (p.userList && Array.isArray(p.userList)) {
+//             await Promise.all(
+//               p.userList.map(async (user) => {
+//                 if (user && user._id) {
+//                   await User.findByIdAndUpdate(user._id, {
+//                     rechargePaymentId: adminId,
+//                   });
+//                 }
+//               })
+//             );
+//           }
 
 //           // If the partner has a partnerList, update them recursively
-//           if (p.partnerList.length > 0) {
+//           if (p.partnerList && p.partnerList.length > 0) {
 //             await updateRechargePaymentId(p.partnerList);
 //           }
 //         }
 //       };
 
 //       // Start recursive update for partnerList
-//       await updateRechargePaymentId(partner.partnerList);
+//       if (partner.partnerList && Array.isArray(partner.partnerList)) {
+//         await updateRechargePaymentId(partner.partnerList);
+//       }
 
 //       // 5️⃣ Finally, update the activationStatus of the bank payment
 //       const updatedDocument = await RechargeModule.findByIdAndUpdate(
@@ -8165,7 +8067,122 @@ const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
 //   }
 // );
 
-// FOR BANK RECHARGE
+const deactivateShowPartnerRechargeToUserAndPartner = asyncError(
+  async (req, res, next) => {
+    const { userId, id } = req.body;
+    const adminId = 1000;
+
+    if (!userId) {
+      return next(new ErrorHandler("userId is required", 400));
+    }
+
+    try {
+      // ✅ 1. Find the partner with DEEP population (userList & partnerList.userList)
+      const partner = await PartnerModule.findOne({ userId })
+        .populate({
+          path: "userList",
+        })
+        .populate({
+          path: "partnerList",
+          populate: [
+            { path: "userList" }, // Populate userList inside partnerList
+            { path: "partnerList" }, // Populate nested partnerList (if needed)
+          ],
+        });
+
+      if (!partner) {
+        return next(new ErrorHandler("Partner not found", 404));
+      }
+
+      // ✅ 2. Deactivate rechargeStatus for the main partner & user
+      await PartnerModule.findByIdAndUpdate(partner._id, {
+        rechargeStatus: false,
+      });
+
+      const user = await User.findOne({ userId });
+      if (!user) {
+        return next(new ErrorHandler("User not found", 404));
+      }
+      await User.findByIdAndUpdate(user._id, {
+        rechargeStatus: false,
+      });
+
+      // ✅ 3. Update rechargePaymentId for ALL users (including nested ones)
+      const updateAllUsers = async (users) => {
+        if (!users || !Array.isArray(users)) return;
+        await Promise.all(
+          users.map(async (u) => {
+            if (u?._id) {
+              await User.findByIdAndUpdate(u._id, {
+                rechargePaymentId: adminId,
+              });
+            }
+          })
+        );
+      };
+
+      // ✅ 4. Recursively update partners & their users
+      const updatePartnersAndUsers = async (partners) => {
+        if (!partners || !Array.isArray(partners)) return;
+
+        for (const p of partners) {
+          if (!p) continue;
+
+          // Update the partner's rechargePaymentId
+          await PartnerModule.findByIdAndUpdate(p._id, {
+            rechargePaymentId: adminId,
+          });
+
+          // Update ALL users in this partner's userList (if populated)
+          if (p.userList && Array.isArray(p.userList)) {
+            await updateAllUsers(p.userList);
+          }
+
+          // Recursively update nested partners (if populated)
+          if (p.partnerList && p.partnerList.length > 0) {
+            await updatePartnersAndUsers(p.partnerList);
+          }
+        }
+      };
+
+      // Update main partner's userList
+      if (partner.userList && Array.isArray(partner.userList)) {
+        await updateAllUsers(partner.userList);
+      }
+
+      // Update nested partners (Shah → Pradhan → Ghola, Kong, etc.)
+      if (partner.partnerList && Array.isArray(partner.partnerList)) {
+        await updatePartnersAndUsers(partner.partnerList);
+      }
+
+      // ✅ 5. Finally, update RechargeModule
+      const updatedDocument = await RechargeModule.findByIdAndUpdate(
+        id,
+        { activationStatus: false },
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedDocument) {
+        return next(
+          new ErrorHandler("Failed to update activation status", 500)
+        );
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Deactivation completed for all nested users & partners",
+      });
+    } catch (error) {
+      console.error(error);
+      return next(
+        new ErrorHandler(
+          "An error occurred while updating activation status",
+          500
+        )
+      );
+    }
+  }
+);
 
 const getUserBankPayments = asyncError(async (req, res, next) => {
   const { userId } = req.params;
