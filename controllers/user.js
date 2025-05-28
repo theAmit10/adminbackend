@@ -5300,16 +5300,42 @@ const updateRechargeStatus = async (req, res) => {
   }
 };
 
+// const getAllPendingRechargeCount = asyncError(async (req, res, next) => {
+//   // Count all transactions with type "Recharge" and status "Pending"
+//   const pendingRechargeCount = await Transaction.countDocuments({
+//     transactionType: "Recharge",
+//     paymentStatus: "Pending",
+//   });
+
+//   res.status(200).json({
+//     success: true,
+//     pendingRechargeCount,
+//   });
+// });
+
 const getAllPendingRechargeCount = asyncError(async (req, res, next) => {
-  // Count all transactions with type "Recharge" and status "Pending"
-  const pendingRechargeCount = await Transaction.countDocuments({
-    transactionType: "Recharge",
-    paymentStatus: "Pending",
-  });
+  // Count all transactions with type "Recharge", "Deposit", and "Withdraw" that are "Pending"
+  const [pendingRechargeCount, pendingDepositCount, pendingWithdrawCount] =
+    await Promise.all([
+      Transaction.countDocuments({
+        transactionType: "Recharge",
+        paymentStatus: "Pending",
+      }),
+      Transaction.countDocuments({
+        transactionType: "Deposit",
+        paymentStatus: "Pending",
+      }),
+      Transaction.countDocuments({
+        transactionType: "Withdraw",
+        paymentStatus: "Pending",
+      }),
+    ]);
 
   res.status(200).json({
     success: true,
     pendingRechargeCount,
+    pendingDepositCount,
+    pendingWithdrawCount,
   });
 });
 
