@@ -1678,17 +1678,34 @@ const markUserNotificationsAsSeen = asyncError(async (req, res, next) => {
   const { userId } = req.params;
 
   // Validate userId
-  if (!mongoose.Types.ObjectId.isValid(userId)) {
-    return next(new ErrorHandler("Invalid user ID", 400));
-  }
+  // if (!mongoose.Types.ObjectId.isValid(userId)) {
+  //   return next(new ErrorHandler("Invalid user ID", 400));
+  // }
 
   try {
-    // Find the user by ID and ensure they exist
-    const user = await User.findById(userId);
+    let user;
 
+    // First check if it's a valid MongoDB ObjectId and try finding by _id
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      user = await User.findById(userId);
+    }
+
+    // If not found by _id, or if invalid ObjectId, try finding by userId field
+    if (!user) {
+      user = await User.findOne({ userId: userId });
+    }
+
+    // If still not found, return error
     if (!user) {
       return next(new ErrorHandler("User not found", 404));
     }
+
+    // Find the user by ID and ensure they exist
+    // const user = await User.findById(userId);
+
+    // if (!user) {
+    //   return next(new ErrorHandler("User not found", 404));
+    // }
 
     // Update only the notifications that belong to this specific user
     await Notification.updateMany(
