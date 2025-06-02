@@ -1566,7 +1566,7 @@ const createResult = asyncError(async (req, res, next) => {
         );
 
         if (existingUser) {
-          existingUser.amount += partnerUserAmount;
+          existingUser.amount += parentPartnerUserAmount;
         } else {
           profitDistributiveArray.push({
             userId: partner.parentPartnerId,
@@ -1591,7 +1591,7 @@ const createResult = asyncError(async (req, res, next) => {
         );
 
         if (existingUser) {
-          existingUser.amount += partnerUserAmount;
+          existingUser.amount += parentParentPartnerUserAmount;
         } else {
           profitDistributiveArray.push({
             userId: partner.parentParentPartnerId,
@@ -1640,7 +1640,7 @@ const createResult = asyncError(async (req, res, next) => {
           );
 
           if (existingUser) {
-            existingUser.amount += partnerUserAmount;
+            existingUser.amount += parentPartnerUserAmount;
           } else {
             profitDistributiveArray.push({
               userId: partner.parentPartnerId,
@@ -1662,7 +1662,7 @@ const createResult = asyncError(async (req, res, next) => {
           );
 
           if (existingUser) {
-            existingUser.amount += partnerUserAmount;
+            existingUser.amount += parentPartnerUserAmount;
           } else {
             profitDistributiveArray.push({
               userId: partner.parentPartnerId,
@@ -1690,7 +1690,7 @@ const createResult = asyncError(async (req, res, next) => {
           );
 
           if (existingUser) {
-            existingUser.amount += partnerUserAmount;
+            existingUser.amount += parentParentPartnerUserAmount;
           } else {
             profitDistributiveArray.push({
               userId: partner.parentParentPartnerId,
@@ -1712,7 +1712,7 @@ const createResult = asyncError(async (req, res, next) => {
           );
 
           if (existingUser) {
-            existingUser.amount += partnerUserAmount;
+            existingUser.amount += parentParentPartnerUserAmount;
           } else {
             profitDistributiveArray.push({
               userId: partner.parentParentPartnerId,
