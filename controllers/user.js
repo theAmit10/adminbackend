@@ -4663,7 +4663,7 @@ const increasePartnerRecharge = asyncError(async (req, res, next) => {
   }
 
   // Ensure rechargePercentage is a valid number and positive
-  if (typeof rechargePercentage !== "number" || rechargePercentage <= 0) {
+  if (typeof rechargePercentage !== "number" || rechargePercentage < 0) {
     return next(
       new ErrorHandler("Recharge percentage must be a positive number", 400)
     );
