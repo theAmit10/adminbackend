@@ -117,6 +117,7 @@ const {
   getSkrillPaymentsByUserId,
   getOtherPaymentsByUserId,
   getAllPendingPaymentsCount,
+  getAppBalanceSheetByUserId,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -449,7 +450,11 @@ router.delete("/removecurrency/:id", isAuthenticated, deleteCurrency);
 
 // GET APP BALANCE SHEET
 router.get("/balancesheet", isAuthenticated, getAppBalanceSheet);
-
+router.get(
+  "/balancesheet/user/:userId",
+  isAuthenticated,
+  getAppBalanceSheetByUserId
+);
 router.get("/topwinner", isAuthenticated, getAllTopWinner);
 
 // FOR APP LINK
