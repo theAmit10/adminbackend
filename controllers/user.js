@@ -2786,17 +2786,31 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
       currency.countrycurrencyvaluecomparedtoinr
     );
 
+    // FOR PARTNER WALLET
+    const currencyPartner = await Currency.findById(parentUser.country._id);
+    if (!currencyPartner) {
+      return next(new ErrorHandler("Currency Partner not found", 404));
+    }
+
+    const currencyconverterPartner = parseFloat(
+      currencyPartner.countrycurrencyvaluecomparedtoinr
+    );
+    // END PARTNER WALLET
+
     amount = amount / currencyconverter;
+
+    let parentamount = amount / currencyconverterPartner;
 
     // Check if the wallet balance is sufficient
     const parentwalletBalance = parseFloat(parentwalletTwo.balance);
     //  const parentamount = parseFloat(reqAmount);
 
-    if (parentwalletBalance < amount) {
+    if (parentwalletBalance < parentamount) {
       return next(new ErrorHandler("Insufficient balance", 400));
     }
 
-    transaction.amount = amount;
+    // transaction.amount = amount;
+    transaction.amount = parentamount;
 
     // ADDING BALANCE TO USER WALLET
     const walletId = user.walletTwo._id;
@@ -2812,7 +2826,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     // DEDUCTING AMOUNT FROM PARENT WALLET
     const parentremainingWalletBalance =
-      parentwalletBalance - parseFloat(amount);
+      parentwalletBalance - parseFloat(parentamount);
     // Update wallet
     const parentupdatedWallet = await WalletTwo.findByIdAndUpdate(
       parentwalletTwoId,
@@ -3624,6 +3638,7 @@ const makeUserPartner = asyncError(async (req, res, next) => {
     parentParentPartnerId: user.parentParentPartnerId, // Use the user's parentParentPartnerId
     topParentId: user.topParentId, // Use the user's topParentId
     walletTwo: user.walletTwo._id,
+    country: user.country._id,
     playHistoryPermission: false, // Default value
     transactionHistoryPermission: false, // Default value
     partnerType: "partner", // Set partnerType to "partner"
@@ -3734,6 +3749,7 @@ const makeUserSubPartner = asyncError(async (req, res, next) => {
     topParentId: parent.topParentId, // Use the parent's topParentId
     playHistoryPermission: false, // Default value
     walletTwo: user.walletTwo._id,
+    country: user.country._id,
     transactionHistoryPermission: false, // Default value
     partnerType: "subpartner", // Explicitly set partnerType to "subpartner"
     rechargeStatus: false, // Default value
@@ -3956,6 +3972,7 @@ const getAllPartners = asyncError(async (req, res, next) => {
   // First get ALL partners with walletTwo populated
   let partners = await PartnerModule.find({ partnerType: "partner" })
     .populate("walletTwo")
+    .populate("country")
     .lean(); // Convert to plain JS objects for better sorting performance
 
   if (!partners || partners.length === 0) {
@@ -3986,6 +4003,7 @@ const getAllPartners = asyncError(async (req, res, next) => {
       .skip(skip)
       .limit(limit)
       .populate("walletTwo")
+      .populate("country")
       .lean();
   }
 
@@ -4162,6 +4180,7 @@ const getAllSubpartners = asyncError(async (req, res, next) => {
   // First get ALL subpartners with walletTwo populated
   let subpartners = await PartnerModule.find({ partnerType: "subpartner" })
     .populate("walletTwo")
+    .populate("country")
     .lean(); // Convert to plain JS objects for better sorting performance
 
   if (!subpartners || subpartners.length === 0) {
@@ -4192,6 +4211,7 @@ const getAllSubpartners = asyncError(async (req, res, next) => {
       .skip(skip)
       .limit(limit)
       .populate("walletTwo")
+      .populate("country")
       .lean();
   }
 
@@ -6669,7 +6689,9 @@ const searchPartner = asyncError(async (req, res, next) => {
     }
 
     // Search for the partner based on the query and populate the country
-    const user = await PartnerModule.findOne(query).populate("country");
+    const user = await PartnerModule.findOne(query)
+      .populate("country")
+      .populate("walletTwo");
 
     if (!user) {
       return res.status(404).json({
@@ -6710,7 +6732,9 @@ const searchSubPartner = asyncError(async (req, res, next) => {
     }
 
     // Search for the partner based on the query and populate the country
-    const user = await PartnerModule.findOne(query).populate("country");
+    const user = await PartnerModule.findOne(query)
+      .populate("country")
+      .populate("walletTwo");
 
     if (!user) {
       return res.status(404).json({

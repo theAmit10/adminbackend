@@ -1676,10 +1676,23 @@ const createResult = asyncError(async (req, res, next) => {
       // CHECKING FOR THE PARENT PARENT PARTNER
       if (partner.parentParentPartnerId !== 1000) {
         if (partner.parentParentPartnerRechargeStatus) {
-          const parentParentPartnerUserProfit =
-            parseFloat(partner.parentParentPartnerProfitPercentage) +
-            parseFloat(partner.parentParentPartnerRechargePercentage) -
-            parseFloat(partner.parentPartnerProfitPercentage);
+          // const parentParentPartnerUserProfit =
+          //   parseFloat(partner.parentParentPartnerProfitPercentage) +
+          //   parseFloat(partner.parentParentPartnerRechargePercentage) -
+          //   parseFloat(partner.parentPartnerProfitPercentage);
+
+          let parentParentPartnerUserProfit = 0;
+
+          if (partner.parentPartnerRechargeStatus) {
+            parentParentPartnerUserProfit =
+              parseFloat(partner.parentParentPartnerProfitPercentage) -
+              parseFloat(partner.parentPartnerProfitPercentage);
+          } else {
+            parentParentPartnerUserProfit =
+              parseFloat(partner.parentParentPartnerProfitPercentage) +
+              parseFloat(partner.parentParentPartnerRechargePercentage) -
+              parseFloat(partner.parentPartnerProfitPercentage);
+          }
 
           const parentParentPartnerUserAmount =
             (parentParentPartnerUserProfit / 100) * profitBasedOnContribution;
@@ -2565,10 +2578,18 @@ const createPowerResult = asyncError(async (req, res, next) => {
         // CHECKING FOR THE PARENT PARENT PARTNER
         if (partner.parentParentPartnerId !== 1000) {
           if (partner.parentParentPartnerRechargeStatus) {
-            const parentParentPartnerUserProfit =
-              parseFloat(partner.parentParentPartnerProfitPercentage) +
-              parseFloat(partner.parentParentPartnerRechargePercentage) -
-              parseFloat(partner.parentPartnerProfitPercentage);
+            let parentParentPartnerUserProfit = 0;
+
+            if (partner.parentPartnerRechargeStatus) {
+              parentParentPartnerUserProfit =
+                parseFloat(partner.parentParentPartnerProfitPercentage) -
+                parseFloat(partner.parentPartnerProfitPercentage);
+            } else {
+              parentParentPartnerUserProfit =
+                parseFloat(partner.parentParentPartnerProfitPercentage) +
+                parseFloat(partner.parentParentPartnerRechargePercentage) -
+                parseFloat(partner.parentPartnerProfitPercentage);
+            }
 
             const parentParentPartnerUserAmount =
               (parentParentPartnerUserProfit / 100) * profitBasedOnContribution;

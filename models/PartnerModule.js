@@ -6,6 +6,7 @@ const partnerModuleSchema = new mongoose.Schema(
     userId: { type: Number, required: [true, "Please enter userId"] },
     name: { type: String, required: [true, "Please enter name"] },
     walletTwo: { type: mongoose.Schema.Types.ObjectId, ref: "WalletTwo" },
+    country: { type: mongoose.Schema.Types.ObjectId, ref: "Currency" },
     profitPercentage: { type: Number, required: true },
     rechargePercentage: { type: Number, required: true },
     parentPartnerId: { type: Number, default: 1000 },
