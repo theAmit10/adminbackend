@@ -1757,7 +1757,9 @@ const createResult = asyncError(async (req, res, next) => {
     console.log("GETTING EACH USER");
     console.log(userz);
     const userId = userz.userId;
-    const amount = parseInt(userz.amount);
+    // const amount = parseInt(userz.amount);
+    // Check if amount is negative and replace with 0
+    const amount = Math.max(0, parseInt(userz.amount)); // This will take the higher value (0 if amount is negative)
 
     const user = await User.findOne({ userId });
 
@@ -1794,8 +1796,8 @@ const createResult = asyncError(async (req, res, next) => {
       playnumbers: [
         {
           playnumber: playnumberEntry.playnumber,
-          amount: userz.amount,
-          winningamount: userz.amount,
+          amount: amount,
+          winningamount: amount,
         },
       ],
       username: user.name,
@@ -2652,7 +2654,9 @@ const createPowerResult = asyncError(async (req, res, next) => {
       console.log("GETTING EACH USER");
       console.log(userz);
       const userId = userz.userId;
-      const amount = parseInt(userz.amount);
+      // const amount = parseInt(userz.amount);
+      // Check if amount is negative and replace with 0
+      const amount = Math.max(0, parseInt(userz.amount)); // This will take the higher value (0 if amount is negative)
 
       const user = await User.findOne({ userId });
 
