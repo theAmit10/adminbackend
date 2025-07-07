@@ -1,17 +1,15 @@
-const  {createTransport}  = require("nodemailer");
-
+const { createTransport } = require("nodemailer");
 
 const sendToken = (user, res, message, statusCode) => {
-    const token = user.generateToken();
-    res.cookie('token', token, { httpOnly: true });
-    res.status(statusCode).json({
-      success: true,
-      message,
-      token,
-      user
-    });
-  };
-  
+  const token = user.generateToken();
+  res.cookie("token", token, { httpOnly: true });
+  res.status(statusCode).json({
+    success: true,
+    message,
+    token,
+    user,
+  });
+};
 
 // const sendToken = (user, res, message, statusCode) => {
 //     const token = user.generateToken();
@@ -27,19 +25,19 @@ const sendToken = (user, res, message, statusCode) => {
 //         success: true,
 //         message: message,
 //         token,
-//     }); 
+//     });
 // };
 
 // const cookieOptions = {
 //     secure: process.env.NODE_ENV === "Development" ? false : true,
-//     httponly: process.env.NODE_ENV === "Development" ? false : true, 
+//     httponly: process.env.NODE_ENV === "Development" ? false : true,
 //     sameSite: process.env.NODE_ENV === "Development" ? false : "none",
 // }
 const cookieOptions = {
-    secure: true,
-    httponly: true, 
-    sameSite:  "none",
-}
+  secure: true,
+  httponly: true,
+  sameSite: "none",
+};
 
 // FOR MOBILE APPLICATION
 // const sendToken = (user, res, message, statusCode) => {
@@ -51,34 +49,54 @@ const cookieOptions = {
 //         success: true,
 //         message: message,
 //         token,
-//     }); 
+//     });
 // };
 
 // For Uploading Profile Image
 const getDataUri = (file) => {
-    // Implement your logic for getting data URI here
+  // Implement your logic for getting data URI here
 };
 
 // for sending email
-const sendEmail = async (subject, to, text) => {
-    const transporter = createTransport({
-        service: 'gmail',
-        auth: {
-            user: 'theworldplay1927@gmail.com',
-            pass: 'crdu umgu wela qnyk',
-        },
-    });
+// const sendEmail = async (subject, to, text) => {
+//     const transporter = createTransport({
+//         service: 'gmail',
+//         auth: {
+//             user: 'theworldplay1927@gmail.com',
+//             pass: 'crdu umgu wela qnyk',
+//         },
+//     });
 
-    await transporter.sendMail({
-        to,
-        subject,
-        text,
-    });
+//     await transporter.sendMail({
+//         to,
+//         subject,
+//         text,
+//     });
+// };
+
+const sendEmail = async (subject, to, text) => {
+  const transporter = createTransport({
+    service: "gmail",
+    auth: {
+      user: "theworldplay1927@gmail.com",
+      pass: "crdu umgu wela qnyk",
+    },
+    tls: {
+      rejectUnauthorized: false,
+    },
+  });
+
+  await transporter.sendMail({
+    from: '"The World Play" <theworldplay1927@gmail.com>',
+    to,
+    subject,
+    text,
+  });
 };
 
 module.exports = {
-    sendToken,
-    getDataUri,
-    sendEmail,
-    cookieOptions,
+  sendToken,
+  getDataUri,
+  sendEmail,
+  cookieOptions,
 };
