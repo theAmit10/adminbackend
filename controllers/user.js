@@ -581,32 +581,97 @@ const logout = asyncError(async (req, res, next) => {
     });
 });
 
+// const updateProfile = asyncError(async (req, res, next) => {
+//   const user = await User.findById(req.user._id);
+
+//   const { name, email, contact } = req.body;
+
+//   if (name) user.name = name;
+
+//   // if (email) user.email = email;
+
+//   if (email) {
+//     let old_user = await User.findOne({ email });
+//     if (old_user) return next(new ErrorHandler("User Already exist", 400));
+//     user.email = email;
+//   }
+
+//   if (contact) {
+//     let old_user = await User.findOne({ contact });
+//     if (old_user) return next(new ErrorHandler("Contact Already exist", 400));
+//     user.contact = contact;
+//   }
+
+//   await user.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Profile Updated Successfully",
+//   });
+// });
+
 const updateProfile = asyncError(async (req, res, next) => {
   const user = await User.findById(req.user._id);
+  if (!user) return next(new ErrorHandler("User not found", 404));
 
   const { name, email, contact } = req.body;
 
+  // Update user fields with validation
   if (name) user.name = name;
 
-  // if (email) user.email = email;
-
   if (email) {
-    let old_user = await User.findOne({ email });
-    if (old_user) return next(new ErrorHandler("User Already exist", 400));
+    const existingUserWithEmail = await User.findOne({
+      email,
+      _id: { $ne: user._id },
+    });
+    if (existingUserWithEmail) {
+      return next(new ErrorHandler("Email already exists", 400));
+    }
     user.email = email;
   }
 
   if (contact) {
-    let old_user = await User.findOne({ contact });
-    if (old_user) return next(new ErrorHandler("Contact Already exist", 400));
+    const existingUserWithContact = await User.findOne({
+      contact,
+      _id: { $ne: user._id },
+    });
+    if (existingUserWithContact) {
+      return next(new ErrorHandler("Contact already exists", 400));
+    }
     user.contact = contact;
   }
 
+  // Save the updated user
   await user.save();
+
+  // Find and update the corresponding partner document
+  try {
+    const partner = await Partner.findOne({ userId: user.userId });
+    if (partner) {
+      const updates = {};
+      if (name) updates.name = name;
+      if (email) updates.email = email;
+      if (contact) updates.contact = contact;
+
+      if (Object.keys(updates).length > 0) {
+        await Partner.updateOne({ _id: partner._id }, { $set: updates });
+      }
+    }
+  } catch (error) {
+    console.error("Error updating partner profile:", error);
+    // Continue even if partner update fails, but log the error
+  }
 
   res.status(200).json({
     success: true,
     message: "Profile Updated Successfully",
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      contact: user.contact,
+      userId: user.userId,
+    },
   });
 });
 
