@@ -78,16 +78,12 @@ const sendEmail = async (subject, to, text) => {
   const transporter = createTransport({
     service: "gmail",
     auth: {
-      user: "theworldplay1927@gmail.com",
-      pass: "crdu umgu wela qnyk",
-    },
-    tls: {
-      rejectUnauthorized: false,
+      user: "theworldplay2021@gmail.com",
+      pass: "wfsa uooz lpad ypdy",
     },
   });
 
   await transporter.sendMail({
-    from: '"The World Play" <theworldplay1927@gmail.com>',
     to,
     subject,
     text,
