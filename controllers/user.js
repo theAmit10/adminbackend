@@ -646,7 +646,7 @@ const updateProfile = asyncError(async (req, res, next) => {
 
   // Find and update the corresponding partner document
   try {
-    const partner = await Partner.findOne({ userId: user.userId });
+    const partner = await PartnerModule.findOne({ userId: user.userId });
     if (partner) {
       const updates = {};
       if (name) updates.name = name;
@@ -654,7 +654,7 @@ const updateProfile = asyncError(async (req, res, next) => {
       if (contact) updates.contact = contact;
 
       if (Object.keys(updates).length > 0) {
-        await Partner.updateOne({ _id: partner._id }, { $set: updates });
+        await PartnerModule.updateOne({ _id: partner._id }, { $set: updates });
       }
     }
   } catch (error) {
