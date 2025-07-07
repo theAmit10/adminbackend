@@ -1723,6 +1723,8 @@ async function createGameDateWithDependencies(location, time, dateStr) {
 //   }
 // });
 
+//   "30 23 * * *"
+// "*/5 * * * *
 // cron.schedule(
 //   "30 23 * * *",
 //   async () => {

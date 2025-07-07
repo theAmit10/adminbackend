@@ -1722,32 +1722,96 @@ const markUserNotificationsAsSeen = asyncError(async (req, res, next) => {
   }
 });
 
+// const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
+//   const { title, description, devicetoken, userId } = req.body;
+
+//   // Check for required fields
+//   if (!title) return next(new ErrorHandler("Enter Notification title", 400));
+//   if (!description)
+//     return next(new ErrorHandler("Enter Notification Description", 400));
+
+//   try {
+//     // Create a new notification in the database
+//     const notification = await Notification.create({
+//       title,
+//       description,
+//       userId: req.user.userId,
+//     });
+
+//     // Find the user and add the notification to their notification list
+//     // const user = await User.findByIdAndUpdate(
+//     //   userId,
+//     //   { $push: { notifications: notification._id } },
+//     //   { new: true }
+//     // );
+
+//     // Find the user based on the custom userId field and update
+//     const user = await User.findOneAndUpdate(
+//       { userId }, // Assuming `userId` is a unique field in the User schema
+//       { $push: { notifications: notification._id } },
+//       { new: true }
+//     );
+
+//     if (!user) {
+//       return next(new ErrorHandler("User not found", 404));
+//     }
+
+//     // If a device token is provided, try to send the notification via Firebase
+//     if (devicetoken) {
+//       try {
+//         await firebase.messaging().send({
+//           token: devicetoken,
+//           notification: {
+//             title: title,
+//             body: description,
+//           },
+//         });
+//         console.log("Firebase notification sent");
+//       } catch (error) {
+//         // Log the error, but do not interrupt the response flow
+//         console.error("Error sending Firebase notification:", error);
+//       }
+//     } else {
+//       console.log("Device token not provided, skipping Firebase notification");
+//     }
+
+//     // Respond with success, regardless of the Firebase result
+//     res.status(200).json({
+//       success: true,
+//       message: "Notification processed successfully",
+//       notification,
+//     });
+//   } catch (error) {
+//     next(new ErrorHandler(error.message, 500));
+//   }
+// });
+
 const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
   const { title, description, devicetoken, userId } = req.body;
 
-  // Check for required fields
   if (!title) return next(new ErrorHandler("Enter Notification title", 400));
   if (!description)
     return next(new ErrorHandler("Enter Notification Description", 400));
 
   try {
-    // Create a new notification in the database
-    const notification = await Notification.create({
+    let notificationPayload = {
       title,
       description,
-      userId: req.user.userId,
-    });
+    };
 
-    // Find the user and add the notification to their notification list
-    // const user = await User.findByIdAndUpdate(
-    //   userId,
-    //   { $push: { notifications: notification._id } },
-    //   { new: true }
-    // );
+    // Only assign userId to the notification if the requester is a 'user'
+    if (req.user.role === "user") {
+      notificationPayload.userId = req.user.userId;
+    }
 
-    // Find the user based on the custom userId field and update
-    const user = await User.findOneAndUpdate(
-      { userId }, // Assuming `userId` is a unique field in the User schema
+    // Create a new notification
+    const notification = await Notification.create(notificationPayload);
+
+    // Only push notification to the user's notifications array if their role is 'user'
+    let user = null;
+
+    user = await User.findOneAndUpdate(
+      { userId },
       { $push: { notifications: notification._id } },
       { new: true }
     );
@@ -1756,26 +1820,24 @@ const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
       return next(new ErrorHandler("User not found", 404));
     }
 
-    // If a device token is provided, try to send the notification via Firebase
+    // Send Firebase push notification if device token is provided
     if (devicetoken) {
       try {
         await firebase.messaging().send({
           token: devicetoken,
           notification: {
-            title: title,
+            title,
             body: description,
           },
         });
         console.log("Firebase notification sent");
       } catch (error) {
-        // Log the error, but do not interrupt the response flow
         console.error("Error sending Firebase notification:", error);
       }
     } else {
       console.log("Device token not provided, skipping Firebase notification");
     }
 
-    // Respond with success, regardless of the Firebase result
     res.status(200).json({
       success: true,
       message: "Notification processed successfully",
@@ -1785,6 +1847,7 @@ const sendNotificationToSingleUser = asyncError(async (req, res, next) => {
     next(new ErrorHandler(error.message, 500));
   }
 });
+
 // const getAllUserRegisterInLastOneDay = asyncError(async (req, res, next) => {
 //   // Get the current date and time in UTC
 //   const currentDate = new Date();
@@ -2769,7 +2832,7 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     const userId = transaction.userId;
     // const amount = parseInt(transaction.amount);
     let amount = parseInt(reqAmount);
-
+    console.log("initial amount :: ", amount);
     const user = await User.findOne({ userId });
 
     if (!user) {
@@ -2799,7 +2862,15 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
 
     amount = amount / currencyconverter;
 
-    let parentamount = amount / currencyconverterPartner;
+    let parentamount = parseInt(reqAmount) / currencyconverterPartner;
+
+    console.log("amount :: ", amount);
+    console.log("amount currencyconverter :: ", currencyconverter);
+    console.log("parentamount :: ", parentamount);
+    console.log(
+      "parentamount currencyconverterPartner :: ",
+      currencyconverterPartner
+    );
 
     // Check if the wallet balance is sufficient
     const parentwalletBalance = parseFloat(parentwalletTwo.balance);
@@ -2809,8 +2880,12 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
       return next(new ErrorHandler("Insufficient balance", 400));
     }
 
+    console.log(
+      "parentwalletBalance < parentamount :: ",
+      parentwalletBalance < parentamount
+    );
     // transaction.amount = amount;
-    transaction.amount = parentamount;
+    transaction.amount = amount;
 
     // ADDING BALANCE TO USER WALLET
     const walletId = user.walletTwo._id;
@@ -4567,9 +4642,7 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
   // Find the partner to get total count
   const partnerTotal = await PartnerModule.findOne({ userId }).populate({
     path: "partnerList",
-    populate: {
-      path: "walletTwo",
-    },
+    populate: [{ path: "walletTwo" }, { path: "country" }],
   });
 
   if (!partnerTotal) {
@@ -4583,9 +4656,7 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
     // First get ALL partners with walletTwo populated
     const partner = await PartnerModule.findOne({ userId }).populate({
       path: "partnerList",
-      populate: {
-        path: "walletTwo",
-      },
+      populate: [{ path: "walletTwo" }, { path: "country" }],
     });
 
     if (!partner) {
@@ -4615,9 +4686,7 @@ const getPartnerPartnerList = asyncError(async (req, res, next) => {
     // For cases where we can sort at database level
     const partner = await PartnerModule.findOne({ userId }).populate({
       path: "partnerList",
-      populate: {
-        path: "walletTwo",
-      },
+      populate: [{ path: "walletTwo" }, { path: "country" }],
       options: {
         sort: sortCriteria,
         skip: skip,
