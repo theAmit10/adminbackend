@@ -7594,42 +7594,126 @@ const getAppBalanceSheet = asyncError(async (req, res, next) => {
   });
 });
 
+// const getAppBalanceSheetByUserId = asyncError(async (req, res, next) => {
+//   const { userId } = req.params; // Extract userId from route parameters
+
+//   // Extract pagination parameters from query (with defaults)
+//   const page = parseInt(req.query.page, 10) || 1; // Default page is 1
+//   const limit = parseInt(req.query.limit, 10) || 20; // Default limit is 20 records per page
+//   const skip = (page - 1) * limit; // Calculate how many records to skip
+
+//   // Fetch the balance sheet data for the specific userId with pagination, sorting, and population
+//   const balancesheet = await AppBalanceSheet.find({ userId })
+//     .populate({
+//       path: "paybetId",
+//       populate: {
+//         path: "lotlocation",
+//         model: "LotLocation",
+//       },
+//     })
+//     .populate("payzoneId")
+//     .populate("transactionId")
+//     .sort({ createdAt: -1 })
+//     .skip(skip) // Skip records for pagination
+//     .limit(limit) // Limit the number of records
+//     .lean(); // Use lean for more efficient queries
+
+//   // Manually populate usercurrency if it's an ObjectId
+//   for (const sheet of balancesheet) {
+//     if (mongoose.Types.ObjectId.isValid(sheet.usercurrency)) {
+//       const currency = await Currency.findById(sheet.usercurrency);
+//       sheet.usercurrency = currency; // Replace the ID with the populated object
+//     }
+//   }
+
+//   // Get the total count of documents for this userId (without pagination)
+//   const totalRecords = await AppBalanceSheet.countDocuments({ userId });
+
+//   // Send response with paginated data and metadata
+//   res.status(200).json({
+//     success: true,
+//     balancesheet,
+//     pagination: {
+//       totalRecords,
+//       currentPage: page,
+//       totalPages: Math.ceil(totalRecords / limit),
+//       limit,
+//     },
+//   });
+// });
+
 const getAppBalanceSheetByUserId = asyncError(async (req, res, next) => {
-  const { userId } = req.params; // Extract userId from route parameters
+  const { userId } = req.params;
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 20;
+  const skip = (page - 1) * limit;
 
-  // Extract pagination parameters from query (with defaults)
-  const page = parseInt(req.query.page, 10) || 1; // Default page is 1
-  const limit = parseInt(req.query.limit, 10) || 20; // Default limit is 20 records per page
-  const skip = (page - 1) * limit; // Calculate how many records to skip
-
-  // Fetch the balance sheet data for the specific userId with pagination, sorting, and population
+  // Fetch data with comprehensive population for the specific user
   const balancesheet = await AppBalanceSheet.find({ userId })
-    .populate({
-      path: "paybetId",
-      populate: {
-        path: "lotlocation",
-        model: "LotLocation",
+    .populate([
+      {
+        path: "usercurrency",
+        model: "Currency"
       },
-    })
-    .populate("payzoneId")
-    .populate("transactionId")
+      {
+        path: "transactionId",
+        model: "Transaction"
+      },
+      {
+        path: "paybetId",
+        populate: [
+          {
+            path: "lotlocation",
+            model: "LotLocation"
+          },
+          {
+            path: "lotdate",
+            model: "LotDate"
+          },
+          {
+            path: "lottime",
+            model: "LotTime"
+          },
+          {
+            path: "powerdate",
+            model: "PowerDate"
+          },
+          {
+            path: "powertime",
+            model: "PowerTime"
+          },
+          {
+            path: "currency",
+            model: "Currency"
+          }
+        ]
+      },
+      {
+        path: "payzoneId",
+        populate: [
+          {
+            path: "lotlocation",
+            model: "LotLocation"
+          },
+          {
+            path: "lotdate",
+            model: "LotDate"
+          },
+          {
+            path: "lottime",
+            model: "LotTime"
+          }
+        ]
+      }
+    ])
     .sort({ createdAt: -1 })
-    .skip(skip) // Skip records for pagination
-    .limit(limit) // Limit the number of records
-    .lean(); // Use lean for more efficient queries
+    .skip(skip)
+    .limit(limit)
+    .lean();
 
-  // Manually populate usercurrency if it's an ObjectId
-  for (const sheet of balancesheet) {
-    if (mongoose.Types.ObjectId.isValid(sheet.usercurrency)) {
-      const currency = await Currency.findById(sheet.usercurrency);
-      sheet.usercurrency = currency; // Replace the ID with the populated object
-    }
-  }
-
-  // Get the total count of documents for this userId (without pagination)
+  // Get total count for this user
   const totalRecords = await AppBalanceSheet.countDocuments({ userId });
 
-  // Send response with paginated data and metadata
   res.status(200).json({
     success: true,
     balancesheet,
@@ -7641,7 +7725,6 @@ const getAppBalanceSheetByUserId = asyncError(async (req, res, next) => {
     },
   });
 });
-
 const updateAppLinks = asyncError(async (req, res, next) => {
   const { androidLink, iosLink } = req.body;
 
