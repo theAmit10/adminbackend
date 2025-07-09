@@ -2611,6 +2611,7 @@ const addDeposit = asyncError(async (req, res, next) => {
     paymentTypeId: paymenttypeid,
     username,
     userId: userid,
+    partnerId: numericRechargeId,
     transactionType: transactiontype || "Deposit",
     paymentStatus: paymentstatus || "Pending",
     currency: user.country._id.toString(),
