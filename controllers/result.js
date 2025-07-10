@@ -2190,43 +2190,43 @@ const createPowerResult = asyncError(async (req, res, next) => {
         const wallet = await WalletOne.findById(user.walletOne._id);
         if (!wallet) continue;
 
+        // console.log("user ID :: ", holder.userId);
+        // console.log("Ticket Number: " + ticket.usernumber);
+
         const isMatch = (count) =>
           ticket.usernumber
             .slice(0, count)
             .every((n, i) => n === jackpotnumber[i]);
-
+        // console.log("isMatch: " + isMatch);
         let wonAmount = 0;
         if (isMatch(6)) {
-          wonAmount = prize.winnerPrize.firstprize * ticket.multiplier;
+          wonAmount = prize.firstprize.amount * ticket.multiplier;
           console.log("First Prize");
           console.log(wonAmount);
         } else if (isMatch(5)) {
-          wonAmount = prize.winnerPrize.secondPrize * ticket.multiplier;
+          wonAmount = prize.secondprize.amount * ticket.multiplier;
           console.log("2 Prize");
           console.log(wonAmount);
         } else if (isMatch(4)) {
-          wonAmount = prize.winnerPrize.thirdprize * ticket.multiplier;
+          wonAmount = prize.thirdprize.amount * ticket.multiplier;
           console.log("3 Prize");
           console.log(wonAmount);
         } else if (isMatch(3)) {
           wonAmount =
-            ticket.convertedAmount * parseFloat(prize.winnerPrize.fourthPrize);
+            ticket.convertedAmount * parseFloat(prize.fourthprize.amount);
           console.log("4 Prize");
           console.log(wonAmount);
         } else if (isMatch(2)) {
           wonAmount =
-            ticket.convertedAmount * parseFloat(prize.winnerPrize.fifthprize);
+            ticket.convertedAmount * parseFloat(prize.fifthprize.amount);
           console.log("5 Prize");
           console.log(wonAmount);
         } else if (isMatch(1)) {
           wonAmount =
-            ticket.convertedAmount * parseFloat(game.winnerPrize.sixthPrize);
+            ticket.convertedAmount * parseFloat(prize.sixthprize.amount);
           console.log("6 Prize");
           console.log(wonAmount);
           console.log(ticket);
-          console.log(jackpotnumber);
-          console.log(ticket.convertedAmount);
-          console.log(game.winnerPrize.sixthPrize);
         }
 
         if (wonAmount > 0) {
@@ -2239,6 +2239,8 @@ const createPowerResult = asyncError(async (req, res, next) => {
           //   title: "Congratulations! You won!",
           //   description: `You have won an amount of ${wonAmount}.`,
           // });
+
+          // console.log(`${holder.userId} won an amount of ${wonAmount}.`);
 
           const notification = await Notification.create({
             title: "Congratulations! You won!",
@@ -2254,7 +2256,7 @@ const createPowerResult = asyncError(async (req, res, next) => {
                 amount: wonAmount,
                 convertedAmount: wonAmount,
                 multiplier: ticket.multiplier,
-                usernumber: jackpotnumber,
+                usernumber: ticket.usernumber,
               },
             ],
             username: user.name,
@@ -7653,58 +7655,58 @@ const getAppBalanceSheetByUserId = asyncError(async (req, res, next) => {
     .populate([
       {
         path: "usercurrency",
-        model: "Currency"
+        model: "Currency",
       },
       {
         path: "transactionId",
-        model: "Transaction"
+        model: "Transaction",
       },
       {
         path: "paybetId",
         populate: [
           {
             path: "lotlocation",
-            model: "LotLocation"
+            model: "LotLocation",
           },
           {
             path: "lotdate",
-            model: "LotDate"
+            model: "LotDate",
           },
           {
             path: "lottime",
-            model: "LotTime"
+            model: "LotTime",
           },
           {
             path: "powerdate",
-            model: "PowerDate"
+            model: "PowerDate",
           },
           {
             path: "powertime",
-            model: "PowerTime"
+            model: "PowerTime",
           },
           {
             path: "currency",
-            model: "Currency"
-          }
-        ]
+            model: "Currency",
+          },
+        ],
       },
       {
         path: "payzoneId",
         populate: [
           {
             path: "lotlocation",
-            model: "LotLocation"
+            model: "LotLocation",
           },
           {
             path: "lotdate",
-            model: "LotDate"
+            model: "LotDate",
           },
           {
             path: "lottime",
-            model: "LotTime"
-          }
-        ]
-      }
+            model: "LotTime",
+          },
+        ],
+      },
     ])
     .sort({ createdAt: -1 })
     .skip(skip)
