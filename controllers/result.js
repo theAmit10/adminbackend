@@ -8143,6 +8143,7 @@ const updateShowPartnerRechargeToUserAndPartner = asyncError(
 
         for (const p of partners) {
           if (!p) continue;
+          if (p.rechargeStatus) continue;
 
           // Update the partner's rechargePaymentId
           await PartnerModule.findByIdAndUpdate(p._id, {
