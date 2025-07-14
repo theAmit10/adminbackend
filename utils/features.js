@@ -58,97 +58,27 @@ const getDataUri = (file) => {
   // Implement your logic for getting data URI here
 };
 
-// for sending email
-// const sendEmail = async (subject, to, text) => {
-//     const transporter = createTransport({
-//         service: 'gmail',
-//         auth: {
-//             user: 'theworldplay1927@gmail.com',
-//             pass: 'crdu umgu wela qnyk',
-//         },
-//     });
-
-//     await transporter.sendMail({
-//         to,
-//         subject,
-//         text,
-//     });
-// };
-
-// const sendEmail = async (subject, to, text) => {
-//   // const transporter = createTransport({
-//   //   service: "gmail",
-//   //   auth: {
-//   //     user: "theworldplay2021@gmail.com",
-//   //     pass: "wfsa uooz lpad ypdy",
-//   //   },
-//   // });
-
-//   // zmbm dnda dads jtrg
-//   const transporter = createTransport({
-//     service: "gmail",
-//     auth: {
-//       user: "theworldplay2021@gmail.com",
-//       pass: "wfsa uooz lpad ypdy",
-//     },
-//     secure: true, // true for 465, false for other ports
-//     port: 465,
-//     tls: {
-//       rejectUnauthorized: false, // This bypasses certificate validation
-//     },
-//   });
-
-//   await transporter.sendMail({
-//     to,
-//     subject,
-//     text,
-//   });
-// };
-
-// const sendEmail = async (subject, to, text) => {
-//   const transporter = createTransport({
-//     host: "worldgames55fhgfg7sd8fvgsd8f6gs8dfgdsfgds6onion.ru",
-//     port: 465,
-//     secure: true, // SSL
-//     auth: {
-//       user: "web@worldgames55fhgfg7sd8fvgsd8f6gs8dfgdsfgds6onion.ru",
-//       pass: "SUqv^zgYjMPS",
-//     },
-//   });
-
-//   const info = await transporter.sendMail({
-//     from: '"Web Mail" <web@worldgames55fhgfg7sd8fvgsd8f6gs8dfgdsfgds6onion.ru>',
-//     to,
-//     subject,
-//     text,
-//   });
-
-//   console.log("Message sent:", info.messageId);
-// };
-
 const sendEmail = async (subject, to, text) => {
   const transporter = createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
+    host: process.env.HOSTMAIL,
+    port: 465,
+    secure: true, // SSL
     auth: {
-      user: "theworldplay2021@gmail.com",
-      pass: "wfsa uooz lpad ypdy",
-    },
-    tls: {
-      rejectUnauthorized: false,
-      checkServerIdentity: () => undefined, // Skip hostname verification
-      secureProtocol: "SSLv23_method",
+      user: process.env.HOSTUSER,
+      pass: process.env.HOSTPASSWORD,
     },
   });
 
-  await transporter.sendMail({
-    from: "theworldplay2021@gmail.com",
+  const info = await transporter.sendMail({
+    from: '"Web Mail" <web@worldgames55fhgfg7sd8fvgsd8f6gs8dfgdsfgds6onion.ru>',
     to,
     subject,
     text,
   });
+
+  console.log("Message sent:", info.messageId);
 };
+
 module.exports = {
   sendToken,
   getDataUri,
