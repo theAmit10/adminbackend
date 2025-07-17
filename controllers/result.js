@@ -7814,6 +7814,19 @@ const getAppBalanceSheetByUserId = asyncError(async (req, res, next) => {
           },
         ],
       },
+      {
+        path: "powerballId",
+        populate: [
+          {
+            path: "powerdate",
+            model: "PowerDate",
+          },
+          {
+            path: "powertime",
+            model: "PowerTime",
+          },
+        ],
+      },
     ])
     .sort({ createdAt: -1 })
     .skip(skip)
@@ -7834,6 +7847,7 @@ const getAppBalanceSheetByUserId = asyncError(async (req, res, next) => {
     },
   });
 });
+
 const updateAppLinks = asyncError(async (req, res, next) => {
   const { androidLink, iosLink } = req.body;
 
