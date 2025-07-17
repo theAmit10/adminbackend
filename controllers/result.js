@@ -7669,6 +7669,19 @@ const getAppBalanceSheet = asyncError(async (req, res, next) => {
           },
         ],
       },
+      {
+        path: "powerballId",
+        populate: [
+          {
+            path: "powerdate",
+            model: "PowerDate",
+          },
+          {
+            path: "powertime",
+            model: "PowerTime",
+          },
+        ],
+      },
     ])
     .sort({ createdAt: -1 })
     .skip(skip)
