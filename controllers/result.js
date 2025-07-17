@@ -2110,6 +2110,7 @@ const createResult = asyncError(async (req, res, next) => {
 //       "Result Created and Wallets Updated Successfully, Notifications sent, and Playbet History Updated",
 //   });
 // });
+
 const createPowerResult = asyncError(async (req, res, next) => {
   const { jackpotnumber, powerdate, powertime, prize } = req.body;
 
@@ -2177,6 +2178,39 @@ const createPowerResult = asyncError(async (req, res, next) => {
     // Step 3: Get all tickets from the found power game
     const allTickets = powerGame.alltickets;
 
+    // TODO: ADDING TO BALANCE SHEET
+    // Fetch all WalletTwo balances and populate currencyId
+    const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
+    let gameBalance = 0;
+
+    walletTwoBalances.forEach((wallet) => {
+      const walletCurrencyConverter = parseFloat(
+        wallet.currencyId.countrycurrencyvaluecomparedtoinr
+      );
+      gameBalance += wallet.balance * walletCurrencyConverter;
+    });
+
+    // For BALANCESHEET
+    // Fetch all WalletOne balances and populate currencyId
+    const walletOneBalances = await WalletOne.find({}).populate("currencyId");
+    let withdrawalBalance = 0;
+
+    walletOneBalances.forEach((wallet) => {
+      const walletCurrencyConverter = parseFloat(
+        wallet.currencyId.countrycurrencyvaluecomparedtoinr
+      );
+      withdrawalBalance += wallet.balance * walletCurrencyConverter;
+    });
+
+    // Calculate total balance as the sum of walletOne and walletTwo balances
+    const totalBalance = withdrawalBalance + gameBalance;
+
+    // Search for the "INR" countrycurrencysymbol in the Currency Collection
+    const currency = await Currency.findOne({ countrycurrencysymbol: "INR" });
+    if (!currency) {
+      return next(new ErrorHandler("Currency not found", 404));
+    }
+
     // Step 4: Function to distribute prize
 
     let winningAmount = 0;
@@ -2212,18 +2246,38 @@ const createPowerResult = asyncError(async (req, res, next) => {
           console.log("3 Prize");
           console.log(wonAmount);
         } else if (isMatch(3)) {
-          wonAmount =
-            ticket.convertedAmount * parseFloat(prize.fourthprize.amount);
+          let val = 0;
+          if (ticket.multiplier === 1) {
+            val = ticket.convertedAmount;
+          } else {
+            val = ticket.convertedAmount - parseFloat(ticket.multiplier);
+          }
+          const amt = val * parseFloat(ticket.multiplier);
+          // wonAmount =
+          //   ticket.convertedAmount * parseFloat(prize.fourthprize.amount);
+          wonAmount = amt * parseFloat(prize.fourthprize.amount);
           console.log("4 Prize");
           console.log(wonAmount);
         } else if (isMatch(2)) {
-          wonAmount =
-            ticket.convertedAmount * parseFloat(prize.fifthprize.amount);
+          let val = 0;
+          if (ticket.multiplier === 1) {
+            val = ticket.convertedAmount;
+          } else {
+            val = ticket.convertedAmount - parseFloat(ticket.multiplier);
+          }
+          const amt = val * parseFloat(ticket.multiplier);
+          wonAmount = amt * parseFloat(prize.fifthprize.amount);
           console.log("5 Prize");
           console.log(wonAmount);
         } else if (isMatch(1)) {
-          wonAmount =
-            ticket.convertedAmount * parseFloat(prize.sixthprize.amount);
+          let val = 0;
+          if (ticket.multiplier === 1) {
+            val = ticket.convertedAmount;
+          } else {
+            val = ticket.convertedAmount - parseFloat(ticket.multiplier);
+          }
+          const amt = val * parseFloat(ticket.multiplier);
+          wonAmount = amt * parseFloat(prize.sixthprize.amount);
           console.log("6 Prize");
           console.log(wonAmount);
           console.log(ticket);
@@ -2270,6 +2324,23 @@ const createPowerResult = asyncError(async (req, res, next) => {
 
           user.playbetHistory.push(playbet._id);
           await user.save();
+
+          // Create a new AppBalanceSheet document
+          const appBalanceSheet = new AppBalanceSheet({
+            amount: wonAmount,
+            withdrawalbalance: withdrawalBalance,
+            gamebalance: gameBalance,
+            totalbalance: totalBalance,
+            usercurrency: user.country._id.toString(), // Use the _id of the found currency
+            activityType: "Winning",
+            userId: user.userId || "1000",
+            powerballId: powerGame._id,
+            paymentProcessType: "Credit",
+            walletName: req.user.walletOne.walletName,
+          });
+
+          // Save the AppBalanceSheet document
+          await appBalanceSheet.save();
         }
       }
     }
@@ -2722,7 +2793,7 @@ const createPowerResult = asyncError(async (req, res, next) => {
 
     // [END PARTNER PAYOUT]
 
-    // TODO: ADDING TO BALANCE SHEET
+    // // TODO: ADDING TO BALANCE SHEET
     // // Fetch all WalletTwo balances and populate currencyId
     // const walletTwoBalances = await WalletTwo.find({}).populate("currencyId");
     // let gameBalance = 0;
@@ -2753,6 +2824,29 @@ const createPowerResult = asyncError(async (req, res, next) => {
     // if (!currency) {
     //   return next(new ErrorHandler("Currency not found", 404));
     // }
+
+    // for (const userz of profitDistributiveArray) {
+    //   const amountz = Math.max(0, parseInt(userz.amount));
+
+    //   // Create a new AppBalanceSheet document
+    //   const appBalanceSheet = new AppBalanceSheet({
+    //     amount: amountz,
+    //     withdrawalbalance: withdrawalBalance,
+    //     gamebalance: gameBalance,
+    //     totalbalance: totalBalance,
+    //     usercurrency: currency._id, // Use the _id of the found currency
+    //     activityType: "Winning",
+    //     userId: userz.userId || "1000",
+    //     powerballId: powerGame._id,
+    //     paymentProcessType: "Credit",
+    //     walletName: req.user.walletOne.walletName,
+    //   });
+
+    //   // Save the AppBalanceSheet document
+    //   await appBalanceSheet.save();
+    //   console.log("AppBalanceSheet Created Successfully");
+    // }
+
     // // Create a new AppBalanceSheet document
     // const appBalanceSheet = new AppBalanceSheet({
     //   amount: totalAmount,

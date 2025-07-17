@@ -61,6 +61,13 @@ const schema = new mongoose.Schema(
         return this.activityType === "Winning";
       },
     },
+    powerballId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "PowerballGameTickets",
+      required: function () {
+        return this.activityType === "Winning";
+      },
+    },
     paymentProcessType: {
       type: String,
       enum: ["Credit", "Debit", "Exchange"],
