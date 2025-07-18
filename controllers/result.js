@@ -1759,7 +1759,10 @@ const createResult = asyncError(async (req, res, next) => {
     const userId = userz.userId;
     // const amount = parseInt(userz.amount);
     // Check if amount is negative and replace with 0
-    const amount = Math.max(0, parseInt(userz.amount)); // This will take the higher value (0 if amount is negative)
+    // const amount = Math.max(0, parseInt(userz.amount)); // This will take the higher value (0 if amount is negative)
+
+    const amountfloat = Math.max(0, parseFloat(userz.amount)); // This will take the higher value (0 if amount is negative)
+    const amount = parseFloat(amountfloat.toFixed(2));
 
     const user = await User.findOne({ userId });
 
@@ -2721,10 +2724,6 @@ const createPowerResult = asyncError(async (req, res, next) => {
 
     // Save the updated partnerperformance document
     await partnerperformance.save();
-
-    console.log(
-      "profitDistributiveArray :: " + JSON.stringify(profitDistributiveArray)
-    );
 
     // DISTRIBUTE PROFIT TO PARTNERS
     for (const userz of profitDistributiveArray) {
