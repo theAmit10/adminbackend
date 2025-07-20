@@ -6,7 +6,8 @@ const LotTime = require("../models/lottime.js");
 const LotLocation = require("../models/lotlocation.js");
 const PaymentType = require("../models/paymenttype.js");
 const mongoose = require("mongoose");
-const moment = require("moment");
+// const moment = require("moment");
+const moment = require("moment-timezone");
 const paymenttype = require("../models/paymenttype.js");
 const UpiPaymentType = require("../models/upipayment.js");
 const BankPaymentType = require("../models/bankpayment.js");
@@ -3684,69 +3685,147 @@ const createPlaynumbersArray = (numStr) => {
 //   });
 // });
 
+const getCurrentDate = () => {
+  return moment.tz("Asia/Kolkata").format("DD-MM-YYYY");
+};
+
+const getNextDate = () => {
+  return moment.tz("Asia/Kolkata").add(1, "days").format("DD-MM-YYYY");
+};
+
+const getNextNextDate = () => {
+  return moment.tz("Asia/Kolkata").add(2, "days").format("DD-MM-YYYY");
+};
+
+// const addLotTime = asyncError(async (req, res, next) => {
+//   // 1. Create the LotTime
+//   const lotTime = await LotTime.create(req.body);
+
+//   // 2. Get the newly created lottime._id
+//   const lottimeId = lotTime._id;
+
+//   // 3. Get the current date and format it as DD-MM-YYYY
+//   const currentDate = new Date();
+//   const formattedDate = `${String(currentDate.getDate()).padStart(
+//     2,
+//     "0"
+//   )}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(
+//     currentDate.getFullYear()
+//   )}`;
+
+//   // 4. Create the LotDate using the formatted date and lottimeId
+//   const lotDatePayload = {
+//     lotdate: formattedDate,
+//     lottime: lottimeId,
+//   };
+//   const lotdate = await LotDate.create(lotDatePayload);
+
+//   // 5. Retrieve the LotLocation details using the lotlocation ID from the payload
+//   const location = await LotLocation.findById(req.body.lotlocation);
+
+//   if (!location) {
+//     return next(new ErrorHandler("Lot Location not found", 404));
+//   }
+
+//   // 6. Create the playnumbers array based on location.maximumNumber
+//   const playnumbers = createPlaynumbersArray(location.maximumNumber);
+
+//   // 7. Create the Playzone with lotlocation, lottime, lotdate, and playnumbers
+//   const playzoneData = {
+//     lotlocation: location._id,
+//     lottime: lotTime._id,
+//     lotdate: lotdate._id,
+//     playnumbers,
+//   };
+//   const newPlayzone = await Playzone.create(playzoneData);
+
+//   // Check if a PartnerPerformance already exists for the given lotlocation, lottime, and lotdate
+//   let partnerPerformance = await PartnerPerformance.findOne({
+//     lotlocation: location._id,
+//     lottime: lotTime._id,
+//     lotdate: lotdate._id,
+//   });
+
+//   if (!partnerPerformance) {
+//     partnerPerformance = new PartnerPerformance({
+//       lotlocation: location._id,
+//       lottime: lotTime._id,
+//       lotdate: lotdate._id,
+//       performances: [], // Initially empty
+//     });
+//     await partnerPerformance.save();
+//   }
+
+//   // 8. Respond with success
+//   res.status(201).json({
+//     success: true,
+//     message: "Time Added Successfully",
+//   });
+// });
 const addLotTime = asyncError(async (req, res, next) => {
   // 1. Create the LotTime
   const lotTime = await LotTime.create(req.body);
-
-  // 2. Get the newly created lottime._id
   const lottimeId = lotTime._id;
 
-  // 3. Get the current date and format it as DD-MM-YYYY
-  const currentDate = new Date();
-  const formattedDate = `${String(currentDate.getDate()).padStart(
-    2,
-    "0"
-  )}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(
-    currentDate.getFullYear()
-  )}`;
-
-  // 4. Create the LotDate using the formatted date and lottimeId
-  const lotDatePayload = {
-    lotdate: formattedDate,
-    lottime: lottimeId,
-  };
-  const lotdate = await LotDate.create(lotDatePayload);
-
-  // 5. Retrieve the LotLocation details using the lotlocation ID from the payload
+  // 2. Retrieve the LotLocation details
   const location = await LotLocation.findById(req.body.lotlocation);
-
   if (!location) {
     return next(new ErrorHandler("Lot Location not found", 404));
   }
 
-  // 6. Create the playnumbers array based on location.maximumNumber
-  const playnumbers = createPlaynumbersArray(location.maximumNumber);
+  // Helper function to process date creation
+  const processDate = async (dateString, lottimeId, location) => {
+    // Create LotDate
+    const lotDatePayload = {
+      lotdate: dateString,
+      lottime: lottimeId,
+    };
+    const lotdate = await LotDate.create(lotDatePayload);
 
-  // 7. Create the Playzone with lotlocation, lottime, lotdate, and playnumbers
-  const playzoneData = {
-    lotlocation: location._id,
-    lottime: lotTime._id,
-    lotdate: lotdate._id,
-    playnumbers,
-  };
-  const newPlayzone = await Playzone.create(playzoneData);
-
-  // Check if a PartnerPerformance already exists for the given lotlocation, lottime, and lotdate
-  let partnerPerformance = await PartnerPerformance.findOne({
-    lotlocation: location._id,
-    lottime: lotTime._id,
-    lotdate: lotdate._id,
-  });
-
-  if (!partnerPerformance) {
-    partnerPerformance = new PartnerPerformance({
+    // Create Playzone
+    const playnumbers = createPlaynumbersArray(location.maximumNumber);
+    const playzoneData = {
       lotlocation: location._id,
-      lottime: lotTime._id,
+      lottime: lottimeId,
       lotdate: lotdate._id,
-      performances: [], // Initially empty
+      playnumbers,
+    };
+    await Playzone.create(playzoneData);
+
+    // Check and create PartnerPerformance if needed
+    let partnerPerformance = await PartnerPerformance.findOne({
+      lotlocation: location._id,
+      lottime: lottimeId,
+      lotdate: lotdate._id,
     });
-    await partnerPerformance.save();
+
+    if (!partnerPerformance) {
+      partnerPerformance = new PartnerPerformance({
+        lotlocation: location._id,
+        lottime: lottimeId,
+        lotdate: lotdate._id,
+        performances: [],
+      });
+      await partnerPerformance.save();
+    }
+  };
+
+  // 3. Process dates - today, tomorrow, and day after tomorrow
+  const datesToProcess = [
+    getCurrentDate(), // Today
+    getNextDate(), // Tomorrow
+    getNextNextDate(), // Day after tomorrow
+  ];
+
+  // Process all three dates
+  for (const date of datesToProcess) {
+    await processDate(date, lottimeId, location);
   }
 
-  // 8. Respond with success
+  // 4. Respond with success
   res.status(201).json({
     success: true,
-    message: "Time Added Successfully",
+    message: "Time Added Successfully Successfully.",
   });
 });
 
