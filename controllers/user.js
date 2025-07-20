@@ -6034,21 +6034,6 @@ const getAllPowerBallGames = asyncError(async (req, res, next) => {
 // POWERBALL TIME
 
 // ✅ Create a New PowerTime
-// const createPowerTime = asyncError(async (req, res, next) => {
-//   const { powertime } = req.body;
-
-//   if (!powertime) {
-//     return next(new ErrorHandler("Power time is required", 400));
-//   }
-
-//   const newPowerTime = await PowerTime.create({ powertime });
-
-//   res.status(201).json({
-//     success: true,
-//     message: "PowerTime created successfully",
-//     powerTime: newPowerTime,
-//   });
-// });
 
 const createPowerTime = asyncError(async (req, res, next) => {
   const { powertime } = req.body;
@@ -6060,42 +6045,101 @@ const createPowerTime = asyncError(async (req, res, next) => {
   // 1. Create PowerTime
   const newPowerTime = await PowerTime.create({ powertime });
 
-  // 2. Get current date in 'DD-MM-YYYY' format using IST timezone
-  const powerdate = moment().tz("Asia/Kolkata").format("DD-MM-YYYY");
+  // Helper function to process each date
+  const processPowerDate = async (dateString) => {
+    // 2. Create PowerDate
+    const newPowerDate = await PowerDate.create({
+      powerdate: dateString,
+      powertime: newPowerTime._id,
+    });
 
-  // 3. Create PowerDate
-  const newPowerDate = await PowerDate.create({
-    powerdate,
-    powertime: newPowerTime._id,
-  });
+    // 3. Create PowerballGameTickets
+    await PowerballGameTickets.create({
+      powerdate: newPowerDate._id,
+      powertime: newPowerTime._id,
+      alltickets: [],
+    });
 
-  // 4. Create PowerballGameTickets
-  const newGameEntry = await PowerballGameTickets.create({
-    powerdate: newPowerDate._id,
-    powertime: newPowerTime._id,
-    alltickets: [],
-  });
-
-  // 5. Create PartnerPerformancePowerball if not already existing
-  let partnerPerformance = await PartnerPerformancePowerball.findOne({
-    powertime: newPowerTime._id,
-    powerdate: newPowerDate._id,
-  });
-
-  if (!partnerPerformance) {
-    partnerPerformance = new PartnerPerformancePowerball({
+    // 4. Create PartnerPerformancePowerball if not existing
+    let partnerPerformance = await PartnerPerformancePowerball.findOne({
       powertime: newPowerTime._id,
       powerdate: newPowerDate._id,
-      performances: [],
     });
-    await partnerPerformance.save();
+
+    if (!partnerPerformance) {
+      partnerPerformance = new PartnerPerformancePowerball({
+        powertime: newPowerTime._id,
+        powerdate: newPowerDate._id,
+        performances: [],
+      });
+      await partnerPerformance.save();
+    }
+  };
+
+  // Process all three dates
+  const datesToProcess = [
+    getCurrentDate(), // Today
+    getNextDate(), // Tomorrow
+    getNextNextDate(), // Day after tomorrow
+  ];
+
+  // Process each date
+  for (const date of datesToProcess) {
+    await processPowerDate(date);
   }
 
   res.status(201).json({
     success: true,
-    message: "PowerTime and all related entries created successfully",
+    message: "PowerTime and all related entries created successfully.",
   });
 });
+
+// const createPowerTime = asyncError(async (req, res, next) => {
+//   const { powertime } = req.body;
+
+//   if (!powertime) {
+//     return next(new ErrorHandler("Power time is required", 400));
+//   }
+
+//   // 1. Create PowerTime
+//   const newPowerTime = await PowerTime.create({ powertime });
+
+//   // 2. Get current date in 'DD-MM-YYYY' format using IST timezone
+//   const powerdate = moment().tz("Asia/Kolkata").format("DD-MM-YYYY");
+
+//   // 3. Create PowerDate
+//   const newPowerDate = await PowerDate.create({
+//     powerdate,
+//     powertime: newPowerTime._id,
+//   });
+
+//   // 4. Create PowerballGameTickets
+//   const newGameEntry = await PowerballGameTickets.create({
+//     powerdate: newPowerDate._id,
+//     powertime: newPowerTime._id,
+//     alltickets: [],
+//   });
+
+//   // 5. Create PartnerPerformancePowerball if not already existing
+//   let partnerPerformance = await PartnerPerformancePowerball.findOne({
+//     powertime: newPowerTime._id,
+//     powerdate: newPowerDate._id,
+//   });
+
+//   if (!partnerPerformance) {
+//     partnerPerformance = new PartnerPerformancePowerball({
+//       powertime: newPowerTime._id,
+//       powerdate: newPowerDate._id,
+//       performances: [],
+//     });
+//     await partnerPerformance.save();
+//   }
+
+//   res.status(201).json({
+//     success: true,
+//     message: "PowerTime and all related entries created successfully",
+//   });
+// });
 
 // ✅ Update PowerTime by ID
 const updatePowerTime = asyncError(async (req, res, next) => {
@@ -6161,6 +6205,18 @@ const getAllPowerTimes = asyncError(async (req, res, next) => {
 });
 
 // POWERBALL DATE
+
+const getCurrentDate = () => {
+  return moment.tz("Asia/Kolkata").format("DD-MM-YYYY");
+};
+
+const getNextDate = () => {
+  return moment.tz("Asia/Kolkata").add(1, "days").format("DD-MM-YYYY");
+};
+
+const getNextNextDate = () => {
+  return moment.tz("Asia/Kolkata").add(2, "days").format("DD-MM-YYYY");
+};
 
 // ✅ Create a New PowerDate
 

@@ -1864,7 +1864,6 @@ module.exports = {
 // app.use(express.json());
 // app.use(cookieParser());
 
-
 // app.use(
 //   cors({
 //     credentials: true,
@@ -1974,7 +1973,7 @@ module.exports = {
 // // '50 23 * * *'
 // cron.schedule('50 23 * * *', async () => {
 //   console.log('⏰ Running daily date creation at 11:50 PM Asia/Kolkata');
-  
+
 //   try {
 //     const tomorrowDate = getNextDate();
 //     const tomorrowTomorrowDate = getNextNextDate();
@@ -1982,13 +1981,13 @@ module.exports = {
 
 //     for (const location of locations) {
 //       const times = await LotTime.find({ lotlocation: location._id });
-      
+
 //       for (const time of times) {
 //         await createGameDateWithDependencies(location, time, tomorrowDate);
 //         await createGameDateWithDependencies(location, time,tomorrowTomorrowDate);
 //       }
 //     }
-    
+
 //     console.log('✅ Successfully created all game dates for', tomorrowDate);
 //   } catch (error) {
 //     console.error('❌ Failed to create game dates:', error);
@@ -2054,7 +2053,7 @@ module.exports = {
 // // ===================================================================
 // cron.schedule('0 * * * *', async () => {
 //   console.log('🔍 Running hourly safety check for game dates');
-  
+
 //   try {
 //     const today = getCurrentDate();
 //     const locations = await LotLocation.find({});
@@ -2062,20 +2061,20 @@ module.exports = {
 
 //     for (const location of locations) {
 //       const times = await LotTime.find({ lotlocation: location._id });
-      
+
 //       for (const time of times) {
 //         const exists = await LotDate.exists({
 //           lotdate: today,
 //           lottime: time._id
 //         });
-        
+
 //         if (!exists) {
 //           await createGameDateWithDependencies(location, time, today);
 //           missingDatesCount++;
 //         }
 //       }
 //     }
-    
+
 //     if (missingDatesCount > 0) {
 //       console.log(`⚠️ Repaired ${missingDatesCount} missing game dates`);
 //     }
@@ -2625,7 +2624,7 @@ module.exports = {
 //                         console.log(userz);
 //                         const userId = userz.userId;
 //                         // const amount = parseInt(userz.amount);
-//                           const amount = Math.max(0, parseInt(userz.amount)); 
+//                           const amount = Math.max(0, parseInt(userz.amount));
 
 //                         const user = await User.findOne({ userId });
 
@@ -3324,7 +3323,7 @@ module.exports = {
 //                         console.log(userz);
 //                         const userId = userz.userId;
 //                         // const amount = parseInt(userz.amount);
-//                         const amount = Math.max(0, parseInt(userz.amount)); 
+//                         const amount = Math.max(0, parseInt(userz.amount));
 
 //                         const user = await User.findOne({ userId });
 
@@ -3541,7 +3540,6 @@ module.exports = {
 //   }
 // });
 
-
 // cron.schedule(
 //   "30 23 * * *",
 //   async () => {
@@ -3630,7 +3628,6 @@ module.exports = {
 //     );
 //   }
 // }
-
 
 // app.listen(process.env.PORT, () => {
 //   console.log(
