@@ -118,6 +118,7 @@ const {
   getOtherPaymentsByUserId,
   getAllPendingPaymentsCount,
   getAppBalanceSheetByUserId,
+  getUserPlaybetHistoryByLocationTimeDate,
 } = require("../controllers/result.js");
 const { singleUpload } = require("../middlewares/multer.js");
 const {
@@ -432,6 +433,11 @@ router.get(
   getSingleUserPlaybetHistory
 );
 
+router.get(
+  "/singleuserplayhistorylocationtimedate/:userid/history/:locationId/:timeId/:dateId",
+  isAuthenticated,
+  getUserPlaybetHistoryByLocationTimeDate
+);
 // FOR CURRECY
 // Create a new currency
 router.post("/addcurrency", singleUploadForCurrency, createCurrency);

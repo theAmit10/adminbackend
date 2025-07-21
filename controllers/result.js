@@ -7304,6 +7304,65 @@ const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
   }
 });
 
+const getUserPlaybetHistoryByLocationTimeDate = asyncError(
+  async (req, res, next) => {
+    const userId = req.params.userid;
+    const { locationId, dateId, timeId } = req.params;
+
+    try {
+      // Find the user by ID to get the playbetHistory
+      const user = await User.findOne({ userId }).populate({
+        path: "playbetHistory",
+        populate: [
+          { path: "lotdate", model: "LotDate" },
+          { path: "lottime", model: "LotTime" },
+          { path: "powerdate", model: "PowerDate" },
+          { path: "powertime", model: "PowerTime" },
+          { path: "lotlocation", model: "LotLocation" },
+          { path: "currency", model: "Currency" },
+        ],
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // Filter playbets based on location, date, and time IDs
+      const filteredPlaybets = user.playbetHistory.filter((bet) => {
+        return (
+          bet.lotlocation?._id?.toString() === locationId &&
+          bet.lotdate?._id?.toString() === dateId &&
+          bet.lottime?._id?.toString() === timeId
+        );
+      });
+
+      // Ensure createdAt is treated as a date and sort by latest first
+      const processedPlaybets = filteredPlaybets
+        .map((bet) => ({
+          ...bet.toObject(),
+          createdAt: new Date(bet.createdAt),
+        }))
+        .sort((a, b) => b.createdAt - a.createdAt);
+
+      // Return the filtered and sorted playbets
+      res.status(200).json({
+        success: true,
+        playbets: processedPlaybets,
+        totalPlaybets: processedPlaybets.length,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve playbets",
+        error: error.message,
+      });
+    }
+  }
+);
+
 // const getSingleUserPlaybetHistory = asyncError(async (req, res, next) => {
 //   const userId = req.params.userid;
 //   let { page, limit } = req.query;
@@ -9848,4 +9907,5 @@ module.exports = {
   getOtherPaymentsByUserId,
   getAllPendingPaymentsCount,
   getAppBalanceSheetByUserId,
+  getUserPlaybetHistoryByLocationTimeDate,
 };
