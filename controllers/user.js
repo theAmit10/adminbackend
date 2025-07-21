@@ -6546,102 +6546,13 @@ const getAllPowerballGameTickets = asyncError(async (req, res, next) => {
   }
 });
 
-// const getAllTicketsByPowerDateAndTime = asyncError(async (req, res, next) => {
-//   const { powerdate, powertime } = req.params;
-//   let { page, limit } = req.query;
-
-//   // Default values for pagination
-//   page = parseInt(page) || 1;
-//   limit = parseInt(limit) || 10;
-//   const skip = (page - 1) * limit;
-
-//   // Find the PowerballGameTickets entry based on powerdate & powertime
-//   const powerballGameTickets = await PowerballGameTickets.findOne({
-//     powerdate,
-//     powertime,
-//   }).populate({
-//     path: "alltickets",
-//     options: { skip, limit }, // Apply pagination while populating
-//   });
-
-//   if (!powerballGameTickets) {
-//     return next(
-//       new ErrorHandler(
-//         "No tickets found for the provided powerdate and powertime",
-//         404
-//       )
-//     );
-//   }
-
-//   // Get total tickets count for pagination
-//   const totalTickets = powerballGameTickets.alltickets.length;
-//   const totalPages = Math.ceil(totalTickets / limit);
-
-//   res.status(200).json({
-//     success: true,
-//     page,
-//     limit,
-//     totalTickets,
-//     totalPages,
-//     alltickets: powerballGameTickets.alltickets, // Returning paginated tickets array
-//   });
-// });
-
-// const getPowerballGameTicketsByDateAndTime = asyncError(
-//   async (req, res, next) => {
-//     const { powerdateId, powertimeId } = req.params;
-//     const { page = 1, limit = 10 } = req.query; // Pagination parameters
-
-//     try {
-//       // Validate the provided IDs
-//       if (
-//         !mongoose.Types.ObjectId.isValid(powerdateId) ||
-//         !mongoose.Types.ObjectId.isValid(powertimeId)
-//       ) {
-//         return next(new ErrorHandler("Invalid powerdate or powertime ID", 400));
-//       }
-
-//       const pageNumber = parseInt(page, 10);
-//       const limitNumber = parseInt(limit, 10);
-//       const skip = (pageNumber - 1) * limitNumber;
-
-//       // Find the PowerballGameTickets based on powerdate and powertime with pagination and sorting
-//       const tickets = await PowerballGameTickets.find({
-//         powerdate: powerdateId,
-//         powertime: powertimeId,
-//       })
-//         .populate("powerdate")
-//         .populate("powertime")
-//         .sort({ createdAt: -1 }) // Sorting by newest first
-//         .skip(skip)
-//         .limit(limitNumber);
-
-//       // Get total count for pagination info
-//       const total = await PowerballGameTickets.countDocuments({
-//         powerdate: powerdateId,
-//         powertime: powertimeId,
-//       });
-//       const totalPages = Math.ceil(total / limitNumber);
-
-//       res.status(200).json({
-//         success: true,
-//         page: pageNumber,
-//         totalPages,
-//         totalRecords: total,
-//         tickets,
-//       });
-//     } catch (error) {
-//       next(new ErrorHandler(error.message, 500));
-//     }
-//   }
-// );
-
 // const getPowerballGameTicketsByDateAndTime = asyncError(
 //   async (req, res, next) => {
 //     const { powerdateId, powertimeId } = req.params;
 //     const { page = 1, limit = 10 } = req.query;
 
 //     try {
+//       // Validate IDs
 //       if (
 //         !mongoose.Types.ObjectId.isValid(powerdateId) ||
 //         !mongoose.Types.ObjectId.isValid(powertimeId)
@@ -6649,23 +6560,38 @@ const getAllPowerballGameTickets = asyncError(async (req, res, next) => {
 //         return next(new ErrorHandler("Invalid powerdate or powertime ID", 400));
 //       }
 
-//       const pageNumber = parseInt(page, 10);
-//       const limitNumber = parseInt(limit, 10);
+//       const pageNumber = Math.max(1, parseInt(page, 10));
+//       const limitNumber = Math.min(100, Math.max(1, parseInt(limit, 10))); // Limit max 100 per page
 //       const skip = (pageNumber - 1) * limitNumber;
 
-//       // Find tickets with pagination
-//       const tickets = await PowerballGameTickets.find({
-//         powerdate: powerdateId,
-//         powertime: powertimeId,
-//       })
-//         .populate("powerdate")
-//         .populate("powertime")
-//         .sort({ createdAt: -1 })
-//         .skip(skip)
-//         .limit(limitNumber);
+//       // PHASE 1: Get total count (optimized)
+//       const [totalResult] = await PowerballGameTickets.aggregate([
+//         {
+//           $match: {
+//             powerdate: new mongoose.Types.ObjectId(powerdateId),
+//             powertime: new mongoose.Types.ObjectId(powertimeId),
+//           },
+//         },
+//         {
+//           $project: {
+//             ticketCount: {
+//               $size: {
+//                 $reduce: {
+//                   input: "$alltickets",
+//                   initialValue: [],
+//                   in: { $concatArrays: ["$$value", "$$this.tickets"] },
+//                 },
+//               },
+//             },
+//           },
+//         },
+//       ]);
 
-//       // Get total count of individual tickets using aggregation
-//       const totalTicketsAggregate = await PowerballGameTickets.aggregate([
+//       const total = totalResult?.ticketCount || 0;
+//       const totalPages = Math.ceil(total / limitNumber);
+
+//       // PHASE 2: Get paginated data (optimized)
+//       const tickets = await PowerballGameTickets.aggregate([
 //         {
 //           $match: {
 //             powerdate: new mongoose.Types.ObjectId(powerdateId),
@@ -6674,18 +6600,43 @@ const getAllPowerballGameTickets = asyncError(async (req, res, next) => {
 //         },
 //         { $unwind: "$alltickets" },
 //         { $unwind: "$alltickets.tickets" },
-//         { $count: "total" },
+//         { $sort: { "alltickets.tickets.createdAt": -1 } },
+//         { $skip: skip },
+//         { $limit: limitNumber },
+//         {
+//           $group: {
+//             _id: "$_id",
+//             powerdate: { $first: "$powerdate" },
+//             powertime: { $first: "$powertime" },
+//             alltickets: {
+//               $push: {
+//                 userId: "$alltickets.userId",
+//                 username: "$alltickets.username",
+//                 currency: "$alltickets.currency",
+//                 tickets: ["$alltickets.tickets"],
+//                 createdAt: "$alltickets.createdAt",
+//                 updatedAt: "$alltickets.updatedAt",
+//               },
+//             },
+//             createdAt: { $first: "$createdAt" },
+//             updatedAt: { $first: "$updatedAt" },
+//           },
+//         },
 //       ]);
 
-//       const total = totalTicketsAggregate[0]?.total || 0;
-//       const totalPages = Math.ceil(total / limitNumber);
+//       // Populate references
+//       const populatedTickets = await PowerballGameTickets.populate(tickets, [
+//         { path: "powerdate" },
+//         { path: "powertime" },
+//         { path: "alltickets.currency" },
+//       ]);
 
 //       res.status(200).json({
 //         success: true,
 //         page: pageNumber,
 //         totalPages,
 //         totalRecords: total,
-//         tickets,
+//         tickets: populatedTickets,
 //       });
 //     } catch (error) {
 //       next(new ErrorHandler(error.message, 500));
@@ -6778,11 +6729,32 @@ const getPowerballGameTicketsByDateAndTime = asyncError(
         { path: "alltickets.currency" },
       ]);
 
+      // Calculate total amount from all tickets (not just paginated ones)
+      const [totalAmountResult] = await PowerballGameTickets.aggregate([
+        {
+          $match: {
+            powerdate: new mongoose.Types.ObjectId(powerdateId),
+            powertime: new mongoose.Types.ObjectId(powertimeId),
+          },
+        },
+        { $unwind: "$alltickets" },
+        { $unwind: "$alltickets.tickets" },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: "$alltickets.tickets.convertedAmount" },
+          },
+        },
+      ]);
+
+      const totalAmount = totalAmountResult?.totalAmount || 0;
+
       res.status(200).json({
         success: true,
         page: pageNumber,
         totalPages,
         totalRecords: total,
+        totalAmount, // Add the total amount to the response
         tickets: populatedTickets,
       });
     } catch (error) {
