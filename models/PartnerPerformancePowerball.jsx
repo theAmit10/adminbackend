@@ -67,7 +67,11 @@ const playPerformanceSchema = new mongoose.Schema({
     type: Number,
     required: [true, "Please enter parent Parent recharge percentage"],
   },
-
+  currency: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Currency",
+    required: [true, "Please provide currency id"],
+  },
   contributionAmount: {
     type: Number,
     default: 0,

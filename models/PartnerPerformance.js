@@ -75,6 +75,11 @@ const playPerformanceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "WalletTwo",
   },
+  currency: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Currency",
+    required: [true, "Please provide currency id"],
+  },
   contributionAmount: {
     type: Number,
     default: 0,

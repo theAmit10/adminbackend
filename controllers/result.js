@@ -1763,13 +1763,22 @@ const createResult = asyncError(async (req, res, next) => {
     // const amount = Math.max(0, parseInt(userz.amount)); // This will take the higher value (0 if amount is negative)
 
     const amountfloat = Math.max(0, parseFloat(userz.amount)); // This will take the higher value (0 if amount is negative)
-    const amount = parseFloat(amountfloat.toFixed(2));
+    // const amount = parseFloat(amountfloat.toFixed(2));
 
-    const user = await User.findOne({ userId });
+    // const user = await User.findOne({ userId });
+    const user = await User.findOne({ userId }).populate("country");
 
     if (!user) {
       return next(new ErrorHandler("User not found", 404));
     }
+
+    const countryValue = user.country.countrycurrencyvaluecomparedtoinr;
+    const calAmount = parseFloat(amountfloat.toFixed(2) / countryValue);
+    const amount = parseFloat(calAmount.toFixed(2));
+
+    console.log(
+      `user id:: ${userId} countryValue:: ${countryValue} calAmount:: ${calAmount} amount:: ${amount}`
+    );
 
     // FOR DEPOSITING MONEY IN USER WALLET ONE
 
@@ -2735,13 +2744,19 @@ const createPowerResult = asyncError(async (req, res, next) => {
       // Check if amount is negative and replace with 0
       console.log(`user id:: ${userId} amount:: ${userz.amount}`);
       const amountfloat = Math.max(0, parseFloat(userz.amount)); // This will take the higher value (0 if amount is negative)
-      const amount = parseFloat(amountfloat.toFixed(2));
-      console.log(`After user id :: ${userId} amount:: ${amount}`);
-      const user = await User.findOne({ userId });
+      // const amount = parseFloat(amountfloat.toFixed(2));
+
+      // const user = await User.findOne({ userId });
+      const user = await User.findOne({ userId }).populate("country");
 
       if (!user) {
         return next(new ErrorHandler("User not found", 404));
       }
+
+      // Getting the user country value
+      const countryValue = user.country.countrycurrencyvaluecomparedtoinr;
+      const calAmount = parseFloat(amountfloat.toFixed(2) / countryValue);
+      const amount = parseFloat(calAmount.toFixed(2));
 
       // FOR DEPOSITING MONEY IN USER WALLET ONE
 
@@ -6447,6 +6462,7 @@ const addPlaybet = asyncError(async (req, res, next) => {
           parentParentParent?.rechargePercentage || 0,
         parentParentPartnerWalletTwo:
           parentParentParent?.walletTwo || parent.walletTwo,
+        currency: parent.country,
         users: [],
       };
 
@@ -6811,7 +6827,7 @@ const addPowerBet = async (req, res) => {
             parentParentParent?.profitPercentage || 0,
           parentParentPartnerRechargePercentage:
             parentParentParent?.rechargePercentage || 0,
-
+          currency: parent.country,
           users: [],
         };
 
@@ -8121,29 +8137,26 @@ const addPartnerPerformance = asyncError(async (req, res) => {
 //   limit = parseInt(limit) || 10;
 //   const skip = (page - 1) * limit;
 
-//   // Find the PartnerPerformance entries based on given parameters with pagination
-//   const partnerPerformance = await PartnerPerformance.find({
+//   // Find the PartnerPerformance entry based on the given parameters
+//   const partnerPerformance = await PartnerPerformance.findOne({
 //     lotlocation,
 //     lottime,
 //     lotdate,
-//   })
-//     .populate("lotlocation lottime lotdate")
-//     .skip(skip)
-//     .limit(limit);
+//   }).populate("lotlocation lottime lotdate");
 
-//   if (!partnerPerformance.length) {
+//   if (!partnerPerformance) {
 //     return res.status(404).json({
 //       success: false,
-//       message: "No PartnerPerformance records found",
+//       message: "PartnerPerformance not found",
 //     });
 //   }
 
-//   // Get total count for pagination metadata
-//   const totalRecords = await PartnerPerformance.countDocuments({
-//     lotlocation,
-//     lottime,
-//     lotdate,
-//   });
+//   // Extract performances array and apply pagination
+//   const totalRecords = partnerPerformance.performances.length;
+//   const paginatedPerformances = partnerPerformance.performances.slice(
+//     skip,
+//     skip + limit
+//   );
 
 //   res.status(200).json({
 //     success: true,
@@ -8151,7 +8164,16 @@ const addPartnerPerformance = asyncError(async (req, res) => {
 //     totalRecords,
 //     currentPage: page,
 //     totalPages: Math.ceil(totalRecords / limit),
-//     partnerPerformance,
+//     performances: paginatedPerformances, // Return only paginated performances
+//     partnerPerformance: {
+//       _id: partnerPerformance._id,
+//       lotlocation: partnerPerformance.lotlocation,
+//       lottime: partnerPerformance.lottime,
+//       lotdate: partnerPerformance.lotdate,
+//       totalAmount: partnerPerformance.totalAmount,
+//       winningAmount: partnerPerformance.winningAmount,
+//       totalProfit: partnerPerformance.totalProfit,
+//     }, // Sending only metadata to reduce response size
 //   });
 // });
 
@@ -8176,7 +8198,19 @@ const getSinglePartnerPerformance = asyncError(async (req, res) => {
     lotlocation,
     lottime,
     lotdate,
-  }).populate("lotlocation lottime lotdate");
+  }).populate([
+    "lotlocation",
+    "lottime",
+    "lotdate",
+    {
+      path: "performances.currency",
+      model: "Currency",
+    },
+    {
+      path: "performances.users.currency",
+      model: "Currency",
+    },
+  ]);
 
   if (!partnerPerformance) {
     return res.status(404).json({
@@ -8211,6 +8245,60 @@ const getSinglePartnerPerformance = asyncError(async (req, res) => {
   });
 });
 
+// const getSinglePartnerPerformancePowerball = asyncError(async (req, res) => {
+//   const { powertime, powerdate } = req.params;
+//   let { page, limit } = req.query;
+
+//   if (!powertime || !powerdate) {
+//     return res.status(400).json({
+//       success: false,
+//       message: "All fields ( powertime, powerdate) are required",
+//     });
+//   }
+
+//   // Convert page and limit to numbers, set defaults if not provided
+//   page = parseInt(page) || 1;
+//   limit = parseInt(limit) || 10;
+//   const skip = (page - 1) * limit;
+
+//   // Find the PartnerPerformance entry based on the given parameters
+//   const partnerPerformance = await PartnerPerformancePowerball.findOne({
+//     powertime,
+//     powerdate,
+//   }).populate("powertime powerdate");
+
+//   if (!partnerPerformance) {
+//     return res.status(404).json({
+//       success: false,
+//       message: "PartnerPerformance not found",
+//     });
+//   }
+
+//   // Extract performances array and apply pagination
+//   const totalRecords = partnerPerformance.performances.length;
+//   const paginatedPerformances = partnerPerformance.performances.slice(
+//     skip,
+//     skip + limit
+//   );
+
+//   res.status(200).json({
+//     success: true,
+//     message: "PartnerPerformance fetched successfully",
+//     totalRecords,
+//     currentPage: page,
+//     totalPages: Math.ceil(totalRecords / limit),
+//     performances: paginatedPerformances, // Return only paginated performances
+//     partnerPerformance: {
+//       _id: partnerPerformance._id,
+//       powertime: partnerPerformance.powertime,
+//       powerdate: partnerPerformance.powerdate,
+//       totalAmount: partnerPerformance.totalAmount,
+//       winningAmount: partnerPerformance.winningAmount,
+//       totalProfit: partnerPerformance.totalProfit,
+//     }, // Sending only metadata to reduce response size
+//   });
+// });
+
 const getSinglePartnerPerformancePowerball = asyncError(async (req, res) => {
   const { powertime, powerdate } = req.params;
   let { page, limit } = req.query;
@@ -8231,7 +8319,18 @@ const getSinglePartnerPerformancePowerball = asyncError(async (req, res) => {
   const partnerPerformance = await PartnerPerformancePowerball.findOne({
     powertime,
     powerdate,
-  }).populate("powertime powerdate");
+  }).populate([
+    "powertime",
+    "powerdate",
+    {
+      path: "performances.currency",
+      model: "Currency",
+    },
+    // {
+    //   path: "performances.users.currency",
+    //   model: "Currency",
+    // },
+  ]);
 
   if (!partnerPerformance) {
     return res.status(404).json({
