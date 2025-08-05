@@ -166,6 +166,35 @@ const transactionSchema = new mongoose.Schema(
         );
       },
     },
+    paymentName: {
+      type: String,
+      required: function () {
+        return (
+          this.transactionType === "Withdraw" && this.paymentType === "Other"
+        );
+      },
+    },
+    firstInput: {
+      type: String,
+    },
+    secondInput: {
+      type: String,
+    },
+    thirdInput: {
+      type: String,
+    },
+    qrcode: {
+      type: String,
+    },
+    firstInputName: {
+      type: String,
+    },
+    secondInputName: {
+      type: String,
+    },
+    thirdInputName: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
@@ -225,6 +254,15 @@ transactionSchema.pre("save", function (next) {
       )
     );
   }
+
+  if (
+    this.transactionType === "Withdraw" &&
+    this.paymentType === "Other" &&
+    !this.paymentName
+  ) {
+    return next(new Error("Payment Name is required for Other payment type"));
+  }
+
   next();
 });
 
