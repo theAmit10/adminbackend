@@ -3640,6 +3640,14 @@ const addWithdraw = asyncError(async (req, res, next) => {
     networkType,
     skrillContact,
     swiftcode,
+    paymentName,
+    firstInput,
+    firstInputName,
+    secondInputName,
+    secondInput,
+    thirdInputName,
+    thirdInput,
+    qrcode,
   } = req.body;
 
   const user = await User.findOne({ userId: userid });
@@ -3686,6 +3694,14 @@ const addWithdraw = asyncError(async (req, res, next) => {
     skrillContact,
     currency: user.country._id.toString(),
     swiftcode,
+    paymentName,
+    firstInput,
+    firstInputName,
+    secondInputName,
+    secondInput,
+    thirdInputName,
+    thirdInput,
+    qrcode: req.file ? req.file.filename : undefined,
   });
 
   user.transactionHistory.push(transaction._id);

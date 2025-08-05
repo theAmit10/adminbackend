@@ -123,6 +123,9 @@ const {
 const {
   singleUploadForDepositWithdrawUpdate,
 } = require("../middlewares/depositWithdrawUpdateMiddleware.js");
+const {
+  singleUploadForOtherPaymentQrCode,
+} = require("../middlewares/otherpaymentqrcodemiddleware.js");
 
 const router = express.Router();
 
@@ -243,7 +246,12 @@ router.get(
 );
 
 //FOR WITHDRAW
-router.post("/createwithdraw", isAuthenticated, addWithdraw);
+router.post(
+  "/createwithdraw",
+  isAuthenticated,
+  singleUploadForOtherPaymentQrCode,
+  addWithdraw
+);
 router.get("/getallwithdraw", isAuthenticated, getAllWithdrawals);
 
 // TO TRANSFER BALANCE FROM WALLET ONE TO WALLET TWO
