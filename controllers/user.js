@@ -6001,7 +6001,7 @@ const removeMultiplier = asyncError(async (req, res, next) => {
 //   });
 // });
 const updateGameDetails = asyncError(async (req, res, next) => {
-  const { name, startRange, endRange } = req.body;
+  const { name, startRange, endRange, title, description } = req.body;
 
   // Fetch the latest game (sorted by createdAt in descending order)
   const game = await PowerBallGame.findOne().sort({ createdAt: -1 });
@@ -6014,6 +6014,8 @@ const updateGameDetails = asyncError(async (req, res, next) => {
   if (name !== undefined) game.name = name;
   if (startRange !== undefined) game.range.startRange = startRange;
   if (endRange !== undefined) game.range.endRange = endRange;
+  if (title !== undefined) game.gameDescription.title = title;
+  if (description !== undefined) game.gameDescription.description = description;
 
   await game.save();
 
