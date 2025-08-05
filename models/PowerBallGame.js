@@ -6,6 +6,16 @@ const PowerBallGameSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    gameDescription: {
+      title: {
+        type: String,
+        required: true,
+      },
+      description: {
+        type: String,
+        required: true,
+      },
+    },
     range: {
       startRange: {
         type: Number,
