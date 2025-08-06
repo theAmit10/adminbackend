@@ -2669,14 +2669,110 @@ const addDeposit = asyncError(async (req, res, next) => {
   });
 });
 
+const getUserTransactions = asyncError(async (req, res, next) => {
+  const { userid } = req.query;
+  let { page, limit } = req.query;
+
+  // Convert page and limit to integers and set default values
+  page = parseInt(page) || 1;
+  limit = parseInt(limit) || 10;
+  const skip = (page - 1) * limit;
+
+  try {
+    // First, find the user to get total transaction count
+    const user = await User.findOne({ userId: userid }).select(
+      "transactionHistory"
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Get total transaction count from the user's transactionHistory array
+    const totalTransactions = user.transactionHistory.length;
+
+    // If no transactions, return empty result
+    if (totalTransactions === 0) {
+      return res.status(200).json({
+        success: true,
+        transactions: [],
+        totalTransactions: 0,
+        totalPages: 0,
+        currentPage: page,
+      });
+    }
+
+    // Get the transaction IDs for the current page
+    // Reverse the array first to get newest transactions first, then slice for pagination
+    const reversedTransactionIds = [...user.transactionHistory].reverse();
+    const paginatedTransactionIds = reversedTransactionIds.slice(
+      skip,
+      skip + limit
+    );
+
+    // Fetch the actual transactions with populated currency data
+    const transactions = await Transaction.find({
+      _id: { $in: paginatedTransactionIds },
+    })
+      .populate(
+        "currency",
+        "countryname countrycurrencyvaluecomparedtoinr currencyname"
+      ) // Only select needed currency fields
+      .sort({ createdAt: -1 }); // Sort by newest first
+
+    // Ensure the transactions are in the same order as the paginated IDs
+    const orderedTransactions = paginatedTransactionIds
+      .map((id) =>
+        transactions.find(
+          (transaction) => transaction._id.toString() === id.toString()
+        )
+      )
+      .filter(Boolean); // Remove any null/undefined values
+
+    // Calculate total pages
+    const totalPages = Math.ceil(totalTransactions / limit);
+
+    // Return paginated response
+    res.status(200).json({
+      success: true,
+      transactions: orderedTransactions,
+      totalTransactions,
+      totalPages,
+      currentPage: page,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    });
+  } catch (error) {
+    console.error("Error in getUserTransactions:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve transactions",
+      error: error.message,
+    });
+  }
+});
+
 // const getUserTransactions = asyncError(async (req, res, next) => {
 //   const { userid } = req.query;
+//   let { page, limit } = req.query;
+
+//   // Convert page and limit to integers and set default values
+//   page = parseInt(page) || 1;
+//   limit = parseInt(limit) || 10;
+//   const skip = (page - 1) * limit;
 
 //   try {
 //     // Find the user by ID and populate transactions with currency in each transaction
 //     const user = await User.findOne({ userId: userid }).populate({
 //       path: "transactionHistory",
 //       populate: { path: "currency", model: "Currency" }, // Populate currency within each transaction
+//       options: {
+//         skip: skip, // Skip based on page number
+//         limit: limit, // Limit the number of transactions per page
+//       },
 //     });
 
 //     if (!user) {
@@ -2685,6 +2781,9 @@ const addDeposit = asyncError(async (req, res, next) => {
 //         message: "User not found",
 //       });
 //     }
+
+//     // Get the total number of transactions for the user
+//     const totalTransactions = await User.countDocuments({ userId: userid });
 
 //     // Get the transactions array from the user document
 //     let transactions = user.transactionHistory;
@@ -2698,9 +2797,13 @@ const addDeposit = asyncError(async (req, res, next) => {
 //     // Reverse the order to get the oldest first
 //     transactions.reverse();
 
+//     // Return paginated response
 //     res.status(200).json({
 //       success: true,
 //       transactions,
+//       totalTransactions,
+//       totalPages: Math.ceil(totalTransactions / limit),
+//       currentPage: page,
 //     });
 //   } catch (error) {
 //     res.status(500).json({
@@ -2710,64 +2813,6 @@ const addDeposit = asyncError(async (req, res, next) => {
 //     });
 //   }
 // });
-const getUserTransactions = asyncError(async (req, res, next) => {
-  const { userid } = req.query;
-  let { page, limit } = req.query;
-
-  // Convert page and limit to integers and set default values
-  page = parseInt(page) || 1;
-  limit = parseInt(limit) || 10;
-  const skip = (page - 1) * limit;
-
-  try {
-    // Find the user by ID and populate transactions with currency in each transaction
-    const user = await User.findOne({ userId: userid }).populate({
-      path: "transactionHistory",
-      populate: { path: "currency", model: "Currency" }, // Populate currency within each transaction
-      options: {
-        skip: skip, // Skip based on page number
-        limit: limit, // Limit the number of transactions per page
-      },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // Get the total number of transactions for the user
-    const totalTransactions = await User.countDocuments({ userId: userid });
-
-    // Get the transactions array from the user document
-    let transactions = user.transactionHistory;
-
-    // Ensure createdAt is treated as a date
-    transactions = transactions.map((transaction) => ({
-      ...transaction.toObject(), // Ensure it's a plain object
-      createdAt: new Date(transaction.createdAt),
-    }));
-
-    // Reverse the order to get the oldest first
-    transactions.reverse();
-
-    // Return paginated response
-    res.status(200).json({
-      success: true,
-      transactions,
-      totalTransactions,
-      totalPages: Math.ceil(totalTransactions / limit),
-      currentPage: page,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve transactions",
-      error: error.message,
-    });
-  }
-});
 
 const getAllTransaction = asyncError(async (req, res, next) => {
   const transactions = await Transaction.find().sort({ createdAt: -1 });
@@ -3650,17 +3695,19 @@ const addWithdraw = asyncError(async (req, res, next) => {
     qrcode,
   } = req.body;
 
+  // Validate required fields
+  if (!amount) return next(new ErrorHandler("Amount missing", 400));
+  if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
+  if (!username) return next(new ErrorHandler("Username missing", 400));
+  if (!userid) return next(new ErrorHandler("User ID missing", 400));
+
+  // Find user
   const user = await User.findOne({ userId: userid });
   if (!user) {
     return next(new ErrorHandler("User not found", 404));
   }
 
-  if (!amount) return next(new ErrorHandler("Amount missing", 400));
-  if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
-  if (!username) return next(new ErrorHandler("Username missing", 400));
-
-  // NOW GETTING THE CALCULATED AMOUNT
-
+  // Get currency conversion
   const currency = await Currency.findById(user.country._id);
   if (!currency) {
     return next(new ErrorHandler("Currency not found", 404));
@@ -3669,50 +3716,159 @@ const addWithdraw = asyncError(async (req, res, next) => {
   const currencyconverter = parseFloat(
     currency.countrycurrencyvaluecomparedtoinr
   );
-
   const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter);
   console.log("convertedAmount :: " + convertedAmount);
 
-  const transaction = await Transaction.create({
-    amount,
-    convertedAmount,
-    remark,
-    paymentType: paymenttype,
-    username,
-    userId: userid,
-    transactionType: "Withdraw",
-    paymentStatus: paymentstatus || "Pending",
-    upiHolderName,
-    upiId,
-    bankName,
-    accountHolderName,
-    bankIFSC,
-    bankAccountNumber,
-    paypalEmail,
-    cryptoWalletAddress,
-    networkType,
-    skrillContact,
-    currency: user.country._id.toString(),
-    swiftcode,
-    paymentName,
-    firstInput,
-    firstInputName,
-    secondInputName,
-    secondInput,
-    thirdInputName,
-    thirdInput,
-    qrcode: req.file ? req.file.filename : undefined,
-  });
+  try {
+    // Create transaction
+    const transaction = await Transaction.create({
+      amount,
+      convertedAmount,
+      remark,
+      paymentType: paymenttype,
+      username,
+      userId: userid,
+      transactionType: "Withdraw",
+      paymentStatus: paymentstatus || "Pending",
+      upiHolderName,
+      upiId,
+      bankName,
+      accountHolderName,
+      bankIFSC,
+      bankAccountNumber,
+      paypalEmail,
+      cryptoWalletAddress,
+      networkType,
+      skrillContact,
+      currency: user.country._id.toString(),
+      swiftcode,
+      paymentName,
+      firstInput,
+      firstInputName,
+      secondInputName,
+      secondInput,
+      thirdInputName,
+      thirdInput,
+      qrcode: req.file ? req.file.filename : undefined,
+    });
 
-  user.transactionHistory.push(transaction._id);
-  await user.save();
+    // Add transaction to user's history and save
+    user.transactionHistory.push(transaction._id);
+    await user.save();
 
-  res.status(200).json({
-    success: true,
-    message: "Withdrawal request sent successfully",
-    transaction,
-  });
+    console.log("Transaction added to user history:", {
+      userId: userid,
+      transactionId: transaction._id,
+      historyLength: user.transactionHistory.length,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Withdrawal request sent successfully",
+      transaction,
+    });
+  } catch (error) {
+    console.error("Error in withdrawal process:", error);
+
+    // If user.save() failed but transaction was created, you might want to handle this
+    // For example, you could try to delete the transaction or log for manual cleanup
+
+    return next(new ErrorHandler("Failed to process withdrawal request", 500));
+  }
 });
+
+// const addWithdraw = asyncError(async (req, res, next) => {
+//   const {
+//     amount,
+//     remark,
+//     paymenttype,
+//     username,
+//     userid,
+//     paymentstatus,
+//     upiHolderName,
+//     upiId,
+//     bankName,
+//     accountHolderName,
+//     bankIFSC,
+//     bankAccountNumber,
+//     paypalEmail,
+//     cryptoWalletAddress,
+//     networkType,
+//     skrillContact,
+//     swiftcode,
+//     paymentName,
+//     firstInput,
+//     firstInputName,
+//     secondInputName,
+//     secondInput,
+//     thirdInputName,
+//     thirdInput,
+//     qrcode,
+//   } = req.body;
+
+//   const user = await User.findOne({ userId: userid });
+//   if (!user) {
+//     return next(new ErrorHandler("User not found", 404));
+//   }
+
+//   if (!amount) return next(new ErrorHandler("Amount missing", 400));
+//   if (!paymenttype) return next(new ErrorHandler("Payment type missing", 400));
+//   if (!username) return next(new ErrorHandler("Username missing", 400));
+
+//   // NOW GETTING THE CALCULATED AMOUNT
+
+//   const currency = await Currency.findById(user.country._id);
+//   if (!currency) {
+//     return next(new ErrorHandler("Currency not found", 404));
+//   }
+
+//   const currencyconverter = parseFloat(
+//     currency.countrycurrencyvaluecomparedtoinr
+//   );
+
+//   const convertedAmount = parseFloat(amount) * parseFloat(currencyconverter);
+//   console.log("convertedAmount :: " + convertedAmount);
+
+//   const transaction = await Transaction.create({
+//     amount,
+//     convertedAmount,
+//     remark,
+//     paymentType: paymenttype,
+//     username,
+//     userId: userid,
+//     transactionType: "Withdraw",
+//     paymentStatus: paymentstatus || "Pending",
+//     upiHolderName,
+//     upiId,
+//     bankName,
+//     accountHolderName,
+//     bankIFSC,
+//     bankAccountNumber,
+//     paypalEmail,
+//     cryptoWalletAddress,
+//     networkType,
+//     skrillContact,
+//     currency: user.country._id.toString(),
+//     swiftcode,
+//     paymentName,
+//     firstInput,
+//     firstInputName,
+//     secondInputName,
+//     secondInput,
+//     thirdInputName,
+//     thirdInput,
+//     qrcode: req.file ? req.file.filename : undefined,
+//   });
+
+//   user.transactionHistory.push(transaction._id);
+//   await user.save();
+
+//   res.status(200).json({
+//     success: true,
+//     message: "Withdrawal request sent successfully",
+//     transaction,
+//   });
+// });
 
 // Get all withdraw transactions
 // const getAllWithdrawals = asyncError(async (req, res, next) => {
