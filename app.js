@@ -737,16 +737,39 @@ cron.schedule("*/5 * * * *", async () => {
                           // CHECKING FOR THE PARENT PARENT PARTNER
                           if (partner.parentParentPartnerId !== 1000) {
                             if (partner.parentParentPartnerRechargeStatus) {
-                              const parentParentPartnerUserProfit =
-                                parseFloat(
-                                  partner.parentParentPartnerProfitPercentage
-                                ) +
-                                parseFloat(
-                                  partner.parentParentPartnerRechargePercentage
-                                ) -
-                                parseFloat(
-                                  partner.parentPartnerProfitPercentage
-                                );
+                              // const parentParentPartnerUserProfit =
+                              //   parseFloat(
+                              //     partner.parentParentPartnerProfitPercentage
+                              //   ) +
+                              //   parseFloat(
+                              //     partner.parentParentPartnerRechargePercentage
+                              //   ) -
+                              //   parseFloat(
+                              //     partner.parentPartnerProfitPercentage
+                              //   );
+
+                              let parentParentPartnerUserProfit = 0;
+
+                              if (partner.parentPartnerRechargeStatus) {
+                                parentParentPartnerUserProfit =
+                                  parseFloat(
+                                    partner.parentParentPartnerProfitPercentage
+                                  ) -
+                                  parseFloat(
+                                    partner.parentPartnerProfitPercentage
+                                  );
+                              } else {
+                                parentParentPartnerUserProfit =
+                                  parseFloat(
+                                    partner.parentParentPartnerProfitPercentage
+                                  ) +
+                                  parseFloat(
+                                    partner.parentParentPartnerRechargePercentage
+                                  ) -
+                                  parseFloat(
+                                    partner.parentPartnerProfitPercentage
+                                  );
+                              }
 
                               const parentParentPartnerUserAmount =
                                 (parentParentPartnerUserProfit / 100) *
@@ -824,13 +847,27 @@ cron.schedule("*/5 * * * *", async () => {
                         console.log(userz);
                         const userId = userz.userId;
                         // const amount = parseInt(userz.amount);
-                        const amount = Math.max(0, parseInt(userz.amount));
+                        // const amount = Math.max(0, parseInt(userz.amount));
 
-                        const user = await User.findOne({ userId });
+                        const amountfloat = Math.max(
+                          0,
+                          parseFloat(userz.amount)
+                        );
+
+                        const user = await User.findOne({ userId }).populate(
+                          "country"
+                        );
 
                         if (!user) {
                           return next(new ErrorHandler("User not found", 404));
                         }
+
+                        const countryValue =
+                          user.country.countrycurrencyvaluecomparedtoinr;
+                        const calAmount = parseFloat(
+                          amountfloat.toFixed(2) / countryValue
+                        );
+                        const amount = parseFloat(calAmount.toFixed(2));
 
                         // FOR DEPOSITING MONEY IN USER WALLET ONE
 
@@ -1165,9 +1202,14 @@ cron.schedule("*/5 * * * *", async () => {
                         );
 
                         // FOR NOTIFICATION
+                        // const notification = await Notification.create({
+                        //   title: "Congratulations! You won!",
+                        //   description: `You have won an amount of ${amount}.`,
+                        // });
+
                         const notification = await Notification.create({
                           title: "Congratulations! You won!",
-                          description: `You have won an amount of ${amount}.`,
+                          description: `An amount of ${amount} has been credited to your ${wallet.walletName} wallet.`,
                         });
 
                         // Add notification to the user's notifications array
@@ -1190,6 +1232,7 @@ cron.schedule("*/5 * * * *", async () => {
                           lottime: time._id,
                           lotlocation: location._id,
                           walletName: wallet.walletName,
+                          gameType: "playarena",
                         });
 
                         // Add playbet history to the user's playbetHistory array
@@ -1439,16 +1482,39 @@ cron.schedule("*/5 * * * *", async () => {
                           // CHECKING FOR THE PARENT PARENT PARTNER
                           if (partner.parentParentPartnerId !== 1000) {
                             if (partner.parentParentPartnerRechargeStatus) {
-                              const parentParentPartnerUserProfit =
-                                parseFloat(
-                                  partner.parentParentPartnerProfitPercentage
-                                ) +
-                                parseFloat(
-                                  partner.parentParentPartnerRechargePercentage
-                                ) -
-                                parseFloat(
-                                  partner.parentPartnerProfitPercentage
-                                );
+                              // const parentParentPartnerUserProfit =
+                              //   parseFloat(
+                              //     partner.parentParentPartnerProfitPercentage
+                              //   ) +
+                              //   parseFloat(
+                              //     partner.parentParentPartnerRechargePercentage
+                              //   ) -
+                              //   parseFloat(
+                              //     partner.parentPartnerProfitPercentage
+                              //   );
+
+                              let parentParentPartnerUserProfit = 0;
+
+                              if (partner.parentPartnerRechargeStatus) {
+                                parentParentPartnerUserProfit =
+                                  parseFloat(
+                                    partner.parentParentPartnerProfitPercentage
+                                  ) -
+                                  parseFloat(
+                                    partner.parentPartnerProfitPercentage
+                                  );
+                              } else {
+                                parentParentPartnerUserProfit =
+                                  parseFloat(
+                                    partner.parentParentPartnerProfitPercentage
+                                  ) +
+                                  parseFloat(
+                                    partner.parentParentPartnerRechargePercentage
+                                  ) -
+                                  parseFloat(
+                                    partner.parentPartnerProfitPercentage
+                                  );
+                              }
 
                               const parentParentPartnerUserAmount =
                                 (parentParentPartnerUserProfit / 100) *
@@ -1526,13 +1592,27 @@ cron.schedule("*/5 * * * *", async () => {
                         console.log(userz);
                         const userId = userz.userId;
                         // const amount = parseInt(userz.amount);
-                        const amount = Math.max(0, parseInt(userz.amount));
+                        // const amount = Math.max(0, parseInt(userz.amount));
+                        const amountfloat = Math.max(
+                          0,
+                          parseFloat(userz.amount)
+                        );
 
-                        const user = await User.findOne({ userId });
+                        // const user = await User.findOne({ userId });
+                        const user = await User.findOne({ userId }).populate(
+                          "country"
+                        );
 
                         if (!user) {
                           return next(new ErrorHandler("User not found", 404));
                         }
+
+                        const countryValue =
+                          user.country.countrycurrencyvaluecomparedtoinr;
+                        const calAmount = parseFloat(
+                          amountfloat.toFixed(2) / countryValue
+                        );
+                        const amount = parseFloat(calAmount.toFixed(2));
 
                         // FOR DEPOSITING MONEY IN USER WALLET ONE
 

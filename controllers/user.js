@@ -2917,6 +2917,15 @@ const updateDepositStatus = asyncError(async (req, res, next) => {
     return next(new ErrorHandler("Transaction not found", 404));
   }
 
+  if (
+    transaction.paymentStatus === "Completed" ||
+    transaction.paymentStatus === "Cancelled"
+  ) {
+    return next(
+      new ErrorHandler("Transaction already completed or cancelled", 400)
+    );
+  }
+
   // FOR PAYMENT RECHARGE COMPLETED
   if (
     paymentStatus === "Completed" &&
